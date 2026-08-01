@@ -1,0 +1,11 @@
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const app = express();
+app.use(express.json());
+app.use(cors());
+app.use('/', analyticsRoutes);
+app.get('/health', (req, res) => res.json({ status: 'UP' }));
+connectDB(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_analytics');
+app.listen(3014, () => console.log('Analytics Service running on 3014'));

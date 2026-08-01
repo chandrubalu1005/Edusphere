@@ -1,0 +1,26 @@
+const amqp = require('amqplib');
+
+let channel;
+
+async function connectRabbitMQ(url) {
+  try {
+    const connection = await amqp.connect(url);
+    channel = await connection.createChannel();
+    await channel.assertExchange('domain_events', 'topic', { durable: true });
+    console.log('Connected to RabbitMQ successfully');
+  } catch (error) {
+    console.error('RabbitMQ connection error:', error.message);
+    setTimeout(() => connectRabbitMQ(url), 5000);
+  }
+}
+
+function publishEvent(routingKey, data) {
+  if (channel) {
+    channel.publish('domain_events', routingKey, Buffer.from(JSON.stringify(data)), { persistent: true });
+    console.log(`Event published to exchange: ${routingKey}`);
+  } else {
+    console.warn('RabbitMQ channel not established, event skipped');
+  }
+}
+
+module.exports = { connectRabbitMQ, publishEvent };

@@ -1,0 +1,11 @@
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const adminRoutes = require('./routes/adminRoutes');
+const app = WebApp = express();
+app.use(express.json());
+app.use(cors());
+app.use('/', adminRoutes);
+app.get('/health', (req, res) => res.json({ status: 'UP' }));
+connectDB(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_admin');
+app.listen(3015, () => console.log('Admin Service running on 3015'));

@@ -1,0 +1,633 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: edusphere-prod
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edusphere-config
+  namespace: edusphere-prod
+data:
+  JWT_SECRET: "supersecretjwtkey123"
+  RABBITMQ_URL: "amqp://rabbitmq.edusphere-prod.svc.cluster.local:5672"
+  MONGO_URI_AUTH: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_auth"
+  MONGO_URI_USERS: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_users"
+  MONGO_URI_COURSES: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_courses"
+  MONGO_URI_ATTENDANCE: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_attendance"
+  MONGO_URI_TIMETABLE: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_timetable"
+  MONGO_URI_CALENDAR: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_calendar"
+  MONGO_URI_LIBRARY: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_library"
+  MONGO_URI_PLACEMENT: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_placement"
+  MONGO_URI_DISCUSSIONS: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_discussions"
+  MONGO_URI_ANALYTICS: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_analytics"
+  MONGO_URI_ADMIN: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_admin"
+  REDIS_URL: "redis://redis.edusphere-prod.svc.cluster.local:6379"
+
+---
+
+# Auth Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: edusphere-prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: edusphere/auth-service:latest
+        ports:
+        - containerPort: 3001
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 15
+          periodSeconds: 15
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3001
+    targetPort: 3001
+  selector:
+    app: auth-service
+
+---
+
+# User Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: edusphere/user-service:latest
+        ports:
+        - containerPort: 3002
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3002
+    targetPort: 3002
+  selector:
+    app: user-service
+
+---
+
+# Course Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: course-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: course-service
+  template:
+    metadata:
+      labels:
+        app: course-service
+    spec:
+      containers:
+      - name: course-service
+        image: edusphere/course-service:latest
+        ports:
+        - containerPort: 3003
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: course-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3003
+    targetPort: 3003
+  selector:
+    app: course-service
+
+---
+
+# Attendance Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attendance-service
+  namespace: edusphere-prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: attendance-service
+  template:
+    metadata:
+      labels:
+        app: attendance-service
+    spec:
+      containers:
+      - name: attendance-service
+        image: edusphere/attendance-service:latest
+        ports:
+        - containerPort: 3008
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3008
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: attendance-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3008
+    targetPort: 3008
+  selector:
+    app: attendance-service
+
+---
+
+# Timetable Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timetable-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: timetable-service
+  template:
+    metadata:
+      labels:
+        app: timetable-service
+    spec:
+      containers:
+      - name: timetable-service
+        image: edusphere/timetable-service:latest
+        ports:
+        - containerPort: 3009
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3009
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: timetable-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3009
+    targetPort: 3009
+  selector:
+    app: timetable-service
+
+---
+
+# Calendar Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: calendar-service
+  template:
+    metadata:
+      labels:
+        app: calendar-service
+    spec:
+      containers:
+      - name: calendar-service
+        image: edusphere/calendar-service:latest
+        ports:
+        - containerPort: 3010
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3010
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: calendar-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3010
+    targetPort: 3010
+  selector:
+    app: calendar-service
+
+---
+
+# Library Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: library-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: library-service
+  template:
+    metadata:
+      labels:
+        app: library-service
+    spec:
+      containers:
+      - name: library-service
+        image: edusphere/library-service:latest
+        ports:
+        - containerPort: 3011
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3011
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: library-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3011
+    targetPort: 3011
+  selector:
+    app: library-service
+
+---
+
+# Placement Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placement-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: placement-service
+  template:
+    metadata:
+      labels:
+        app: placement-service
+    spec:
+      containers:
+      - name: placement-service
+        image: edusphere/placement-service:latest
+        ports:
+        - containerPort: 3012
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3012
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: placement-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3012
+    targetPort: 3012
+  selector:
+    app: placement-service
+
+---
+
+# Discussion Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discussion-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: discussion-service
+  template:
+    metadata:
+      labels:
+        app: discussion-service
+    spec:
+      containers:
+      - name: discussion-service
+        image: edusphere/discussion-service:latest
+        ports:
+        - containerPort: 3013
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3013
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: discussion-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3013
+    targetPort: 3013
+  selector:
+    app: discussion-service
+
+---
+
+# Analytics Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+      - name: analytics-service
+        image: edusphere/analytics-service:latest
+        ports:
+        - containerPort: 3014
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3014
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3014
+    targetPort: 3014
+  selector:
+    app: analytics-service
+
+---
+
+# Admin Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: admin-service
+  template:
+    metadata:
+      labels:
+        app: admin-service
+    spec:
+      containers:
+      - name: admin-service
+        image: edusphere/admin-service:latest
+        ports:
+        - containerPort: 3015
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3015
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3015
+    targetPort: 3015
+  selector:
+    app: admin-service
+
+---
+
+# Prometheus Monitoring Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: edusphere-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.45.0
+        ports:
+        - containerPort: 9090
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 9090
+    targetPort: 9090
+  selector:
+    app: prometheus
+
+---
+
+# Horizontal Pod Autoscaling (HPA) for peak load mitigation
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-service-hpa
+  namespace: edusphere-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: attendance-service-hpa
+  namespace: edusphere-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: attendance-service
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75

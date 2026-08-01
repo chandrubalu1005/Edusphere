@@ -1,0 +1,16 @@
+{
+  "name": "edusphere-enterprise",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "frontend"
+  ],
+  "scripts": {
+    "start:auth": "npm run start --workspace=services/auth-service",
+    "start:user": "npm run start --workspace=services/user-service",
+    "start:course": "npm run start --workspace=services/course-service",
+    "start:attendance": "npm run start --workspace=services/attendance-service",
+    "start:frontend": "npm run dev --workspace=frontend"
+  }
+}

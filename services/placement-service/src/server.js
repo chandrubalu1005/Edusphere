@@ -1,0 +1,11 @@
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const placementRoutes = require('./routes/placementRoutes');
+const app = express();
+app.use(express.json());
+app.use(cors());
+app.use('/', placementRoutes);
+app.get('/health', (req, res) => res.json({ status: 'UP' }));
+connectDB(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_placement');
+app.listen(3012, () => console.log('Placement Service running on 3012'));

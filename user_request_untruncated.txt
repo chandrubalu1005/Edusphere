@@ -1,0 +1,1523 @@
+﻿<USER_REQUEST>
+====================================================================
+EDUSPHERE ENTERPRISE MASTER PROMPT 
+University ERP + Learning Management Platform (100K+ users)
+====================================================================
+
+This is the COMPLETE specification file combining:
+  1. Original EduSphere God-Level Prompt (Parts 0-16)
+  2. Enterprise Extension Prompt v2.0 (Parts 17-32)
+
+DO NOT split, remove, or simplify existing features.
+EXTEND the architecture professionally for enterprise scale.
+Maintain backward compatibility with all existing collections, APIs, pages.
+
+====================================================================
+ORIGINAL SPECIFICATION: PARTS 0-16 (UNCHANGED)
+====================================================================
+
+[ORIGINAL PARTS 0-16 are kept 100% intact — see Part 0 through Part 16
+ of the existing EduSphere Master Prompt. This extension assumes you
+ have already read that foundation. The following sections (PARTS 17-32)
+ add enterprise capabilities on top of that base.]
+
+====================================================================
+PART 17 — ENTERPRISE ARCHITECTURE EXPANSION (NEW)
+====================================================================
+
+The system is now designed for:
+
+SCALE TARGET
+  - 100,000+ students
+  - 10,000+ faculty
+  - 500+ departments
+  - 5,000+ courses
+  - Millions of attendance records
+  - Millions of submissions
+  - Multiple universities (optional multi-tenancy)
+
+USER ROLES EXPANDED
+  - Student (existing)
+  - Faculty (existing)
+  - Admin (existing, unchanged)
+  - Management (NEW — separate portal, read-mostly, approvals)
+  - Parent/Guardian (future)
+  - Placement Officer (future)
+  - Librarian (future)
+  - Hostel Warden (future)
+  - Transport Officer (future)
+  - Help Desk Agent (future)
+  - System Administrator (future)
+  - Guest User (future, limited access)
+
+ARCHITECTURAL SHIFT: From monolithic backend to MICROSERVICES
+
+The original Node.js + Express backend remains the core API service,
+but is now split into logical service boundaries with eventual consistency,
+event-driven communication, and independent scaling.
+
+====================================================================
+PART 18 — MICROSERVICES ARCHITECTURE (NEW)
+====================================================================
+
+Redesign backend as a service-oriented architecture.
+
+Each microservice owns:
+  - Its own database collections (or subset)
+  - Its own REST API endpoints
+  - Its own business logic
+  - Event producers/consumers
+  - Independent deployment
+  - Separate scaling strategy
+
+SERVICES DEFINED
+
+1. API GATEWAY SERVICE (new entry point, Part 19)
+   - Reverse proxy for all requests
+   - Authentication forwarding
+   - Rate limiting
+   - Load balancing
+   - Request logging
+   - Response compression
+   - Versioning orchestration
+   Owns: nginx.conf, gateway middleware
+
+2. AUTHENTICATION SERVICE (extracted from monolith)
+   Responsibilities:
+     - User registration (student only)
+     - Login / logout
+     - JWT token generation / refresh
+     - Email verification
+     - Password reset
+     - OAuth integration (future)
+     - 2FA (future)
+   Endpoints:
+     POST   /auth/register
+     POST   /auth/login
+     POST   /auth/refresh
+     POST   /auth/logout
+     POST   /auth/forgot-password
+     POST   /auth/reset-password
+     GET    /auth/verify-email/:token
+     GET    /auth/me
+   Database: owns users collection + refresh token storage
+   Events: user.registered, user.login, user.logout, password.reset
+
+3. USER SERVICE (new, extracted from admin)
+   Responsibilities:
+     - User profile management
+     - User search + pagination
+     - Role assignment (admin-only)
+     - User deactivation
+     - Theme/preference storage
+   Endpoints:
+     GET    /users/:id
+     PUT    /users/:id (self-service or admin)
+     GET    /users (admin search)
+     POST   /admin/users (admin create)
+     PATCH  /users/:id/deactivate (admin)
+   Database: owns users (shared with auth), profiles (new)
+   Events: user.updated, user.deactivated
+
+4. DEPARTMENT & SEMESTER SERVICE
+   Responsibilities:
+     - Department CRUD (admin)
+     - Semester CRUD (admin)
+     - Head-of-department assignment
+     - Department hierarchy (optional)
+   Endpoints:
+     GET/POST/PUT   /admin/departments
+     GET/POST/PUT   /admin/semesters
+   Database: owns departments, semesters
+   Events: department.created, semester.activated
+
+5. COURSE SERVICE
+   Responsibilities:
+     - Course creation (faculty)
+     - Course editing (faculty, admin)
+     - Course publishing (faculty or admin, based on approval mode)
+     - Course content management
+     - Course search + discovery
+   Endpoints:
+     GET    /courses (published only for students)
+     POST   /courses (faculty)
+     PUT    /courses/:id (faculty owner or admin)
+     POST   /courses/:id/content
+     GET    /courses/:id/enrollments (faculty owner or admin)
+   Database: owns courses, course_content
+   Events: course.created, course.published, course.content_added
+
+6. ENROLLMENT SERVICE
+   Responsibilities:
+     - Student enrollment in courses
+     - Enrollment status tracking
+     - Progress tracking
+     - Enrollment history (completed/withdrawn)
+   Endpoints:
+     POST   /enrollments (student)
+     GET    /enrollments/me (student)
+     DELETE /enrollments/:id (student own)
+   Database: owns enrollments
+   Events: enrollment.created, enrollment.completed, enrollment.withdrawn
+
+7. ATTENDANCE SERVICE
+   Responsibilities:
+     - Manual attendance marking (faculty)
+     - One-click marking
+     - QR session generation + scanning
+     - Attendance calculation + reporting
+     - Leaderboard (highest attendance)
+   Endpoints:
+     POST   /attendance/mark
+     POST   /attendance/mark-all
+     POST   /attendance/qr/generate
+     POST   /attendance/qr/scan
+     GET    /attendance/course/:courseId
+     GET    /attendance/student/:studentId
+   Database: owns attendance (cached in Redis)
+   Events: attendance.marked, attendance.updated, attendance.low_alert
+
+8. ASSESSMENT SERVICE (quizzes)
+   Responsibilities:
+     - Quiz creation (faculty)
+     - Question management
+     - Quiz taking (student)
+     - Auto-grading
+     - Score calculation
+     - Leaderboard
+   Endpoints:
+     POST   /assessments
+     POST   /assessments/:id/questions
+     GET    /assessments/:id/start
+     POST   /assessments/:id/submit
+     GET    /assessments/:id/results
+     GET    /assessments/:id/leaderboard
+   Database: owns assessments, questions, quizAttempts
+   Events: quiz.published, quiz.submitted, quiz.graded
+
+9. ASSIGNMENT SERVICE
+   Responsibilities:
+     - Assignment creation (faculty)
+     - File submission (student)
+     - Submission grading (faculty)
+     - Late submission tracking
+   Endpoints:
+     POST   /assignments
+     POST   /assignments/:id/submit
+     PUT    /submissions/:id/evaluate
+     GET    /submissions (filtered)
+   Database: owns assignments, submissions
+   Events: assignment.posted, submission.received, submission.graded
+
+10. CERTIFICATE SERVICE
+    Responsibilities:
+      - Eligibility calculation
+      - Certificate generation (PDF + QR)
+      - Certificate verification (public)
+      - Certificate revocation (admin)
+    Endpoints:
+      POST   /certificates/generate/:enrollmentId
+      POST   /certificates/:id/revoke
+      GET    /certificates/me (student)
+      GET    /certificates/verify/:certificateId (public)
+    Database: owns certificates
+    Events: certificate.generated, certificate.revoked
+
+11. NOTIFICATION SERVICE
+    Responsibilities:
+      - Notification creation (by other services via events)
+      - Notification delivery (in-app, email, SMS future)
+      - Notification read status
+      - Notification preferences (user-managed)
+    Endpoints:
+      GET    /notifications/me
+      PATCH  /notifications/:id/read
+      PATCH  /notifications/read-all
+    Database: owns notifications
+    Events: notification.created, notification.sent (integration hooks for email/SMS)
+
+12. ANALYTICS SERVICE (new)
+    Responsibilities:
+      - Aggregate student performance metrics
+      - Faculty teaching analytics
+      - Department-level KPIs
+      - Course popularity
+      - Attendance compliance trends
+      - Predictive analytics (future ML)
+    Endpoints:
+      GET    /reports/attendance
+      GET    /reports/courses
+      GET    /reports/performance
+      GET    /reports/faculty
+      GET    /reports/export?format=pdf|excel
+    Database: owns reports (precomputed), metrics (aggregated)
+    Events: consumes all domain events, builds aggregates nightly
+
+13. SEARCH SERVICE (new, Part 21)
+    Responsibilities:
+      - Global search across all entities
+      - Autocomplete suggestions
+      - Search result ranking
+      - Recent searches (per user)
+      - Filters + facets
+    Endpoints:
+      GET    /search?q=query&type=courses|students|faculty|etc
+      GET    /search/autocomplete?q=
+      GET    /search/recent
+    Database: owns search index (Elasticsearch or Meilisearch)
+    Events: consumes entity.created/updated events for indexing
+
+14. AUDIT SERVICE (new, Part 15 expansion)
+    Responsibilities:
+      - Log every state change
+      - Immutable audit trail
+      - Audit log retrieval + filtering
+      - Compliance reporting
+    Endpoints:
+      GET    /audit-logs (admin only)
+    Database: owns auditLogs (write-append-only)
+    Events: consumes all domain events, logs them
+
+15. REPORT & EXPORT SERVICE (new)
+    Responsibilities:
+      - Generate reports (PDF, Excel, CSV)
+      - Schedule reports
+      - Email delivery
+      - Archive old reports
+    Endpoints:
+      POST   /reports/:id/export
+      GET    /reports/:id/download
+    Database: owns report_jobs, report_archive
+    Events: triggered by /reports/export endpoints
+
+16. FILE STORAGE SERVICE (new abstraction)
+    Responsibilities:
+      - Unified file upload/download interface
+      - Local storage (dev) or S3 (production)
+      - Virus scanning (future)
+      - CDN delivery (future)
+    Endpoints:
+      POST   /files/upload (multipart)
+      GET    /files/:fileId/download
+    Database: owns file_metadata
+    Events: file.uploaded, file.scanned
+
+SERVICE COMMUNICATION PATTERNS
+
+Synchronous (REST):
+  - API Gateway calls services directly for immediate responses
+  - Service-to-service REST calls for queries (course service asks
+    enrollment service for course enrollment count)
+
+Asynchronous (Events):
+  - All state changes are published as domain events
+  - Other services subscribe and react asynchronously
+  - RabbitMQ or Apache Kafka for event broker
+  - Dead-letter queues for failed events
+
+Example event flow:
+  1. Student submits assignment
+  2. Assignment Service publishes: assignment.submitted event
+  3. Notification Service consumes event -> creates notification
+  4. Analytics Service consumes event -> updates student metrics
+  5. Audit Service consumes event -> logs the action
+  6. (All happen asynchronously, no blocking)
+
+====================================================================
+PART 19 — API GATEWAY & REDIS ARCHITECTURE (NEW)
+====================================================================
+
+API GATEWAY (Kong, Traefik, or custom nginx)
+
+Responsibilities:
+  - Single entry point: gateway.edusphere.com
+  - Route requests to appropriate microservice
+  - Enforce authentication (forward JWT from client)
+  - Rate limiting (100 req/min per user, 1000 req/min per IP)
+  - Request logging (Loki integration, Part 26)
+  - Response compression (gzip)
+  - Load balancing across service replicas
+  - Circuit breaker (if a service is down, fail gracefully)
+  - Request timeout (30s global)
+  - Header validation (cors, content-type, etc)
+
+Config example:
+  /api/v1/auth/*        -> Auth Service (port 3001)
+  /api/v1/users/*       -> User Service (port 3002)
+  /api/v1/courses/*     -> Course Service (port 3003)
+  /api/v1/enrollments/* -> Enrollment Service (port 3004)
+  /api/v1/attendance/*  -> Attendance Service (port 3005)
+  /api/v1/assessments/* -> Assessment Service (port 3006)
+  /api/v1/assignments/* -> Assignment Service (port 3007)
+  /api/v1/certificates/*-> Certificate Service (port 3008)
+  /api/v1/notifications/* -> Notification Service (port 3009)
+  /api/v1/reports/*     -> Analytics Service (port 3010)
+  /api/v1/search/*      -> Search Service (port 3011)
+  /api/v1/audit-logs/*  -> Audit Service (port 3012)
+  /api/v1/admin/*       -> Multiple services (admin endpoints)
+
+REDIS CACHE LAYER
+
+Integrate Redis 7.0+ for distributed caching.
+
+Cache keys (with TTL):
+
+  Courses:
+    courses:published          (1 hour) — list of all published courses
+    courses:search:term        (30 min) — search results
+    courses:{courseId}         (1 hour) — course details
+    courses:{courseId}:content (1 hour) — course materials
+
+  Enrollments:
+    enrollments:user:{userId}  (30 min) — student's enrolled courses
+    enrollments:course:{courseId} (1 hour) — enrolled students in course
+
+  Attendance:
+    attendance:course:{courseId}:{date} (1 day) — daily attendance
+    attendance:student:{studentId}:{semester} (7 days) — student attendance %
+    attendance:leaderboard:{courseId} (1 day) — highest attendance students
+
+  Dashboard Data:
+    dashboard:student:{userId} (15 min) — cached stat cards
+    dashboard:faculty:{userId} (15 min) — cached teaching overview
+    dashboard:admin          (30 min) — cached admin stats
+    dashboard:management     (1 hour) — cached executive KPIs
+
+  Notifications:
+    notifications:unread:{userId} (5 min) — unread count
+    notifications:{userId}     (10 min) — recent notifications
+
+  Quiz Leaderboards:
+    leaderboard:quiz:{assessmentId} (1 day) — top scorers
+
+  Session Cache:
+    sessions:{sessionId}       (7 days) — refresh token metadata
+    active_users:online        (realtime) — connected users (Socket.IO)
+
+Cache Invalidation Strategy:
+  - Automatic on TTL expiry
+  - Manual invalidation on state change (event-driven)
+    Example: when attendance is marked, invalidate
+    attendance:student:*, attendance:leaderboard:*
+  - Namespace-based invalidation for bulk clears
+
+Performance Benefits:
+  - Dashboard load time: 200ms (with cache) vs 2000ms (without)
+  - Course search: 50ms (with cache) vs 500ms (without)
+  - Attendance page: 100ms (with cache) vs 1000ms (without)
+
+====================================================================
+PART 20 — REAL-TIME COMMUNICATION WITH SOCKET.IO (NEW)
+====================================================================
+
+Integrate Socket.IO for real-time, bidirectional events.
+
+Real-Time Events (server → client push)
+
+  Notifications:
+    notification:new          — new in-app notification
+    notification:read         — someone read your message
+    announcement:new          — new announcement posted
+
+  Live Class:
+    class:started             — faculty started a class
+    class:ended               — class ended
+    attendance:marked         — your attendance was marked
+    attendance:alert          — low attendance warning
+
+  Assignments & Assessments:
+    assignment:posted         — new assignment in your course
+    assignment:submitted      — your assignment received
+    assessment:published      — new quiz available
+    quiz:result_ready         — your quiz is graded
+
+  Certificates:
+    certificate:generated     — your certificate is ready
+    certificate:revoked       — a certificate was revoked
+
+  Chat (future):
+    message:new               — new message in course chat
+    typing:indicator          — someone is typing
+    user:online               — user came online
+    user:offline              — user went offline
+
+  Admin/Management:
+    course:approved           — course was approved
+    course:rejected           — course was rejected
+    system:alert              — system health warning
+    audit:suspicious          — suspicious activity detected
+
+Socket Connections
+
+  Client connects on login:
+    io.connect('https://edusphere.com/socket', {
+      auth: { token: jwtAccessToken }
+    })
+
+  Server authenticates token in socket middleware.
+
+  Join specific rooms based on role:
+    student:1234              — for student ID 1234
+    faculty:5678              — for faculty ID 5678
+    course:CS101              — for all students/faculty in CS101
+    admin                     — for all admins
+    management                — for all management
+    notifications:{userId}    — for user-specific notifications
+
+Real-Time Interactions
+
+  Student scanning QR for attendance:
+    1. Frontend emits: attendance:qr_scan { token, courseId }
+    2. Backend validates token
+    3. Backend broadcasts to course:CS101 room:
+       attendance:marked { studentId, status: present }
+    4. Faculty sees it in real-time on attendance page
+
+  Faculty publishing a quiz:
+    1. Frontend emits: quiz:publish { assessmentId }
+    2. Backend publishes event
+    3. All subscribed students see in notification bell
+    4. Dashboard updates in real-time
+
+  Live leaderboard during quiz:
+    1. As students submit, backend updates assessment results
+    2. Emits: leaderboard:updated { topScores }
+    3. Viewing students see live rank updates
+
+Socket.IO Adapter for Horizontal Scaling
+
+  Use Socket.IO Redis adapter (socket.io-redis) so that
+  even if a student connects to server A and another to server B,
+  they can still communicate via shared Redis pub/sub.
+
+====================================================================
+PART 21 — ENTERPRISE SEARCH (NEW)
+====================================================================
+
+Create Global Search Service with Elasticsearch or Meilisearch.
+
+SEARCHABLE ENTITIES
+  - Students (name, ID, email, department)
+  - Faculty (name, ID, email, department, courses)
+  - Courses (title, code, description, faculty, department)
+  - Departments (name, code, courses, faculty)
+  - Certificates (certificate ID, student name, course, date)
+  - Announcements (title, body, posted date, author)
+  - Assignments (title, course, due date)
+  - Assessments (title, course, date)
+  - Support Tickets (subject, description, status)
+  - Library Books (future — title, ISBN, author, category)
+  - News (title, body, date)
+
+SEARCH FEATURES
+  - Global search with single query box
+  - Type-aware search (search in "Courses only" or "All")
+  - Autocomplete suggestions as user types
+  - Recent searches (per user, last 10)
+  - Filters/facets:
+    * By type (Course, Student, Faculty, etc)
+    * By department
+    * By status
+    * By date range
+  - Full-text search (partial word matching, typo tolerance)
+  - Ranked results (relevance, date, popularity)
+  - Search analytics (what are users searching for?)
+
+EXAMPLE QUERIES
+  - "Database"
+    Results: Database Systems (course), John Database (student),
+             Prof. Data (faculty), Database Admin (course), etc
+             Sorted by relevance
+
+  - "CS 101"
+    Results: CS101 (course), CS101A (section), CS101 Quiz, etc
+
+  - "machine"
+    Results: Machine Learning (course), Machine Learning PDF (material),
+             related assignments, etc
+
+  - "john"
+    Results: John Smith (student), John Doe (faculty), John's Certificate, etc
+
+BACKEND ARCHITECTURE
+  1. Elasticsearch/Meilisearch runs in Kubernetes (Part 25)
+  2. Search Service indexes documents
+  3. On entity creation/update, publish event
+  4. Event triggers index update in Elasticsearch
+  5. Search queries hit Elasticsearch directly (fast)
+  6. Results transformed and returned to client
+
+API Endpoints:
+  GET /search?q=query&type=all|courses|students|faculty&limit=20
+  GET /search/autocomplete?q=term
+  GET /search/recent
+  DELETE /search/recent/:id (clear specific search)
+
+PERFORMANCE
+  - Search results returned in <100ms
+  - Typo tolerance for better UX
+  - Facet counts updated in real-time
+
+====================================================================
+PART 22 — MANAGEMENT PORTAL (NEW)
+====================================================================
+
+Create entirely separate Management Portal (not Admin Portal).
+
+MANAGEMENT USERS INCLUDE
+  - Principal / Vice Principal
+  - Dean of Academic Affairs
+  - Dean of Student Affairs
+  - Head of Department (HOD)
+  - Placement Officer
+  - Director
+  - CEO / Trust Members
+
+MANAGEMENT PORTAL IS READ-MOSTLY
+  - No user CRUD (Admin handles that)
+  - No course CRUD (Faculty creates, Admin approves if needed)
+  - Approval workflow only (approve/reject courses, budgets future)
+  - Strategic oversight
+
+MANAGEMENT PORTAL DESIGN MODE
+  - Part 5: Boardroom mode
+  - Accent: muted brass
+  - Density: spacious but focused
+  - Signature moment: headline metric (large Fraunces numeral + trend sparkline)
+  - One KPI per screen, no dense tables
+
+MANAGEMENT PORTAL PAGES
+
+1. Executive Dashboard
+   - University overview stats (total students, courses, faculty, active sessions)
+   - Attendance compliance by semester (overall + by department)
+   - Course completion trends
+   - Quick links to other dashboards
+
+2. Student Analytics
+   - Enrollment trends (by department, semester, year)
+   - Attendance compliance heatmap (department × semester)
+   - Performance distribution (pass/fail rates)
+   - Dropout/withdrawal analysis
+   - At-risk student identification (failing grades, low attendance)
+   - Segmentation by department/year/program
+
+3. Faculty Analytics
+   - Faculty performance metrics
+     * Courses taught per semester
+     * Average student ratings (future feedback feature)
+     * Student pass rates per faculty member
+   - Course load analysis
+   - Teaching effectiveness trends
+
+4. Department Analytics
+   - Department-level KPIs
+   - Enrollment by department
+   - Faculty distribution
+   - Budget allocation (future)
+   - Performance vs other departments
+   - Trends over semesters/years
+
+5. Course Analytics
+   - Popular courses
+   - Course performance (avg scores, pass rates)
+   - Course load (enrollment vs capacity)
+   - Course completion rates
+   - Semester-wise trends
+
+6. Placement Analytics (future)
+   - Placement rate by department
+   - Placement trends by year
+   - Average package
+   - Top recruiting companies
+   - Skills gap analysis
+
+7. Attendance Analytics (expanded)
+   - Attendance compliance dashboard
+   - Heatmap: attendance % by department
+   - Trend: attendance over semesters
+   - Alerts: departments below threshold
+   - Student segmentation (high/medium/low attendance)
+
+8. Financial Dashboard (future)
+   - Budget allocation by department
+   - Expenditure tracking
+   - Cost per student
+   - Revenue forecasting
+
+9. Strategic KPI Dashboard
+   - Custom KPIs per institution
+   - Trend indicators (up/down/stable)
+   - Alerts for KPIs out of range
+   - Export capability
+
+CHARTS & VISUALIZATIONS
+  - Line charts (trends over time)
+  - Bar charts (comparisons by department)
+  - Heatmaps (attendance compliance matrix)
+  - Pie charts (distribution)
+  - Sparklines (mini trends)
+  - Prediction charts (ML future — attendance prediction, etc)
+  - Leaderboards (top departments, top students, etc)
+
+MANAGEMENT APPROVAL WORKFLOW
+  If course approval mode is ON (Part 8), Management can:
+  - View pending courses
+  - Approve course publish (-> course.status = published)
+  - Reject with reason (-> course.status = draft, notify faculty)
+
+EXPORT & REPORTS
+  - Export dashboard as PDF (snapshot)
+  - Export data as Excel
+  - Schedule email reports (nightly, weekly, monthly)
+  - Archive reports (queryable later)
+
+====================================================================
+PART 23 — ENTERPRISE MODULES (ARCHITECTURE ONLY) (NEW)
+====================================================================
+
+Design database, APIs, UI, navigation, permissions, and expansion
+points for future enterprise modules. DO NOT implement in initial
+phases, but design the architecture now.
+
+MODULE 1: HELP DESK & SUPPORT TICKETS
+
+Collections:
+  support_tickets
+    _id, userId (creator), title, description, category,
+    priority (low/medium/high/urgent), status (open/in-progress/resolved/closed),
+    assignedTo (helpdesk agent), attachments (array), createdAt, updatedAt,
+    resolvedAt, resolutionNotes
+
+  support_categories
+    _id, name (Account, Course, Technical, Payment, etc), description
+
+  knowledge_base_articles
+    _id, title, content, category, tags, views, helpful_count, author
+
+API Endpoints:
+  POST   /support/tickets               (create ticket)
+  GET    /support/tickets/:id           (view ticket)
+  PATCH  /support/tickets/:id           (update status, add notes)
+  GET    /support/tickets               (list user's tickets)
+  GET    /support/categories            (ticket types)
+  GET    /knowledge-base/search?q=      (search articles)
+  POST   /knowledge-base/articles/:id/helpful (rate article)
+
+UI:
+  - Ticket creation form (title, category, priority, attachment)
+  - Ticket list (status filters, priority indicators)
+  - Ticket detail (conversation thread, notes, attachment preview)
+  - Knowledge base search + article browsing
+  - Helpdesk agent dashboard (ticket queue, SLA tracking)
+
+MODULE 2: PLACEMENT & INTERNSHIP PORTAL
+
+Collections:
+  placements_companies
+    _id, name, website, recruiter_contact, cutoff_cgpa, salary_info,
+    available_roles (array)
+
+  placements_job_postings
+    _id, companyId, title, description, eligibility, deadline, positions
+
+  placements_applications
+    _id, studentId, jobPostingId, resumeUrl, coverLetterUrl, status
+    (applied/shortlisted/selected/rejected), appliedAt
+
+  internships
+    _id, companyId, title, duration, stipend, requirements, available_count
+
+API Endpoints:
+  GET    /placements/companies
+  GET    /placements/job-postings
+  POST   /placements/applications
+  GET    /placements/applications/me
+  POST   /placements/applications/:id/withdraw
+  GET    /internships
+  POST   /internships/apply/:id
+
+UI:
+  - Company listing
+  - Job posting browsing + application
+  - Internship browsing + application
+  - Student placement dashboard (application status, offers)
+  - Admin/Officer placement dashboard (application management, offer letters)
+
+MODULE 3: LIBRARY MANAGEMENT
+
+Collections:
+  library_books
+    _id, isbn, title, author, category, publisher, year, available_count,
+    total_count, location (shelf code)
+
+  library_checkouts
+    _id, studentId, bookId, checkoutDate, dueDate, returnDate, status
+    (active/returned), overdue_charges
+
+  library_holds
+    _id, studentId, bookId, position (queue), createdAt
+
+API Endpoints:
+  GET    /library/books/search?q=
+  POST   /library/checkouts (checkout book)
+  GET    /library/checkouts/me (my books)
+  POST   /library/checkouts/:id/return
+  POST   /library/holds/:bookId (request book on hold)
+
+UI:
+  - Book search + catalog browsing
+  - Checkout management
+  - Renewal of borrowed books
+  - Hold requests
+  - Overdue notifications
+
+MODULE 4: HOSTEL MANAGEMENT
+
+Collections:
+  hostels
+    _id, name, capacity, warden_id, rooms (array of room records)
+
+  hostel_rooms
+    _id, hostel_id, roomNumber, capacity, occupied_count, occupants (array)
+
+  hostel_allocations
+    _id, studentId, hostelId, roomId, academicYear, allocatedAt
+
+  hostel_complaints
+    _id, studentId, hostelId, category, description, status, resolvedAt
+
+API Endpoints:
+  GET    /hostel/allocation/me (my hostel room)
+  POST   /hostel/complaints
+  GET    /hostel/complaints/:id
+  GET    /admin/hostel/allocations (admin view)
+  POST   /admin/hostel/allocations (admin assign room)
+
+UI:
+  - Student hostel info + room details
+  - Complaint registration form
+  - Complaint tracking
+  - Hostel warden dashboard (occupancy, complaints)
+
+MODULE 5: TRANSPORT MANAGEMENT
+
+Collections:
+  transport_routes
+    _id, routeName, startPoint, endPoint, stops (array), fare
+
+  transport_buses
+    _id, routeId, busNumber, capacity, driverId, currentLocation (GPS future)
+
+  transport_passes
+    _id, studentId, routeId, passType (semester/monthly), purchasedAt, expiresAt
+
+  transport_gps
+    _id, busId, latitude, longitude, timestamp (realtime GPS tracking)
+
+API Endpoints:
+  GET    /transport/routes
+  POST   /transport/passes (buy pass)
+  GET    /transport/passes/me
+  GET    /transport/buses/:routeId/location (GPS tracking)
+
+UI:
+  - Route browsing + pass purchase
+  - Bus tracking (GPS map)
+  - Pass management
+
+MODULE 6: DIGITAL ID CARD
+
+Collections:
+  digital_id_cards
+    _id, studentId, cardId (unique), issueDate, expiryDate, status
+    (active/expired/revoked), qrCode, photo
+
+API Endpoints:
+  GET    /id-card/me
+  POST   /id-card/verify/:cardId (verify someone's ID)
+  GET    /id-card/:cardId/check (quick check for gate entry)
+
+UI:
+  - Student ID card view (QR code + details)
+  - ID card sharing/verification
+  - Gate entry verification (scan QR)
+
+MODULE 7: LEAVE MANAGEMENT
+
+Collections:
+  leave_types
+    _id, name (Sick, Personal, Emergency, etc), maxDaysPerYear, requiresDocument
+
+  leave_applications
+    _id, studentId, leaveType, fromDate, toDate, reason, document_url,
+    status (pending/approved/rejected), approvedBy
+
+API Endpoints:
+  GET    /leave/types
+  POST   /leave/applications
+  GET    /leave/applications/me
+  PATCH  /admin/leave/applications/:id/approve
+  PATCH  /admin/leave/applications/:id/reject
+
+UI:
+  - Leave type information
+  - Leave application form
+  - Application history + status
+  - Admin leave approval dashboard
+
+MODULE 8: VISITOR MANAGEMENT
+
+Collections:
+  visitors
+    _id, visitorName, visitorPhone, visitorEmail, visitorId, purposeOfVisit,
+    hostStudent/Faculty, checkinTime, checkoutTime, securityClearance
+
+API Endpoints:
+  POST   /visitors/register
+  GET    /admin/visitors (active visitors)
+  POST   /admin/visitors/:id/checkout
+
+UI:
+  - Visitor registration form
+  - Security dashboard (active visitors)
+
+====================================================================
+PART 24 — ENHANCED PORTAL EXPERIENCES (NEW)
+====================================================================
+
+ADMIN PORTAL ENHANCEMENT
+
+Dashboard Widget System:
+  - Drag-and-drop dashboard customization
+  - Resizable panels
+  - Save multiple dashboard layouts
+  - Widget types:
+    * Real-time statistics (user count, active courses, etc)
+    * Quick actions (create user, approve course, etc)
+    * Recent activities feed
+    * System health status (CPU, memory, service availability)
+    * Alert panel (failed jobs, system errors)
+    * Active user count
+    * Top-performing departments
+    * Recent audit log entries
+
+Quick Actions:
+  - Create new user (modal)
+  - Approve pending courses (inline)
+  - Reset user password (inline)
+  - View live system metrics
+
+STUDENT PORTAL ENHANCEMENT
+
+Learning Path / Skill Tracking:
+  - Visual learning path (course prerequisites + sequence)
+  - Course recommendations (based on enrollment, performance, interests)
+  - Skill badges earned (collected as courses completed)
+  - Achievement timeline (visual calendar of milestones)
+
+Learning Statistics:
+  - Time spent per course
+  - Quiz attempts and best score
+  - Assignment submission rate
+  - Reading comprehension (future AI-measured via engagement)
+
+Student Dashboard Sections:
+  - Continue Learning (recently visited courses)
+  - Course Wishlist (bookmarked courses to take later)
+  - Achievements (badges, milestones, certificates)
+  - Peer Comparison (anonymized — how you compare to class average)
+  - Study Calendar (assignment deadlines + quiz dates)
+  - Performance Insights (strengths/weaknesses by subject)
+
+FACULTY PORTAL ENHANCEMENT
+
+Teaching Calendar:
+  - Visual calendar of classes, office hours, exam schedules
+  - Upcoming events: class on date X, assignment due date Y, quiz on date Z
+  - iCal export for importing into personal calendars
+
+Quick Alerts:
+  - Low attendance alerts (students missing >25% of classes)
+  - Assignment submission reminders (X students haven't submitted yet)
+  - Quiz grading pending (X submissions waiting to be graded)
+
+Teaching Insights:
+  - Class performance analytics (avg quiz score, assignment quality)
+  - Student engagement metrics (attendance %, assignment submission %)
+  - Outliers (exceptional students, struggling students)
+  - Teaching effectiveness (student feedback, performance trends)
+
+Quick Publish:
+  - One-click content upload
+  - Announcement posting (to all enrolled students)
+  - Assignment scheduling with auto-notification
+
+MANAGEMENT PORTAL ENHANCEMENT (Part 22 covered)
+
+====================================================================
+PART 25 — KUBERNETES & CLOUD DEPLOYMENT (NEW)
+====================================================================
+
+Containerize and orchestrate entire application on Kubernetes.
+
+KUBERNETES ARCHITECTURE
+
+Namespaces Strategy:
+  - edusphere-dev       (development environment)
+  - edusphere-staging   (pre-production testing)
+  - edusphere-prod      (production — high availability)
+  - edusphere-monitor   (monitoring stack: Prometheus, Grafana, Loki)
+  - edusphere-logging   (centralized logging)
+
+Deployments (one per microservice + frontend):
+  - api-gateway (nginx/Kong)
+  - auth-service
+  - user-service
+  - department-service
+  - course-service
+  - enrollment-service
+  - attendance-service
+  - assessment-service
+  - assignment-service
+  - certificate-service
+  - notification-service
+  - analytics-service
+  - search-service
+  - audit-service
+  - report-service
+  - file-storage-service
+  - frontend (React app, served via nginx)
+
+ReplicaSets & Autoscaling:
+  - Each service has >=2 replicas (high availability)
+  - Horizontal Pod Autoscaler (HPA) scales replicas 2-10 based on CPU/memory
+  - Course service might scale 2-20 during peak enrollment period
+
+Services (ClusterIP + LoadBalancer):
+  - api-gateway: LoadBalancer (exposed to internet)
+  - Internal services: ClusterIP (internal communication only)
+  - Database: StatefulSet with PersistentVolume (MongoDB)
+  - Redis: StatefulSet with PersistentVolume
+  - Elasticsearch: StatefulSet with PersistentVolume
+
+Ingress:
+  - api.edusphere.com -> API Gateway
+  - edusphere.com -> Frontend
+  - admin.edusphere.com -> Admin panel (future)
+  - management.edusphere.com -> Management portal (future)
+  - docs.edusphere.com -> API documentation
+
+ConfigMaps:
+  - app-config (API endpoints, feature flags, environment URLs)
+  - log-config (logging levels, format)
+
+Secrets:
+  - db-credentials (MongoDB user/pass)
+  - jwt-secrets (JWT signing key)
+  - mail-credentials (SMTP user/pass for nodemailer)
+  - s3-credentials (AWS access key for file storage)
+  - redis-password (Redis auth)
+  - service-api-keys (inter-service communication keys)
+
+PersistentVolumes & PersistentVolumeClaims:
+  - MongoDB data: 500GB volume
+  - Redis data: 50GB volume
+  - Elasticsearch data: 200GB volume
+  - File uploads: 1TB volume (for dev/demo; prod uses S3)
+
+Service Accounts & RBAC:
+  - api-gateway-sa (can read ConfigMaps, manage services)
+  - services-sa (can write logs, read secrets)
+  - admin-sa (elevated permissions for admin tasks)
+
+Readiness & Liveness Probes:
+  - Readiness: /health endpoint (checks if service is ready)
+  - Liveness: /live endpoint (checks if service is alive, restarts if not)
+  - InitialDelaySeconds: 30s
+  - PeriodSeconds: 10s
+  - TimeoutSeconds: 5s
+
+Resource Requests & Limits:
+  - Small services (auth, user): 256Mi RAM / 100m CPU (request) - 512Mi / 500m (limit)
+  - Medium services (course, enrollment): 512Mi RAM / 200m CPU - 1Gi / 1000m
+  - Large services (analytics, search): 1Gi RAM / 500m CPU - 2Gi / 2000m
+  - Database/Redis: 2Gi - 4Gi (persistent, no limits)
+
+Network Policies:
+  - Deny all ingress by default
+  - Allow ingress only from api-gateway to services
+  - Allow services to talk to databases/redis
+  - Allow monitoring stack to scrape metrics
+
+Rolling Updates:
+  - maxSurge: 1 (one extra pod during update)
+  - maxUnavailable: 0 (no downtime)
+  - ProgressDeadlineSeconds: 600s
+  - Automatic rollback on failure
+
+Pod Disruption Budgets:
+  - Min 1 pod available during cluster maintenance
+  - Max 1 pod disrupted at a time
+
+Helm Charts (optional but recommended):
+  - Create Helm charts for each service
+  - Templates for Deployment, Service, ConfigMap, Secrets
+  - Parameterize environment-specific values
+  - Easy deployment: helm install edusphere ./helm/edusphere -f values-prod.yaml
+
+CI/CD Integration:
+  - Push to main branch triggers GitHub Actions
+  - Build Docker image, push to registry (Docker Hub, ECR, etc)
+  - Deploy to staging namespace first
+  - Run automated tests
+  - On approval, deploy to production
+  - Automatic rollback if health checks fail
+
+====================================================================
+PART 26 — OBSERVABILITY & MONITORING (NEW)
+====================================================================
+
+Implement comprehensive monitoring, logging, tracing, and alerting.
+
+MONITORING STACK
+
+Prometheus (metrics collection)
+  - Scrapes /metrics endpoint from all services (10-second intervals)
+  - Stores time-series data in local volume
+  - Retention: 15 days (for on-premise K8s; longer for cloud)
+
+Grafana (visualization)
+  - Dashboards for each service
+  - Cross-service dashboards (e.g., "User onboarding flow")
+  - Alert notifications (Slack, email, PagerDuty)
+
+Loki (log aggregation)
+  - All services send logs to Loki
+  - Structured logging (JSON format with labels)
+  - Queryable via Grafana or Loki UI
+
+Promtail (log collector)
+  - Runs as DaemonSet on each K8s node
+  - Scrapes pod logs and sends to Loki
+
+Alertmanager (alert routing)
+  - Routes alerts to appropriate channels
+  - Silencing + grouping rules
+  - Integration with Slack, email, PagerDuty
+
+METRICS TO TRACK
+
+Application Metrics:
+  - Request rate (requests/second by endpoint)
+  - Response time (p50, p95, p99 latencies)
+  - Error rate (% of 5xx responses)
+  - Success rate (% of 2xx responses)
+  - Active users (concurrent sessions)
+  - Quiz submission rate
+  - Assignment submission rate
+  - Course enrollment rate
+
+Business Metrics:
+  - Student enrollment by department
+  - Course completion rate
+  - Attendance compliance rate
+  - Quiz pass rate
+  - Assignment submission rate
+  - Certificate issuance rate
+  - Help desk ticket volume
+  - Help desk resolution time
+
+Infrastructure Metrics:
+  - Pod CPU usage
+  - Pod memory usage
+  - Disk I/O
+  - Network I/O
+  - Database connection count
+  - Redis memory usage
+  - Elasticsearch cluster health
+
+LOGGING ARCHITECTURE
+
+Log Format (JSON structured):
+  {
+    "timestamp": "2026-07-02T10:30:45Z",
+    "level": "INFO",
+    "service": "course-service",
+    "traceId": "abc123def456",
+    "userId": "user-789",
+    "action": "course.created",
+    "message": "New course CS101 created",
+    "metadata": {
+      "courseId": "course-123",
+      "facultyId": "faculty-456",
+      "department": "Computer Science"
+    },
+    "duration_ms": 145
+  }
+
+Log Levels:
+  - DEBUG: Detailed information for debugging
+  - INFO: General informational messages
+  - WARN: Warning messages (e.g., slow query)
+  - ERROR: Error messages (application errors)
+  - FATAL: Critical errors (service crash imminent)
+
+Log Retention:
+  - Development: 7 days
+  - Staging: 30 days
+  - Production: 90 days (compliance)
+
+TRACING (optional, future)
+
+Jaeger or Zipkin for distributed tracing:
+  - Track request flow across multiple services
+  - Example: user enrollment request
+    1. API Gateway receives request (span 1)
+    2. Forwards to Enrollment Service (span 2)
+    3. Enrollment Service calls Course Service (span 3)
+    4. Enrollment Service calls Notification Service (span 4)
+    5. All spans are linked via traceId
+  - Visualize bottlenecks and latencies
+  - Flame graphs for performance analysis
+
+ALERTS
+
+High Priority:
+  - Service down (liveness check failed)
+  - Error rate > 5%
+  - Response latency p95 > 5s
+  - Database connection exhausted
+  - Disk space < 10%
+  - Pod memory > 90% of limit
+
+Medium Priority:
+  - Error rate > 1%
+  - Response latency p95 > 1s
+  - Pod memory > 70% of limit
+  - Slow database queries (>1s)
+
+Low Priority:
+  - Deployment starting/restarting
+  - Pod evictions
+  - Config reload
+
+Alerting Rules (PrometheusRules):
+  Example:
+    alert: HighErrorRate
+    expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+    for: 5m
+    annotations:
+      summary: "High error rate on {{ $labels.service }}"
+      description: "Error rate is {{ $value | humanizePercentage }}"
+      runbook: "https://wiki.edusphere.com/alerts/high-error-rate"
+
+====================================================================
+PART 27 — THEME ENGINE & CUSTOMIZATION (NEW)
+====================================================================
+
+Create a theme engine for multi-university deployments.
+
+THEME STRUCTURE
+
+Each theme is a CSS variable configuration file:
+
+themes/
+  ├── university/
+  │   ├── light.css
+  │   └── dark.css
+  ├── corporate/
+  │   ├── light.css
+  │   └── dark.css
+  ├── ocean/
+  │   ├── light.css
+  │   └── dark.css
+  ├── emerald/
+  │   ├── light.css
+  │   └── dark.css
+  ├── midnight/
+  │   ├── light.css
+  │   └── dark.css
+  └── marketplace/ (future)
+
+CSS Variables per Theme:
+  /* Colors */
+  --primary: #1E2A4A
+  --secondary: #4C7C59
+  --accent: #C98A3B
+  --danger: #B23A32
+  --background: #F5F5F1
+  --surface: #FFFFFF
+  --text-primary: #1E2A4A
+  --text-secondary: #5B6478
+  --border: #E4E1D8
+
+  /* Typography */
+  --font-display: 'Fraunces', serif
+  --font-body: 'Inter', sans-serif
+  --font-mono: 'IBM Plex Mono', monospace
+
+  /* Spacing */
+  --spacing-xs: 4px
+  --spacing-sm: 8px
+  --spacing-md: 16px
+  --spacing-lg: 32px
+  --spacing-xl: 48px
+
+  /* Radius */
+  --radius-sm: 6px
+  --radius-md: 8px
+  --radius-lg: 10px
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(30,42,74,0.06)
+  --shadow-md: 0 4px 16px rgba(30,42,74,0.10)
+
+THEME SELECTION
+
+University Dashboard:
+  - Administrators select a theme per portal
+  - Themes apply globally to all users
+  - Users can override with personal preference
+    (light/dark mode toggle)
+
+Theme Customization:
+  - Simple: Choose from pre-built themes
+  - Advanced: Custom color picker UI (future)
+  - Custom fonts: Upload custom font files (future)
+  - Logo upload: University logo in navbar
+  - Email templates: Custom email branding
+
+DATABASE SCHEMA FOR THEMES
+
+university_themes
+  _id, univerityId, portalType (public/student/faculty/admin/management),
+  themeName, colors (object with hex values), fonts (object with names),
+  customLogoUrl, createdAt, updatedAt
+
+user_theme_preferences
+  _id, userId, darkMode (boolean), customTheme (optional theme override)
+
+API Endpoints:
+  GET    /themes (available themes for this university)
+  POST   /admin/themes/:id/apply (apply to portal)
+  GET    /user/theme-preference
+  PATCH  /user/theme-preference (toggle dark mode, etc)
+
+Implementation (Frontend):
+  1. On login, fetch university's active theme
+  2. Load CSS variables from theme
+  3. Apply to document root
+  4. User can toggle dark mode (swaps CSS file)
+  5. Preferences saved to backend
+
+====================================================================
+PART 28 — AI FEATURES (ARCHITECTURE DESIGN ONLY) (NEW)
+====================================================================
+
+Design AI modules for future implementation. DO NOT implement now,
+only define architecture and integration points.
+
+MODULE 1: AI TUTOR
+
+Purpose: Personalized tutoring based on student performance
+
+Architecture:
+  - Analyzes student quiz/assignment performance
+  - Identifies weak areas
+  - Recommends supplementary resources
+  - Suggests practice problems
+  - Optional: Chat interface for Q&A
+
+Data Flow:
+  1. Student takes quiz on "Recursion"
+  2. Analytics Service sees low score (30%)
+  3. Publishes: assessment.failed event
+  4. AI Tutor Service consumes event
+  5. LLM analyzes question topics
+  6. Recommends: "Recursion Basics" video + practice problems
+  7. Notification sent to student
+
+API Endpoints:
+  GET    /ai/tutor/recommendations (personalized)
+  POST   /ai/tutor/chat (chat-based tutoring)
+  GET    /ai/tutor/resources/:topic (resource suggestions)
+
+MODULE 2: COURSE RECOMMENDATION ENGINE
+
+Purpose: Recommend courses to students based on interests + performance
+
+Data Inputs:
+  - Student enrollment history
+  - Student quiz/assignment scores
+  - Student interests (survey)
+  - Course content + topics
+  - Peer performance (anonymized)
+
+Algorithm:
+  - Collaborative filtering (students like you also enjoyed...)
+  - Content-based filtering (courses similar to your interests)
+  - Hybrid approach
+
+API Endpoints:
+  GET    /ai/recommendations/courses (personalized suggestions)
+  GET    /ai/recommendations/skill-building (skills to develop)
+
+MODULE 3: STUDENT RISK PREDICTION
+
+Purpose: Identify at-risk students before they fail
+
+Prediction Factors:
+  - Attendance < 75%
+  - Assignment submission rate < 50%
+  - Quiz scores trend (declining)
+  - Time since last login (weeks)
+  - Low engagement (course visits/week)
+
+Output:
+  - Risk score (0-100)
+  - Risk factors (what's causing the risk)
+  - Recommended interventions (attend tutoring, talk to faculty, etc)
+
+API Endpoints:
+  GET    /ai/risk-analysis/students (admin/faculty view)
+  GET    /ai/risk-analysis/me (student self-assessment)
+  POST   /ai/risk-analysis/:studentId/intervention (log intervention)
+
+MODULE 4: ATTENDANCE PREDICTION
+
+Purpose: Predict student attendance patterns (will they attend tomorrow?)
+
+Data Inputs:
+  - Historical attendance
+  - Day of week patterns
+  - Course popularity
+  - Time of class
+  - Weather (optional)
+  - Personal calendar (optional, future)
+
+Output:
+  - Attendance probability (%)
+  - Factors (why are they likely/unlikely to attend)
+
+Use Case:
+  - Faculty can send pre-class reminders to low-probability students
+  - Admin can identify patterns (e.g., Friday classes have lower attendance)
+
+MODULE 5: PERFORMANCE PREDICTION
+
+Purpose: Predict student final grade based on partial performance
+
+Example:
+  - Quiz 1: 85%
+  - Quiz 2: 70%
+  - Assignment 1: 90%
+  - Predicted final grade: B+ (assuming similar performance on remaining assessments)
+
+Use Case:
+  - Early warning (if prediction is failing, intervene now)
+  - Student motivation (if on track for A, encourage to maintain)
+
+MODULE 6: ASSIGNMENT FEEDBACK ASSISTANT
+
+Purpose: AI auto-generates draft feedback for faculty to review
+
+Faculty Workflow:
+  1. Student submits essay/code
+  2. Faculty clicks "AI Feedback"
+  3. AI analyzes submission
+  4. Generates draft feedback (e.g., grammar, structure, logic)
+  5. Faculty reviews, edits, and publishes
+
+Limitations:
+  - Draft only (faculty makes final decision)
+  - No grade assignment (faculty assigns marks)
+
+MODULE 7: EXAM DIFFICULTY ANALYZER
+
+Purpose: Analyze quiz difficulty post-administration
+
+Metrics:
+  - Average score
+  - Pass rate
+  - Discrimination index (can top students ace it, can weak students fail it)
+  - Item analysis (which questions are too hard/easy)
+
+Output:
+  - Difficulty report
+  - Recommendations for future iterations
+  - Fairness analysis (is the quiz biased)
+
+MODULE 8: NATURAL LANGUAGE SEARCH
+
+Purpose: Search with natural language instead of exact keywords
+
+Examples:
+  - "I'm struggling with calculus" -> finds calculus resources + tutoring options
+  - "How do I submit my assignment" -> finds FAQ + help docs
+  - "What's my attendance this semester" -> fetches attendance report
+
+Implementation:
+  - Integrate with vector database (Pinecone, Weaviate, etc)
+  - Embed documents + queries
+  - Find semantic similarities
+
+MODULE 9: VOICE ASSISTANT (future)
+
+Purpose: Access EduSphere via voice
+
+Examples:
+  - "Show me my upcoming assignments"
+  - "What's my quiz result for CS101"
+  - "Mark my attendance"
+  - "Submit my project"
+
+Integration:
+  - Alexa / Google Assistant skill
+  - Or custom voice interface (WebRTC)
+
+AI INFRASTRUCTURE
+
+LLM Service (new microservice):
+  - Integrates with OpenAI API (GPT-4) or local LLaMA
+  - Prompts, embeddings, rate limiting
+  - Caching for common requests
+  - Cost optimization
+
+Database:
+  - ai_recommendations (student ID, recommended course, score, sent_at)
+  - ai_risk_predictions (student ID, risk score, factors, timestamp)
+  - ai_feedback_drafts (submission ID, draft feedback, faculty edit)
+
+API:
+  POST   /ai/generate-feedback/:submissionId
+  GET    /ai/recommendations
+  GET    /ai/risk-analysis
+  POST   /ai/tune-model (admin: provide feedback to improve AI)
+
+Ethical Considerations:
+  - Bias detection (AI shouldn't discriminate by gender/race/socioeconomic status)
+  - Transparency (show how AI made its recommendation)
+  - Human oversight (faculty/admin approve critical decisions)
+  - Data privacy (AI models don't retain personal data)
+  - Opt-out option (students can disable AI features)
+
+====================================================================
+PART 29 — ENTERPRISE DOCUMENTATION & DIAGRAMS (NEW)
+====================================================================
+
+Document the architecture professionally for enterprise deployment.
+
+REQUIRED DIAGRAMS
+
+1. Software Requirement Specification (SRS)
+   - Functional requirements (what system does)
+   - Non-functional requirements (how fast, how reliable)
+   - Use cases per role
+
+2. Software Design Document (SDD)
+   - System architecture (microservices)
+   - Database design (ER dia
+<truncated 15163 bytes>
+
+NOTE: The output was truncated because it was too long. Use a more targeted query or a smaller range to get the information you need.
