@@ -210,13 +210,23 @@ function Sidebar({ currentPage, onNavigate, user, onLogout }) {
       <div className="sidebar-footer">
         <div className="theme-switcher">
           <label>Theme</label>
-          <select className="theme-select" value={theme} onChange={e => setTheme(e.target.value)}>
-            <option value="university">🎓 University</option>
-            <option value="corporate">💼 Corporate</option>
-            <option value="ocean">🌊 Ocean</option>
-            <option value="emerald">🌿 Emerald</option>
-            <option value="midnight">🌙 Midnight</option>
-          </select>
+          <div className="theme-swatches">
+            {[
+              { id: 'university', label: 'University', color: '#C98A3B' },
+              { id: 'corporate', label: 'Corporate', color: '#0084FF' },
+              { id: 'ocean', label: 'Ocean', color: '#06B6D4' },
+              { id: 'emerald', label: 'Emerald', color: '#10B981' },
+              { id: 'midnight', label: 'Midnight', color: '#6366F1' }
+            ].map(t => (
+              <button
+                key={t.id}
+                className={`theme-swatch ${theme === t.id ? 'active' : ''}`}
+                style={{ backgroundColor: t.color }}
+                onClick={() => setTheme(t.id)}
+                title={t.label}
+              />
+            ))}
+          </div>
         </div>
         <div className="dark-toggle">
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

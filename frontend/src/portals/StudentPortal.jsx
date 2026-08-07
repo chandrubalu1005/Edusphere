@@ -746,25 +746,25 @@ function StudentCertificates({ user }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {myCerts.map(cert => (
-            <div className="card" key={cert.id}>
-              <div style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-light))', padding: '20px', textAlign: 'center' }}>
-                <div style={{ fontSize: 40, marginBottom: 8 }}>🏆</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--accent)' }}>Certificate of Completion</div>
+            <div className="card" key={cert.id} style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ borderTop: '4px solid var(--accent)', padding: '24px 20px 12px 20px', textAlign: 'center', background: 'var(--surface)' }}>
+                <div style={{ fontSize: 32, marginBottom: 4 }}>🏆</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>Certificate of Completion</div>
               </div>
-              <div className="card-body">
-                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{cert.courseTitle}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>
-                  Issued on {new Date(cert.issuedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span className="badge badge-success" style={{ marginRight: 6 }}>Grade: {cert.grade}</span>
+              <div className="card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4, color: 'var(--text-1)' }}>{cert.courseTitle}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>
+                    Issued on {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date not available'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <span className="badge badge-success">Grade: {cert.grade}</span>
                     {cert.verified && <span className="badge badge-info">✓ Verified</span>}
                   </div>
                 </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>{cert.certificateNo}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)' }}>{cert.certificateNo}</div>
               </div>
-              <div className="course-card-footer" style={{ flexWrap: 'wrap', gap: 6 }}>
+              <div className="course-card-footer" style={{ background: 'var(--surface-2)', padding: '12px 20px', borderTop: '1px solid var(--border)', flexWrap: 'wrap', gap: 6 }}>
                 <button className="btn btn-ghost btn-sm" onClick={() => setPreview(cert)}>Preview</button>
                 <button className="btn btn-outline btn-sm" onClick={() => {
                   const link = `${window.location.origin}/verify/${cert.certificateNo || cert.id}`;
@@ -808,7 +808,7 @@ function StudentCertificates({ user }) {
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                  Issued: {new Date(preview.issuedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  Issued: {preview.issuedAt ? new Date(preview.issuedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
                 </div>
               </div>
             </div>
