@@ -1,4 +1,4 @@
-const mongoose = require(''mongoose'');
+const mongoose = require('mongoose');
 
 // Each QR session represents a single attendance-taking window for a course on a date.
 // TTL index auto-deletes expired sessions from Mongo after windowMins expires.
@@ -14,4 +14,4 @@ const QRSessionSchema = new mongoose.Schema({
   createdAt:  { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model(''QRSession'', QRSessionSchema);
+module.exports = mongoose.model('QRSession', QRSessionSchema);

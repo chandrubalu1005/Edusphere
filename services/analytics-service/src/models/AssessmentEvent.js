@@ -1,4 +1,4 @@
-const mongoose = require(''mongoose'');
+const mongoose = require('mongoose');
 const AssessmentEventSchema = new mongoose.Schema({
   studentId:    { type: String, required: true, index: true },
   courseId:     { type: String, required: true, index: true },
@@ -9,4 +9,4 @@ const AssessmentEventSchema = new mongoose.Schema({
   passed:       { type: Boolean, required: true },
   timestamp:    { type: Date, default: Date.now, index: true },
 });
-module.exports = mongoose.model(''AssessmentEvent'', AssessmentEventSchema);
+module.exports = mongoose.model('AssessmentEvent', AssessmentEventSchema);

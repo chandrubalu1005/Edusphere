@@ -1,4 +1,4 @@
-const mongoose = require(''mongoose'');
+const mongoose = require('mongoose');
 const DepartmentSchema = new mongoose.Schema({
   name:               { type: String, required: true, unique: true },
   code:               { type: String, required: true, unique: true },
@@ -8,4 +8,4 @@ const DepartmentSchema = new mongoose.Schema({
   facultyCount:       { type: Number, default: 0 },
   active:             { type: Boolean, default: true },
 }, { timestamps: true });
-module.exports = mongoose.model(''Department'', DepartmentSchema);
+module.exports = mongoose.model('Department', DepartmentSchema);
