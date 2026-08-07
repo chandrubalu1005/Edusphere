@@ -23,10 +23,12 @@
     "start:placement": "npm run start --workspace=services/placement-service",
     "start:timetable": "npm run start --workspace=services/timetable-service",
     "start:frontend": "npm run dev --workspace=frontend",
-    "dev": "concurrently --kill-others \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:user\" \"npm run start:course\" \"npm run start:attendance\" \"npm run start:admin\" \"npm run start:analytics\" \"npm run start:assessment\" \"npm run start:assignment\" \"npm run start:calendar\" \"npm run start:certificate\" \"npm run start:discussion\" \"npm run start:library\" \"npm run start:notification\" \"npm run start:placement\" \"npm run start:timetable\"",
-    "start": "concurrently --kill-others \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:user\" \"npm run start:course\" \"npm run start:attendance\" \"npm run start:admin\" \"npm run start:analytics\" \"npm run start:assessment\" \"npm run start:assignment\" \"npm run start:calendar\" \"npm run start:certificate\" \"npm run start:discussion\" \"npm run start:library\" \"npm run start:notification\" \"npm run start:placement\" \"npm run start:timetable\""
+    "dev": "cross-env NODE_OPTIONS=\"--require C:/Users/ASUS/Videos/EduSphere/fix-dns.js\" dotenv -e .env -- concurrently --kill-others \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:user\" \"npm run start:course\" \"npm run start:attendance\" \"npm run start:admin\" \"npm run start:analytics\" \"npm run start:assessment\" \"npm run start:assignment\" \"npm run start:calendar\" \"npm run start:certificate\" \"npm run start:discussion\" \"npm run start:library\" \"npm run start:notification\" \"npm run start:placement\" \"npm run start:timetable\"",
+    "start": "cross-env NODE_OPTIONS=\"--require C:/Users/ASUS/Videos/EduSphere/fix-dns.js\" dotenv -e .env -- concurrently --kill-others \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:user\" \"npm run start:course\" \"npm run start:attendance\" \"npm run start:admin\" \"npm run start:analytics\" \"npm run start:assessment\" \"npm run start:assignment\" \"npm run start:calendar\" \"npm run start:certificate\" \"npm run start:discussion\" \"npm run start:library\" \"npm run start:notification\" \"npm run start:placement\" \"npm run start:timetable\""
   },
   "devDependencies": {
-    "concurrently": "^10.0.4"
+    "concurrently": "^10.0.4",
+    "cross-env": "^10.1.0",
+    "dotenv-cli": "^11.0.0"
   }
 }

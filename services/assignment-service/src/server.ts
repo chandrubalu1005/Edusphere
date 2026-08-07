@@ -1,3 +1,4 @@
+require('../../../fix-dns.js');
 import express from 'express';
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import cors from 'cors';

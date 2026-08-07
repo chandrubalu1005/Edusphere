@@ -1,3 +1,4 @@
+require('../../../fix-dns.js');
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
