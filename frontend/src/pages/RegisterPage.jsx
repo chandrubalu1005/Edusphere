@@ -89,6 +89,8 @@ export default function RegisterPage({ onSwitchToLogin }) {
               <select className="form-select" value={role} onChange={e => setRole(e.target.value)}>
                 <option value="student">Student</option>
                 <option value="faculty">Faculty Member</option>
+                <option value="admin">Administrator</option>
+                <option value="management">Management Executive</option>
               </select>
             </div>
 

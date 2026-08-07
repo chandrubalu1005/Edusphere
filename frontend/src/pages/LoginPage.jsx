@@ -1,14 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import toast from 'react-hot-toast';
-
-// Demo accounts — email + password pairs for quick access
-const DEMO_ACCOUNTS = [
-  { role: 'student',    email: 'john@edusphere.edu',   label: 'Student',    icon: '🎓' },
-  { role: 'faculty',    email: 'sarah@edusphere.edu',  label: 'Faculty',    icon: '👩‍🏫' },
-  { role: 'admin',      email: 'admin@edusphere.edu',  label: 'Admin',      icon: '⚙️' },
-  { role: 'management', email: 'dean@edusphere.edu',   label: 'Management', icon: '📊' },
-];
 
 export default function LoginPage({ onSwitchToRegister }) {
   const { login } = useAuth();
@@ -26,20 +17,6 @@ export default function LoginPage({ onSwitchToRegister }) {
     } catch (err) {
       const msg = err.response?.data?.error || err.message || 'Login failed';
       setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function quickLogin(demoEmail) {
-    setError('');
-    setLoading(true);
-    try {
-      await login(demoEmail, 'demo123');
-    } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Demo login failed';
-      setError(msg);
-      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -87,24 +64,6 @@ export default function LoginPage({ onSwitchToRegister }) {
         <div className="login-form-box">
           <h1 className="login-form-title">Welcome back</h1>
           <p className="login-form-subtitle">Sign in to your institutional account</p>
-
-          {/* Quick Access Buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
-            {DEMO_ACCOUNTS.map(d => (
-              <button
-                key={d.role}
-                className="btn btn-outline"
-                style={{ justifyContent: 'flex-start', gap: 8, padding: '8px 12px', fontSize: 13 }}
-                onClick={() => quickLogin(d.email)}
-                disabled={loading}
-              >
-                <span style={{ fontSize: 16 }}>{d.icon}</span>
-                Demo {d.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="divider">or sign in manually</div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="form-group">
@@ -156,16 +115,6 @@ export default function LoginPage({ onSwitchToRegister }) {
               ) : '→ Sign In'}
             </button>
           </form>
-
-          <div className="demo-creds" style={{ marginTop: 20 }}>
-            <strong>🔑 Demo Credentials (password: demo123)</strong>
-            {DEMO_ACCOUNTS.map(d => (
-              <div className="demo-cred-row" key={d.role}>
-                <span className="demo-cred-role">{d.label}</span>
-                <span style={{ color: 'var(--text-1)', fontSize: 12 }}>{d.email}</span>
-              </div>
-            ))}
-          </div>
 
           {onSwitchToRegister && (
             <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-2)', marginTop: 16 }}>
