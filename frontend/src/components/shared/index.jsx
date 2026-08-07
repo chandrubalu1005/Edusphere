@@ -758,3 +758,5 @@ export function ApprovalCard({ item, onApprove, onReject, showWorkflow = true })
     </div>
   );
 }
+
+export { default as ContentModalViewer } from './ContentModalViewer.jsx';

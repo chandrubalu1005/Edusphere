@@ -34,11 +34,27 @@ exports.register = async (req, res) => {
       role: newUser.role
     });
 
-    res.status(201).json({ message: 'User registered successfully', userId: newUser._id });
+    // Issue token immediately so frontend can auto-login after registration
+    const token = jwt.sign(
+      { userId: newUser._id, role: newUser.role, email: newUser.email, username: newUser.username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 exports.login = async (req, res) => {
   try {

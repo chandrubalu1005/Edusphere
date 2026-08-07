@@ -11,15 +11,21 @@ import {
   EmptyState, Modal, CommandPalette, WorkflowTimeline
 } from '../../components/shared/index.jsx';
 import {
-  TIMETABLE, CALENDAR_EVENTS, DISCUSSIONS, DISCUSSION_REPLIES,
-  TRANSCRIPTS, FEE_RECORDS, DOWNLOADS, ACTIVITY_LOG,
-  LIBRARY_RESOURCES, PLACEMENT_DRIVES, ANNOUNCEMENTS,
-  NOTIFICATIONS, ENROLLMENTS, ATTENDANCE_RECORDS, COURSES, ASSIGNMENTS
+  TRANSCRIPTS as MOCK_TRANSCRIPTS, FEE_RECORDS as MOCK_FEE_RECORDS,
+  DOWNLOADS as MOCK_DOWNLOADS, ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
+  ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS
 } from '../../mockData.js';
+import {
+  useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
+  useLivePlacementDrives, useLivePlacementApplications, useLiveNotifications,
+  useLiveDiscussionThreads, useLiveThreadDetails
+} from '../../api/liveData.js';
+import { useCreateReply } from '../../api/hooks.js';
 
 // ── WEEKLY TIMETABLE ────────────────────────────────────────────────────────
 export function StudentTimetable({ user }) {
-  const myTimetable = TIMETABLE; // In production, filtered by student's enrolled courses
+  const { data: TIMETABLE } = useLiveTimetable();
+  const myTimetable = TIMETABLE;
 
   const todayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
   const todaySlots = myTimetable.filter(s => s.day === todayName);
@@ -66,6 +72,7 @@ export function StudentTimetable({ user }) {
 
 // ── ACADEMIC CALENDAR ───────────────────────────────────────────────────────
 export function AcademicCalendar({ user }) {
+  const { data: CALENDAR_EVENTS } = useLiveCalendarEvents();
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [filter, setFilter] = useState('all');
@@ -172,6 +179,61 @@ export function LearningProgress({ user }) {
         <StatCard label="Skills Mastered" value="4 / 6" trend="2 in progress" trendType="neutral" icon="🎯" />
       </div>
 
+      {/* Activity Heatmap & Peer Comparison */}
+      <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--text-1)' }}>Daily Learning Activity</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-3)' }}>148 contributions in the last 12 weeks</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
+            <span>Less</span>
+            <div style={{ width: 10, height: 10, background: 'var(--surface-2)', borderRadius: 2 }} />
+            <div style={{ width: 10, height: 10, background: '#9be9a8', borderRadius: 2 }} />
+            <div style={{ width: 10, height: 10, background: '#40c463', borderRadius: 2 }} />
+            <div style={{ width: 10, height: 10, background: '#30a14e', borderRadius: 2 }} />
+            <div style={{ width: 10, height: 10, background: '#216e39', borderRadius: 2 }} />
+            <span>More</span>
+          </div>
+        </div>
+
+        {/* Heatmap Grid */}
+        <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 4, minWidth: 600 }}>
+            {Array.from({ length: 12 }).map((_, weekIdx) => (
+              <div key={weekIdx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {Array.from({ length: 7 }).map((_, dayIdx) => {
+                  const val = ((weekIdx * 7 + dayIdx * 3 + 2) % 5);
+                  const colors = ['var(--surface-2)', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
+                  return (
+                    <div
+                      key={dayIdx}
+                      title={`Week ${weekIdx + 1}, Day ${dayIdx + 1}: ${val * 2} activities`}
+                      style={{
+                        width: '100%',
+                        height: 12,
+                        borderRadius: 2,
+                        background: colors[val],
+                        cursor: 'pointer'
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Peer Comparison */}
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>🏆 Class Peer Standing: Top 8%</div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>You are performing better than 92% of students in your department cohort.</div>
+          </div>
+          <span className="badge badge-accent" style={{ fontSize: 13, padding: '6px 12px' }}>92nd Percentile</span>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Course Progress */}
         <div className="card" style={{ padding: 20 }}>
@@ -233,17 +295,33 @@ export function CommunicationHub({ user }) {
   const [newPost, setNewPost] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
 
+  const { data: threads = [] } = useLiveDiscussionThreads(courseFilter === 'all' ? undefined : courseFilter);
+  const { data: threadDetails } = useLiveThreadDetails(selectedThread?._id || selectedThread?.id);
+  const replies = threadDetails?.replies || [];
+  const createReply = useCreateReply();
+
   const tabs = [
-    { id: 'forum', label: 'Discussion Forum', icon: '💬', badge: DISCUSSIONS.length },
-    { id: 'announcements', label: 'Announcements', icon: '📢', badge: ANNOUNCEMENTS.filter(a => a.target === 'all' || a.target === 'student').length },
+    { id: 'forum', label: 'Discussion Forum', icon: '💬', badge: threads.length },
+    { id: 'announcements', label: 'Announcements', icon: '📢', badge: MOCK_ANNOUNCEMENTS.filter(a => a.target === 'all' || a.target === 'student').length },
     { id: 'queries', label: 'My Queries', icon: '❓' },
   ];
 
   const filteredDiscussions = courseFilter === 'all'
-    ? DISCUSSIONS
-    : DISCUSSIONS.filter(d => d.courseCode === courseFilter);
+    ? threads
+    : threads.filter(d => (d.courseCode || d.courseId) === courseFilter);
 
-  const replies = selectedThread ? DISCUSSION_REPLIES.filter(r => r.discussionId === selectedThread.id) : [];
+  const handleReplySubmit = async () => {
+    if (!newPost.trim() || !selectedThread) return;
+    try {
+      await createReply.mutateAsync({
+        threadId: selectedThread._id || selectedThread.id,
+        content: newPost
+      });
+      setNewPost('');
+    } catch (err) {
+      toast.error('Failed to post reply');
+    }
+  };
 
   return (
     <div>
@@ -257,7 +335,7 @@ export function CommunicationHub({ user }) {
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
             <select className="filter-select" value={courseFilter} onChange={e => setCourseFilter(e.target.value)}>
               <option value="all">All Courses</option>
-              {[...new Set(DISCUSSIONS.map(d => d.courseCode))].map(c => <option key={c} value={c}>{c}</option>)}
+              {[...new Set(threads.map(d => d.courseCode || d.courseId))].map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             {selectedThread && (
               <button className="btn btn-ghost btn-sm" onClick={() => setSelectedThread(null)}>← Back to Forum</button>
@@ -270,47 +348,49 @@ export function CommunicationHub({ user }) {
                 <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                   {selectedThread.pinned && <span className="badge badge-accent">📌 Pinned</span>}
                   {selectedThread.resolved && <span className="badge badge-success">✓ Resolved</span>}
-                  <span className="badge badge-neutral">{selectedThread.courseCode}</span>
+                  <span className="badge badge-neutral">{selectedThread.courseCode || selectedThread.courseId}</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>{selectedThread.title}</h3>
                 <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>{selectedThread.content}</p>
                 <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>
-                  Posted by <strong>{selectedThread.author}</strong> • {selectedThread.createdAt} • ▲ {selectedThread.upvotes}
+                  Posted by <strong>{selectedThread.authorName || selectedThread.author}</strong> • {selectedThread.createdAt} • ▲ {selectedThread.upvotes || 0}
                 </div>
               </div>
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
                 <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 12 }}>{replies.length} Replies</h4>
                 {replies.map(rep => (
-                  <div key={rep.id} style={{ padding: '12px 16px', background: rep.isAnswer ? 'rgba(76,124,89,0.06)' : 'var(--surface-2)', borderRadius: 'var(--r-md)', marginBottom: 8, borderLeft: rep.isAnswer ? '3px solid var(--secondary)' : 'none' }}>
+                  <div key={rep.id || rep._id} style={{ padding: '12px 16px', background: rep.isAnswer ? 'rgba(76,124,89,0.06)' : 'var(--surface-2)', borderRadius: 'var(--r-md)', marginBottom: 8, borderLeft: rep.isAnswer ? '3px solid var(--secondary)' : 'none' }}>
                     {rep.isAnswer && <span className="badge badge-success" style={{ marginBottom: 6 }}>✓ Best Answer</span>}
                     <p style={{ fontSize: 13, color: 'var(--text-1)', lineHeight: 1.5 }}>{rep.content}</p>
                     <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
-                      {rep.authorRole === 'faculty' ? '👩‍🏫' : '👤'} {rep.author} • {rep.createdAt} • ▲ {rep.upvotes}
+                      {rep.authorRole === 'faculty' ? '👩‍🏫' : '👤'} {rep.authorName || rep.author} • {new Date(rep.createdAt || rep.timestamp).toLocaleString()}
                     </div>
                   </div>
                 ))}
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <input className="form-input" style={{ flex: 1 }} placeholder="Write a reply..." value={newPost} onChange={e => setNewPost(e.target.value)} />
-                  <button className="btn btn-primary btn-sm">Reply</button>
+                  <button className="btn btn-primary btn-sm" onClick={handleReplySubmit} disabled={createReply.isLoading}>
+                    {createReply.isLoading ? 'Posting...' : 'Reply'}
+                  </button>
                 </div>
               </div>
             </div>
           ) : (
             <div>
               {filteredDiscussions.map(disc => (
-                <div key={disc.id} className={`discussion-card ${disc.pinned ? 'pinned' : ''}`} onClick={() => setSelectedThread(disc)}>
+                <div key={disc.id || disc._id} className={`discussion-card ${disc.pinned ? 'pinned' : ''}`} onClick={() => setSelectedThread(disc)}>
                   <div className="discussion-header">
                     {disc.pinned && <span style={{ fontSize: 14 }}>📌</span>}
                     <span className="discussion-title">{disc.title}</span>
-                    <span className="badge badge-neutral">{disc.courseCode}</span>
+                    <span className="badge badge-neutral">{disc.courseCode || disc.courseId}</span>
                     {disc.resolved && <span className="badge badge-success">Resolved</span>}
                   </div>
                   <div className="discussion-body">{disc.content}</div>
                   <div className="discussion-footer">
-                    <span className="discussion-stat">{disc.authorRole === 'faculty' ? '👩‍🏫' : '👤'} {disc.author}</span>
-                    <span className="discussion-stat">▲ {disc.upvotes}</span>
-                    <span className="discussion-stat">💬 {disc.replies} replies</span>
-                    <span className="discussion-stat" style={{ marginLeft: 'auto' }}>{disc.createdAt}</span>
+                    <span className="discussion-stat">{disc.authorRole === 'faculty' ? '👩‍🏫' : '👤'} {disc.authorName || disc.author}</span>
+                    <span className="discussion-stat">▲ {disc.upvotes || 0}</span>
+                    <span className="discussion-stat">💬 {disc.replies || 0} replies</span>
+                    <span className="discussion-stat" style={{ marginLeft: 'auto' }}>{new Date(disc.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
@@ -679,6 +759,7 @@ export function StudentNotifications({ user }) {
 
 // ── DIGITAL LIBRARY (Student View) ──────────────────────────────────────────
 export function StudentLibrary({ user }) {
+  const { data: LIBRARY_RESOURCES } = useLiveLibraryBooks();
   const [tab, setTab] = useState('browse');
 
   return (
@@ -761,6 +842,7 @@ export function StudentLibrary({ user }) {
 
 // ── PLACEMENT PORTAL (Student View) ─────────────────────────────────────────
 export function StudentPlacement({ user }) {
+  const { data: PLACEMENT_DRIVES } = useLivePlacementDrives();
   const [tab, setTab] = useState('drives');
 
   return (

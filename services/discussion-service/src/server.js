@@ -6,6 +6,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use('/', discussionRoutes);
-app.get('/health', (req, res) => res.json({ status: 'UP' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'discussion-service' }));
 connectDB(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_discussions');
 app.listen(3013, () => console.log('Discussion Service running on 3013'));

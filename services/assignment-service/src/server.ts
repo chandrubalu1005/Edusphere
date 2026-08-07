@@ -160,7 +160,7 @@ function auth(req: express.Request, res: express.Response, next: express.NextFun
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey123') as any;
     (req as any).user = decoded;
     next();
   } catch { res.status(401).json({ error: 'Invalid token' }); }

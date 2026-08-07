@@ -2,7 +2,7 @@
 // EduSphere Enterprise — Admin Portal Feature Modules
 // New enterprise features split into separate file for maintainability
 // ══════════════════════════════════════════════════════════════════════════════
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Icon, ICONS } from '../../components/Layout.jsx';
 import toast from 'react-hot-toast';
 import { useTriggerBackup, useSystemHealth } from '../../api/hooks.js';
@@ -13,24 +13,41 @@ import {
   EmptyState, Modal, CommandPalette, WorkflowTimeline, ApprovalCard
 } from '../../components/shared/index.jsx';
 import {
-  TIMETABLE, CALENDAR_EVENTS, DISCUSSIONS, DISCUSSION_REPLIES,
-  TRANSCRIPTS, FEE_RECORDS, DOWNLOADS, ACTIVITY_LOG,
-  LIBRARY_RESOURCES, PLACEMENT_DRIVES, ANNOUNCEMENTS,
-  NOTIFICATIONS, ENROLLMENTS, ATTENDANCE_RECORDS, COURSES, ASSIGNMENTS,
-  USERS, BACKUP_RECORDS, SYSTEM_HEALTH, API_LOGS, AUDIT_LOGS,
-  ROLES, SUPPORT_TICKETS, EMAIL_TEMPLATES, SYSTEM_SETTINGS, APPROVAL_QUEUE,
-  FILE_RECORDS
+  TIMETABLE as MOCK_TIMETABLE, CALENDAR_EVENTS as MOCK_CALENDAR_EVENTS,
+  DISCUSSIONS as MOCK_DISCUSSIONS, DISCUSSION_REPLIES as MOCK_DISCUSSION_REPLIES,
+  TRANSCRIPTS as MOCK_TRANSCRIPTS, FEE_RECORDS as MOCK_FEE_RECORDS,
+  DOWNLOADS as MOCK_DOWNLOADS, ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
+  LIBRARY_RESOURCES as MOCK_LIBRARY_RESOURCES, PLACEMENT_DRIVES as MOCK_PLACEMENT_DRIVES,
+  ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS, NOTIFICATIONS as MOCK_NOTIFICATIONS,
+  ENROLLMENTS as MOCK_ENROLLMENTS, ATTENDANCE_RECORDS as MOCK_ATTENDANCE_RECORDS,
+  COURSES as MOCK_COURSES, ASSIGNMENTS as MOCK_ASSIGNMENTS,
+  USERS as MOCK_USERS, BACKUP_RECORDS as MOCK_BACKUP_RECORDS,
+  SYSTEM_HEALTH as MOCK_SYSTEM_HEALTH, API_LOGS as MOCK_API_LOGS,
+  AUDIT_LOGS as MOCK_AUDIT_LOGS, ROLES as MOCK_ROLES,
+  SUPPORT_TICKETS as MOCK_SUPPORT_TICKETS, EMAIL_TEMPLATES as MOCK_EMAIL_TEMPLATES,
+  SYSTEM_SETTINGS as MOCK_SYSTEM_SETTINGS, APPROVAL_QUEUE as MOCK_APPROVAL_QUEUE,
+  FILE_RECORDS as MOCK_FILE_RECORDS
 } from '../../mockData.js';
+import {
+  useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
+  useLivePlacementDrives, useLiveAuditLogs
+} from '../../api/liveData.js';
 
 // ── TIMETABLE MANAGEMENT ────────────────────────────────────────────────────
 export function TimetableMgmt({ user }) {
-  const [slots, setSlots] = useState(TIMETABLE);
+  const { data: TIMETABLE } = useLiveTimetable();
+  const [slots, setSlots] = useState(TIMETABLE || MOCK_TIMETABLE);
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [day, setDay] = useState('Monday');
   const [period, setPeriod] = useState(1);
   const [course, setCourse] = useState('c1');
   const [room, setRoom] = useState('LH-301');
   const [type, setType] = useState('lecture');
+
+  useEffect(() => {
+    if (TIMETABLE) setSlots(TIMETABLE);
+  }, [TIMETABLE]);
 
   function handleAdd(e) {
     e.preventDefault();

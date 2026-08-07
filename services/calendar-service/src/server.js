@@ -6,6 +6,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use('/', calendarRoutes);
-app.get('/health', (req, res) => res.json({ status: 'UP' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'calendar-service' }));
 connectDB(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_calendar');
 app.listen(3010, () => console.log('Calendar Service running on 3010'));

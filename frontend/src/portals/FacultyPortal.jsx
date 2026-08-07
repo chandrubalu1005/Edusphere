@@ -4,7 +4,16 @@ import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
 import { useUploadCourseContent } from '../api/hooks.js';
 import toast from 'react-hot-toast';
-import { COURSES, ATTENDANCE_RECORDS, ASSESSMENTS, ASSIGNMENTS, SUBMISSIONS, USERS, WEEKLY_ATTENDANCE } from '../mockData.js';
+import {
+  COURSES as MOCK_COURSES, ATTENDANCE_RECORDS as MOCK_ATTENDANCE_RECORDS,
+  ASSESSMENTS as MOCK_ASSESSMENTS, ASSIGNMENTS as MOCK_ASSIGNMENTS,
+  USERS as MOCK_USERS,
+  WEEKLY_ATTENDANCE as MOCK_WEEKLY_ATTENDANCE
+} from '../mockData.js';
+import {
+  useLiveCourses, useLiveAssignments, useLiveAssessments,
+  useLiveAttendance, useLiveSubmissions
+} from '../api/liveData.js';
 import * as F from './faculty/features.jsx';
 
 
@@ -22,12 +31,16 @@ function PageHeader({ title, subtitle, children }) {
 
 // ── FACULTY DASHBOARD ─────────────────────────────────────────────────────
 function FacultyDashboard({ user, onNavigate }) {
-  const myCourses = COURSES.filter(c => c.facultyId === user.id);
-  const totalStudents = myCourses.reduce((sum, c) => sum + c.students_enrolled, 0);
-  const totalAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId)).length;
-  const pendingGrading = SUBMISSIONS.filter(s => !s.grade).length;
+  const { data: COURSES } = useLiveCourses();
+  const { data: ASSIGNMENTS } = useLiveAssignments();
+  const { data: SUBMISSIONS } = useLiveSubmissions(user.id || user.userId);
 
-  const dayAtt = WEEKLY_ATTENDANCE;
+  const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
+  const totalStudents = myCourses.reduce((sum, c) => sum + (c.students_enrolled || 0), 0);
+  const totalAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId || c._id === a.courseId)).length;
+  const pendingGrading = SUBMISSIONS.filter(s => s.status !== 'graded').length;
+
+  const dayAtt = MOCK_WEEKLY_ATTENDANCE;
 
   return (
     <div>
@@ -159,8 +172,9 @@ function FacultyDashboard({ user, onNavigate }) {
 
 // ── COURSE MANAGEMENT ──────────────────────────────────────────────────────
 function FacultyCourses({ user }) {
+  const { data: COURSES } = useLiveCourses();
   const [showNew, setShowNew] = useState(false);
-  const myCourses = COURSES.filter(c => c.facultyId === user.id);
+  const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
 
   return (
     <div>
@@ -254,8 +268,11 @@ function FacultyCourses({ user }) {
 
 // ── MARK ATTENDANCE ────────────────────────────────────────────────────────
 function FacultyAttendance({ user }) {
-  const myCourses = COURSES.filter(c => c.facultyId === user.id);
-  const [selectedCourse, setSelectedCourse] = useState(myCourses[0]?.id || '');
+  const { data: COURSES } = useLiveCourses();
+  const { data: USERS } = { data: MOCK_USERS };
+
+  const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
+  const [selectedCourse, setSelectedCourse] = useState(myCourses[0]?.id || myCourses[0]?._id || '');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const students = USERS.filter(u => u.role === 'student').slice(0, 6);
   const [attendance, setAttendance] = useState(() => {
@@ -264,6 +281,16 @@ function FacultyAttendance({ user }) {
     return init;
   });
   const [saved, setSaved] = useState(false);
+  const [qrModal, setQrModal] = useState(false);
+  const [qrTime, setQrTime] = useState(300);
+
+  useEffect(() => {
+    let timer;
+    if (qrModal && qrTime > 0) {
+      timer = setInterval(() => setQrTime(t => t - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [qrModal, qrTime]);
 
   function saveAttendance() {
     setSaved(true);
@@ -275,10 +302,39 @@ function FacultyAttendance({ user }) {
   return (
     <div>
       <PageHeader title="Mark Attendance" subtitle="Record student attendance for your classes.">
-        <button className="btn btn-outline btn-sm">🔲 QR Code Mode</button>
+        <button className="btn btn-outline btn-sm" onClick={() => { setQrTime(300); setQrModal(true); }}>🔲 QR Code Mode</button>
       </PageHeader>
 
       {saved && <div className="alert alert-success" style={{ marginBottom: 16 }}>✓ Attendance saved successfully for {presentCount}/{students.length} present.</div>}
+
+      {qrModal && (
+        <div className="modal-overlay" onClick={() => setQrModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 400 }}>
+            <div className="modal-header">
+              <div className="modal-title">Live QR Attendance Session</div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setQrModal(false)}><Icon d={ICONS.x} size={18} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <div style={{ background: 'white', padding: 16, borderRadius: 12, border: '2px solid var(--border)' }}>
+                <div style={{ width: 180, height: 180, background: '#000', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4, padding: 8 }}>
+                  {Array.from({ length: 36 }).map((_, i) => (
+                    <div key={i} style={{ background: i % 2 === 0 || i % 5 === 0 ? 'white' : 'transparent', borderRadius: 2 }} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>
+                  {Math.floor(qrTime / 60)}:{String(qrTime % 60).padStart(2, '0')}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Session expires automatically when timer hits zero</div>
+              </div>
+              <div className="badge badge-success" style={{ padding: '6px 14px', fontSize: 13 }}>
+                ● 4 Students scanned live
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-body">
@@ -368,8 +424,12 @@ function FacultyAttendance({ user }) {
 
 // ── ASSIGNMENTS GRADING ────────────────────────────────────────────────────
 function FacultyAssignments({ user }) {
-  const myCourses = COURSES.filter(c => c.facultyId === user.id);
-  const myAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId));
+  const { data: COURSES } = useLiveCourses();
+  const { data: ASSIGNMENTS } = useLiveAssignments();
+  const { data: SUBMISSIONS } = { data: MOCK_SUBMISSIONS };
+
+  const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
+  const myAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId || c._id === a.courseId));
   const [selected, setSelected] = useState(null);
   const [gradeVal, setGradeVal] = useState('');
   const [feedbackVal, setFeedbackVal] = useState('');

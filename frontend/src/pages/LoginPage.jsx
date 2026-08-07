@@ -1,44 +1,45 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import toast from 'react-hot-toast';
 
+// Demo accounts — email + password pairs for quick access
 const DEMO_ACCOUNTS = [
-  { role: 'student',    username: 'john_doe',      label: 'Student' },
-  { role: 'faculty',    username: 'sarah_j',        label: 'Faculty' },
-  { role: 'admin',      username: 'sys_admin',      label: 'Admin' },
-  { role: 'management', username: 'dean_academic',  label: 'Management' },
+  { role: 'student',    email: 'john@edusphere.edu',   label: 'Student',    icon: '🎓' },
+  { role: 'faculty',    email: 'sarah@edusphere.edu',  label: 'Faculty',    icon: '👩‍🏫' },
+  { role: 'admin',      email: 'admin@edusphere.edu',  label: 'Admin',      icon: '⚙️' },
+  { role: 'management', email: 'dean@edusphere.edu',   label: 'Management', icon: '📊' },
 ];
 
-const ROLE_ICONS = {
-  student: '🎓', faculty: '👩‍🏫', admin: '⚙️', management: '📊'
-};
-
-export default function LoginPage() {
+export default function LoginPage({ onSwitchToRegister }) {
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await login(username, password);
+      await login(email, password);
     } catch (err) {
-      setError(err.message);
+      const msg = err.response?.data?.error || err.message || 'Login failed';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   }
 
-  async function quickLogin(un) {
+  async function quickLogin(demoEmail) {
     setError('');
     setLoading(true);
     try {
-      await login(un, 'demo123');
+      await login(demoEmail, 'demo123');
     } catch (err) {
-      setError(err.message);
+      const msg = err.response?.data?.error || err.message || 'Demo login failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -61,7 +62,7 @@ export default function LoginPage() {
             Empowering<br /><strong>Institutions</strong>,<br />Enabling <strong>Futures</strong>.
           </div>
           <p className="login-hero-desc">
-            A complete University ERP & Learning Management System built for 100,000+ users.
+            A complete University ERP &amp; Learning Management System built for 100,000+ users.
             Manage every facet of academic life in one unified platform.
           </p>
         </div>
@@ -94,10 +95,10 @@ export default function LoginPage() {
                 key={d.role}
                 className="btn btn-outline"
                 style={{ justifyContent: 'flex-start', gap: 8, padding: '8px 12px', fontSize: 13 }}
-                onClick={() => quickLogin(d.username)}
+                onClick={() => quickLogin(d.email)}
                 disabled={loading}
               >
-                <span style={{ fontSize: 16 }}>{ROLE_ICONS[d.role]}</span>
+                <span style={{ fontSize: 16 }}>{d.icon}</span>
                 Demo {d.label}
               </button>
             ))}
@@ -107,26 +108,30 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="form-group">
-              <label className="form-label">Username</label>
+              <label className="form-label">Email Address</label>
               <input
+                id="login-email"
                 className="form-input"
-                type="text"
-                placeholder="your_username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                autoComplete="username"
+                type="email"
+                placeholder="you@edusphere.edu"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
             </div>
 
             <div className="form-group">
               <label className="form-label">Password</label>
               <input
+                id="login-password"
                 className="form-input"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 autoComplete="current-password"
+                required
               />
             </div>
 
@@ -137,10 +142,11 @@ export default function LoginPage() {
             )}
 
             <button
+              id="login-submit"
               type="submit"
               className="btn btn-primary btn-lg"
               style={{ width: '100%', marginTop: 4 }}
-              disabled={loading || !username || !password}
+              disabled={loading || !email || !password}
             >
               {loading ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -152,17 +158,29 @@ export default function LoginPage() {
           </form>
 
           <div className="demo-creds" style={{ marginTop: 20 }}>
-            <strong>🔑 Demo Credentials</strong>
+            <strong>🔑 Demo Credentials (password: demo123)</strong>
             {DEMO_ACCOUNTS.map(d => (
               <div className="demo-cred-row" key={d.role}>
                 <span className="demo-cred-role">{d.label}</span>
-                <span style={{ color: 'var(--text-1)', fontSize: 12 }}>{d.username}</span>
-                <span style={{ opacity: 0.6 }}>demo123</span>
+                <span style={{ color: 'var(--text-1)', fontSize: 12 }}>{d.email}</span>
               </div>
             ))}
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-3)', marginTop: 20 }}>
+          {onSwitchToRegister && (
+            <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-2)', marginTop: 16 }}>
+              Don't have an account?{' '}
+              <button
+                className="btn-link"
+                style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                onClick={onSwitchToRegister}
+              >
+                Register here
+              </button>
+            </p>
+          )}
+
+          <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-3)', marginTop: 12 }}>
             EduSphere Enterprise v2.0 · © 2026 EduSphere University Systems
           </p>
         </div>

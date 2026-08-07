@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
-import { USERS, COURSES, DEPARTMENTS, SEMESTERS, ENROLLMENTS, AUDIT_LOGS, SUPPORT_TICKETS, MONTHLY_ENROLLMENT } from '../mockData.js';
+import {
+  USERS, COURSES, DEPARTMENTS, SEMESTERS, ENROLLMENTS, AUDIT_LOGS, SUPPORT_TICKETS, MONTHLY_ENROLLMENT
+} from '../mockData.js';
+import {
+  useLiveAdminUsers, useLiveCourses, useLiveDepartments,
+  useLiveSemesters, useLiveEnrollments, useLiveAuditLogs
+} from '../api/liveData.js';
 import * as F from './admin/features.jsx';
+import { useBulkUpdateUsers } from '../api/hooks.js';
 
 
 function PageHeader({ title, subtitle, children }) {
@@ -19,8 +26,15 @@ function PageHeader({ title, subtitle, children }) {
 
 // ── ADMIN DASHBOARD ────────────────────────────────────────────────────────
 function AdminDashboard({ onNavigate }) {
+  const { data: USERS } = useLiveAdminUsers();
+  const { data: COURSES } = useLiveCourses();
+  const { data: DEPARTMENTS } = useLiveDepartments();
+  const { data: SEMESTERS } = useLiveSemesters();
+  const { data: ENROLLMENTS } = useLiveEnrollments();
+  const { data: AUDIT_LOGS } = useLiveAuditLogs();
+
   const totalUsers = USERS.length;
-  const activeUsers = USERS.filter(u => u.status === 'active').length;
+  const activeUsers = USERS.filter(u => u.status === 'active' || u.active !== false).length;
   const totalCourses = COURSES.length;
 
   return (
@@ -107,21 +121,49 @@ function AdminDashboard({ onNavigate }) {
 
 // ── USER MANAGEMENT ────────────────────────────────────────────────────────
 function UserManagement() {
+  const { data: USERS } = useLiveAdminUsers();
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+
+  const bulkUpdate = useBulkUpdateUsers();
 
   const filtered = USERS.filter(u => {
     if (filter !== 'all' && u.role !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
-      return u.firstName.toLowerCase().includes(q) || u.lastName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+      const first = (u.firstName || u.username || '').toLowerCase();
+      const last  = (u.lastName || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return first.includes(q) || last.includes(q) || email.includes(q);
     }
     return true;
   });
 
   const roleColor = { student: 'badge-info', faculty: 'badge-success', admin: 'badge-danger', management: 'badge-accent' };
+
+  function handleSelectAll(checked) {
+    if (checked) {
+      setSelectedUserIds(filtered.map(u => u.id || u._id));
+    } else {
+      setSelectedUserIds([]);
+    }
+  }
+
+  function handleToggleSelect(id) {
+    setSelectedUserIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }
+
+  function handleBulkStatus(active) {
+    if (selectedUserIds.length === 0) return;
+    bulkUpdate.mutate({ userIds: selectedUserIds, active }, {
+      onSuccess: () => setSelectedUserIds([])
+    });
+  }
 
   return (
     <div>
@@ -130,6 +172,20 @@ function UserManagement() {
           <Icon d={ICONS.plus} size={15} /> Add User
         </button>
       </PageHeader>
+
+      {selectedUserIds.length > 0 && (
+        <div style={{
+          padding: '12px 16px', background: 'var(--primary)', color: 'white',
+          borderRadius: 'var(--r-md)', marginBottom: 16, display: 'flex',
+          alignItems: 'center', justifyContent: 'space-between'
+        }}>
+          <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedUserIds.length} users selected</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-sm btn-accent" onClick={() => handleBulkStatus(true)}>Bulk Activate</button>
+            <button className="btn btn-sm btn-ghost" style={{ color: 'white', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => handleBulkStatus(false)}>Bulk Deactivate</button>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <div className="topbar-search" style={{ maxWidth: 300, flex: 1, background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -158,6 +214,13 @@ function UserManagement() {
         <table>
           <thead>
             <tr>
+              <th style={{ width: 40 }}>
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && selectedUserIds.length === filtered.length}
+                  onChange={e => handleSelectAll(e.target.checked)}
+                />
+              </th>
               <th>User</th>
               <th>Role</th>
               <th>Department</th>
@@ -167,20 +230,32 @@ function UserManagement() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(u => (
-              <tr key={u.id}>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 13, borderRadius: 8, border: 'none' }}>
-                      {u.firstName[0]}{u.lastName[0]}
+            {filtered.map(u => {
+              const uId = u.id || u._id;
+              const displayName = u.firstName ? `${u.firstName} ${u.lastName || ''}` : (u.username || u.email || 'User');
+              const initials = displayName.slice(0, 2).toUpperCase();
+              const isChecked = selectedUserIds.includes(uId);
+              return (
+                <tr key={uId} style={{ background: isChecked ? 'var(--surface-2)' : 'transparent' }}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleToggleSelect(uId)}
+                    />
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 13, borderRadius: 8, border: 'none' }}>
+                        {initials}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{displayName}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{u.email}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{u.firstName} {u.lastName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{u.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td><span className={`badge ${roleColor[u.role]}`}>{u.role}</span></td>
+                  </td>
+                  <td><span className={`badge ${roleColor[u.role] || 'badge-neutral'}`}>{u.role}</span></td>
                 <td style={{ color: 'var(--text-2)' }}>{u.department}</td>
                 <td>
                   <span className={`badge ${u.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
@@ -202,7 +277,7 @@ function UserManagement() {
                   </div>
                 </td>
               </tr>
-            ))}
+            ); })}
           </tbody>
         </table>
       </div>

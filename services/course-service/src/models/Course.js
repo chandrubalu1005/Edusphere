@@ -15,6 +15,7 @@ const CourseSchema = new mongoose.Schema({
     url: { type: String, required: true },
     addedAt: { type: Date, default: Date.now }
   }],
+  enrolledStudents: [{ type: String }],
   createdAt: { type: Date, default: Date.now }
 });
 

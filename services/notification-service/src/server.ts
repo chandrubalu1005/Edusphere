@@ -66,7 +66,7 @@ function authMiddleware(req: express.Request, res: express.Response, next: expre
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token provided' });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as { userId: string; role: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey123') as { userId: string; role: string };
     (req as any).user = decoded;
     next();
   } catch {
@@ -79,7 +79,7 @@ io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error('Authentication required'));
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as { userId: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey123') as { userId: string };
     (socket as any).userId = decoded.userId;
     next();
   } catch {
@@ -192,6 +192,17 @@ app.post('/notifications/bulk', async (req, res) => {
     res.status(201).json({ sent: notifs.length });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send bulk notifications' });
+  }
+});
+
+// PATCH /notifications/read-all
+app.patch('/notifications/read-all', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    await Notification.updateMany({ userId, read: false }, { read: true });
+    res.json({ message: 'All notifications marked as read' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mark all as read' });
   }
 });
 

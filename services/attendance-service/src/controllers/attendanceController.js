@@ -1,5 +1,8 @@
 const Attendance = require('../models/Attendance');
+const QRSession  = require('../models/QRSession');
 const { publishEvent } = require('../config/rabbitmq');
+const { v4: uuidv4 } = require('uuid');
+const QRCode = require('qrcode');
 
 let redisClient;
 function setRedisClient(client) {
@@ -10,14 +13,15 @@ async function invalidateCache(studentId, courseId, date) {
   if (!redisClient) return;
   try {
     if (courseId && date) await redisClient.del(`attendance:course:${courseId}:${date}`);
-    if (studentId) await redisClient.del(`attendance:student:${studentId}`);
-    if (courseId) await redisClient.del(`attendance:leaderboard:${courseId}`);
+    if (studentId)        await redisClient.del(`attendance:student:${studentId}`);
+    if (courseId)         await redisClient.del(`attendance:leaderboard:${courseId}`);
     console.log(`Cache invalidated for student:${studentId} and course:${courseId}`);
   } catch (err) {
     console.error('Cache invalidation failed:', err.message);
   }
 }
 
+// ── Manual Attendance Mark ──────────────────────────────────────────────────
 exports.markAttendance = async (req, res) => {
   try {
     if (req.user.role !== 'faculty' && req.user.role !== 'admin') {
@@ -29,17 +33,18 @@ exports.markAttendance = async (req, res) => {
     }
     const record = await Attendance.findOneAndUpdate(
       { studentId, courseId, date },
-      { studentName, status, markedBy: req.user.username },
+      { studentName, status, markedBy: req.user.username, markMethod: 'manual', qrSessionId: null },
       { new: true, upsert: true }
     );
     await invalidateCache(studentId, courseId, date);
-    publishEvent('attendance.marked', { studentId, courseId, status, date, markedBy: req.user.username });
+    publishEvent('attendance.marked', { studentId, courseId, status, date, markedBy: req.user.username, markMethod: 'manual' });
     res.json({ message: 'Attendance marked successfully', record });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+// ── Bulk Manual Mark ────────────────────────────────────────────────────────
 exports.markAllAttendance = async (req, res) => {
   try {
     if (req.user.role !== 'faculty' && req.user.role !== 'admin') {
@@ -52,7 +57,7 @@ exports.markAllAttendance = async (req, res) => {
     const operations = records.map(rec => ({
       updateOne: {
         filter: { studentId: rec.studentId, courseId, date },
-        update: { studentName: rec.studentName, status: rec.status, markedBy: req.user.username },
+        update: { studentName: rec.studentName, status: rec.status, markedBy: req.user.username, markMethod: 'manual' },
         upsert: true
       }
     }));
@@ -67,6 +72,7 @@ exports.markAllAttendance = async (req, res) => {
   }
 };
 
+// ── Course Attendance List ──────────────────────────────────────────────────
 exports.getCourseAttendance = async (req, res) => {
   try {
     const { date } = req.query;
@@ -77,13 +83,15 @@ exports.getCourseAttendance = async (req, res) => {
       if (cached) return res.json(JSON.parse(cached));
     }
     const records = await Attendance.find({ courseId: req.params.courseId, date });
-    if (redisClient) await redisClient.setEx(cacheKey, 86400, JSON.stringify(records));
-    res.json(records);
+    const payload = { records, total: records.length };
+    if (redisClient) await redisClient.setEx(cacheKey, 86400, JSON.stringify(payload));
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+// ── Student Attendance Metrics ─────────────────────────────────────────────
 exports.getStudentMetrics = async (req, res) => {
   try {
     const cacheKey = `attendance:student:${req.params.studentId}`;
@@ -95,10 +103,10 @@ exports.getStudentMetrics = async (req, res) => {
     if (records.length === 0) {
       return res.json({ percentage: 100, present: 0, total: 0, breakdown: {} });
     }
-    const total = records.length;
+    const total   = records.length;
     const present = records.filter(r => r.status === 'present').length;
     const percentage = Math.round((present / total) * 100);
-    const breakdown = {};
+    const breakdown  = {};
     records.forEach(rec => {
       if (!breakdown[rec.courseId]) breakdown[rec.courseId] = { present: 0, total: 0 };
       breakdown[rec.courseId].total++;
@@ -116,6 +124,7 @@ exports.getStudentMetrics = async (req, res) => {
   }
 };
 
+// ── Attendance Leaderboard ─────────────────────────────────────────────────
 exports.getLeaderboard = async (req, res) => {
   try {
     const cacheKey = `attendance:leaderboard:${req.params.courseId}`;
@@ -127,27 +136,126 @@ exports.getLeaderboard = async (req, res) => {
       { $match: { courseId: req.params.courseId } },
       {
         $group: {
-          _id: "$studentId",
-          studentName: { $first: "$studentName" },
-          total: { $sum: 1 },
-          present: { $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] } }
+          _id: '$studentId',
+          studentName: { $first: '$studentName' },
+          total:       { $sum: 1 },
+          present:     { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } }
         }
       },
       {
         $project: {
-          studentId: "$_id",
+          studentId:   '$_id',
           studentName: 1,
-          total: 1,
-          present: 1,
-          percentage: { $round: [{ $multiply: [{ $divide: ["$present", "$total"] }, 100] }, 0] }
+          total:       1,
+          present:     1,
+          percentage:  { $round: [{ $multiply: [{ $divide: ['$present', '$total'] }, 100] }, 0] }
         }
       },
       { $sort: { percentage: -1, studentName: 1 } },
       { $limit: 10 }
     ]);
-    if (redisClient) await redisClient.setEx(cacheKey, 86400, JSON.stringify(leaderboard));
-    res.json(leaderboard);
+    const payload = { leaderboard, total: leaderboard.length };
+    if (redisClient) await redisClient.setEx(cacheKey, 86400, JSON.stringify(payload));
+    res.json(payload);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── QR Session: Faculty Creates ────────────────────────────────────────────
+exports.createQRSession = async (req, res) => {
+  try {
+    if (req.user.role !== 'faculty' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access forbidden. Faculty or Admin only.' });
+    }
+    const { courseId, date, windowMins = 10 } = req.body;
+    if (!courseId || !date) {
+      return res.status(400).json({ error: 'courseId and date are required' });
+    }
+
+    const sessionId = uuidv4();
+    const expiresAt = new Date(Date.now() + windowMins * 60 * 1000);
+
+    // Persist to Mongo (TTL fallback)
+    await QRSession.create({ sessionId, courseId, date, facultyId: req.user.userId, windowMins, expiresAt });
+
+    // Store in Redis with TTL (primary)
+    if (redisClient) {
+      await redisClient.setEx(
+        `qrsession:${sessionId}`,
+        windowMins * 60,
+        JSON.stringify({ courseId, date, facultyId: req.user.userId, expiresAt })
+      );
+    }
+
+    // Generate QR code as base64 PNG (encodes the sessionId so the student app can scan it)
+    const qrPayload = JSON.stringify({ sessionId, courseId, date });
+    const qrBase64  = await QRCode.toDataURL(qrPayload, { width: 300, margin: 2 });
+
+    res.status(201).json({ sessionId, expiresAt, qrBase64, courseId, date, windowMins });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── QR Session: Student Scans ──────────────────────────────────────────────
+exports.scanQRSession = async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ error: 'Access forbidden. Students only.' });
+    }
+    const { sessionId } = req.params;
+    const studentId   = req.user.userId;
+    const studentName = req.user.username;
+
+    // 1. Validate session (Redis first, Mongo fallback)
+    let sessionData = null;
+    if (redisClient) {
+      const raw = await redisClient.get(`qrsession:${sessionId}`);
+      if (raw) sessionData = JSON.parse(raw);
+    }
+    if (!sessionData) {
+      // Mongo fallback
+      const session = await QRSession.findOne({ sessionId, active: true });
+      if (!session || session.expiresAt < new Date()) {
+        return res.status(410).json({ error: 'QR session has expired or does not exist' });
+      }
+      sessionData = { courseId: session.courseId, date: session.date };
+    }
+
+    const { courseId, date } = sessionData;
+
+    // 2. Prevent duplicate scan for the same session
+    const alreadyMarked = await Attendance.findOne({ studentId, courseId, date });
+    if (alreadyMarked) {
+      return res.status(409).json({ error: 'Attendance already recorded for this session' });
+    }
+
+    // 3. Mark attendance
+    const record = await Attendance.create({
+      studentId,
+      studentName,
+      courseId,
+      date,
+      status:      'present',
+      markedBy:    `qr:${sessionId}`,
+      markMethod:  'qr',
+      qrSessionId: sessionId,
+    });
+
+    await invalidateCache(studentId, courseId, date);
+
+    // 4. Publish event (same payload shape as manual mark)
+    publishEvent('attendance.marked', {
+      studentId, courseId, status: 'present', date,
+      markedBy: `qr:${sessionId}`, markMethod: 'qr'
+    });
+
+    res.status(201).json({ message: 'Attendance marked via QR', record });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'Attendance already recorded for this session' });
+    }
     res.status(500).json({ error: error.message });
   }
 };

@@ -15,7 +15,7 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
 // Register routes
 app.use('/', courseRoutes);
-app.get('/health', (req, res) => res.json({ status: 'UP', service: 'course-service' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'course-service' }));
 
 // Swagger API Documentation
 const swaggerDocument = {

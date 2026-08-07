@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
-import { NOTIFICATIONS } from '../mockData.js';
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../api/hooks.js';
+import CommandPalette from './shared/CommandPalette.jsx';
 
 // ── SVG Icons ───────────────────────────────────────────────────────────────
 const Icon = ({ d, size = 18 }) => (
@@ -237,10 +238,15 @@ function Sidebar({ currentPage, onNavigate, user, onLogout }) {
 }
 
 // ── TOPBAR ────────────────────────────────────────────────────────────────
-function Topbar({ user, currentPageLabel, onSearchChange, searchQuery }) {
+function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchClick }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
-  const unread = NOTIFICATIONS.filter(n => !n.read && n.userId === (user?.id || 's1')).length;
+  const { data: notifData } = useNotifications();
+  const notifications = notifData?.notifications || notifData || [];
+  const unread = Array.isArray(notifications) ? notifications.filter(n => !n.read).length : 0;
+
+  const markReadMutation = useMarkNotificationRead();
+  const markAllReadMutation = useMarkAllNotificationsRead();
 
   useEffect(() => {
     function handler(e) {
@@ -252,8 +258,9 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'US';
-  const rolePill = { student: '🎓 Student', faculty: '👩‍🏫 Faculty', admin: '⚙️ Admin', management: '📊 Management' };
+  const displayName = user ? (user.username || user.email || 'User') : 'User';
+  const initials    = displayName.slice(0, 2).toUpperCase();
+  const rolePill    = { student: '🎓 Student', faculty: '👩‍🏫 Faculty', admin: '⚙️ Admin', management: '📊 Management' };
 
   return (
     <header className="topbar">
@@ -263,13 +270,14 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery }) {
         </div>
       </div>
 
-      <div className="topbar-search">
+      <div className="topbar-search" onClick={onSearchClick} style={{ cursor: 'pointer' }}>
         <Icon d={ICONS.search} size={15} />
         <input
           type="text"
           placeholder="Search courses, users, assignments…"
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
+          readOnly
         />
         <span style={{ fontSize: 11, color: 'var(--text-3)', padding: '1px 6px', border: '1px solid var(--border)', borderRadius: 4, flexShrink: 0, fontFamily: 'var(--font-mono)' }}>⌘K</span>
       </div>
@@ -283,31 +291,48 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery }) {
 
           {showNotifs && (
             <div className="notifications-panel">
-              <div className="card-header" style={{ padding: '12px 16px' }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>Notifications</div>
-                <span className="badge badge-accent">{unread} new</span>
+              <div className="card-header" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Notifications</div>
+                  <span className="badge badge-accent">{unread} new</span>
+                </div>
+                {unread > 0 && (
+                  <button
+                    onClick={() => markAllReadMutation.mutate()}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                  >
+                    Mark all read
+                  </button>
+                )}
               </div>
-              {NOTIFICATIONS.slice(0, 5).map(n => (
-                <div key={n.id} className={`notif-item ${!n.read ? 'unread' : ''}`}>
+              {Array.isArray(notifications) && notifications.slice(0, 5).map(n => (
+                <div
+                  key={n._id || n.id}
+                  className={`notif-item ${!n.read ? 'unread' : ''}`}
+                  onClick={() => !n.read && markReadMutation.mutate(n._id || n.id)}
+                  style={{ cursor: !n.read ? 'pointer' : 'default' }}
+                >
                   {!n.read && <div className="notif-dot"></div>}
                   {n.read && <div style={{ width: 8 }}></div>}
                   <div className="notif-content">
-                    <div className="notif-title">{n.title}</div>
-                    <div className="notif-desc">{n.description}</div>
-                    <div className="notif-time">{n.createdAt}</div>
+                    <div className="notif-title">{n.title || n.type}</div>
+                    <div className="notif-desc">{n.description || n.message}</div>
+                    <div className="notif-time">{n.createdAt ? new Date(n.createdAt).toLocaleTimeString() : ''}</div>
                   </div>
                 </div>
               ))}
-              <div style={{ padding: '10px 16px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
-                <button className="btn btn-ghost btn-sm" style={{ width: '100%', fontSize: 13 }}>View all notifications</button>
-              </div>
+              {(!Array.isArray(notifications) || notifications.length === 0) && (
+                <div style={{ padding: 16, textAlign: 'center', fontSize: 13, color: 'var(--text-3)' }}>
+                  No notifications
+                </div>
+              )}
             </div>
           )}
         </div>
 
         <div className="user-info-topbar">
-          <div className="name">{user?.firstName} {user?.lastName}</div>
-          <div className="role">{rolePill[user?.role]}</div>
+          <div className="name">{displayName}</div>
+          <div className="role">{rolePill[user?.role] || user?.role}</div>
         </div>
         <div className="user-avatar" title="Profile">{initials}</div>
       </div>
@@ -318,6 +343,18 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery }) {
 // ── APP SHELL LAYOUT ───────────────────────────────────────────────────────
 export default function Layout({ children, currentPage, onNavigate, searchQuery, onSearchChange }) {
   const { user, logout } = useAuth();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const allNavItems = Object.values(NAV_CONFIG).flat().flatMap(s => s.items);
   const currentLabel = allNavItems.find(i => i.id === currentPage)?.label || 'Dashboard';
@@ -336,9 +373,11 @@ export default function Layout({ children, currentPage, onNavigate, searchQuery,
           currentPageLabel={currentLabel}
           searchQuery={searchQuery}
           onSearchChange={onSearchChange}
+          onSearchClick={() => setIsSearchOpen(true)}
         />
         <main className="page-body">{children}</main>
       </div>
+      <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onNavigate={onNavigate} />
     </div>
   );
 }

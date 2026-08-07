@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════════════════
 import { useState } from 'react';
 import { Icon, ICONS } from '../../components/Layout.jsx';
+import toast from 'react-hot-toast';
 import {
   PageHeader, StatCard, DataTable, StatusBadge, Tabs, FilterBar,
   CalendarWidget, TimetableGrid, Timeline, BarChart, DonutChart,
@@ -11,16 +12,27 @@ import {
   EmptyState, Modal, CommandPalette, WorkflowTimeline
 } from '../../components/shared/index.jsx';
 import {
-  TIMETABLE, CALENDAR_EVENTS, DISCUSSIONS, DISCUSSION_REPLIES,
-  TRANSCRIPTS, FEE_RECORDS, DOWNLOADS, ACTIVITY_LOG,
-  LIBRARY_RESOURCES, PLACEMENT_DRIVES, ANNOUNCEMENTS,
-  NOTIFICATIONS, ENROLLMENTS, ATTENDANCE_RECORDS, COURSES, ASSIGNMENTS,
-  USERS, LEAVE_RECORDS, LEAVE_BALANCE, FEEDBACK_SURVEYS, GRADE_SUBMISSIONS
+  TIMETABLE as MOCK_TIMETABLE, CALENDAR_EVENTS as MOCK_CALENDAR_EVENTS,
+  DISCUSSIONS as MOCK_DISCUSSIONS, DISCUSSION_REPLIES as MOCK_DISCUSSION_REPLIES,
+  TRANSCRIPTS as MOCK_TRANSCRIPTS, FEE_RECORDS as MOCK_FEE_RECORDS,
+  DOWNLOADS as MOCK_DOWNLOADS, ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
+  LIBRARY_RESOURCES as MOCK_LIBRARY_RESOURCES, PLACEMENT_DRIVES as MOCK_PLACEMENT_DRIVES,
+  ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS, NOTIFICATIONS as MOCK_NOTIFICATIONS,
+  ENROLLMENTS as MOCK_ENROLLMENTS, ATTENDANCE_RECORDS as MOCK_ATTENDANCE_RECORDS,
+  COURSES as MOCK_COURSES, ASSIGNMENTS as MOCK_ASSIGNMENTS,
+  USERS as MOCK_USERS, LEAVE_RECORDS as MOCK_LEAVE_RECORDS,
+  LEAVE_BALANCE as MOCK_LEAVE_BALANCE, FEEDBACK_SURVEYS as MOCK_FEEDBACK_SURVEYS,
+  GRADE_SUBMISSIONS as MOCK_GRADE_SUBMISSIONS
 } from '../../mockData.js';
+import {
+  useLiveTimetable, useLiveCalendarEvents, useLiveCourses,
+  useLiveAssignments, useLiveAssessments, useLiveAttendance
+} from '../../api/liveData.js';
 
 // ── FACULTY TIMETABLE ───────────────────────────────────────────────────────
 export function FacultyTimetable({ user }) {
-  const facultySlots = TIMETABLE.filter(s => s.faculty === `Dr. Sarah Jenkins` || s.faculty.includes(user.lastName));
+  const { data: TIMETABLE } = useLiveTimetable();
+  const facultySlots = TIMETABLE.filter(s => s.faculty === `Dr. Sarah Jenkins` || s.faculty.includes(user.lastName || '') || s.faculty.includes(user.username || ''));
 
   return (
     <div>
@@ -280,6 +292,129 @@ export function DiscussionModeration({ user }) {
 
 // ── GRADE SUBMISSION ────────────────────────────────────────────────────────
 export function GradeSubmission({ user }) {
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [gradesData, setGradesData] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const initialStudents = [
+    { id: 'st1', name: 'Alice Vance', attendance: '92%', a1: 18, a2: 19, exam: 45 },
+    { id: 'st2', name: 'Bob Miller', attendance: '88%', a1: 15, a2: 17, exam: 38 },
+    { id: 'st3', name: 'Charlie Dean', attendance: '74%', a1: 12, a2: 14, exam: 30 },
+    { id: 'st4', name: 'Diana Prince', attendance: '98%', a1: 20, a2: 20, exam: 48 },
+    { id: 'st5', name: 'Evan Wright', attendance: '81%', a1: 14, a2: 16, exam: 35 },
+  ];
+
+  function handleSelectCourse(course) {
+    setSelectedCourse(course);
+    setGradesData(initialStudents);
+  }
+
+  function handleGradeChange(studentId, field, val) {
+    const numeric = Math.min(Math.max(Number(val) || 0, 0), field === 'exam' ? 50 : 20);
+    setGradesData(prev => prev.map(s => s.id === studentId ? { ...s, [field]: numeric } : s));
+  }
+
+  function getGrade(total) {
+    if (total >= 85) return 'S';
+    if (total >= 75) return 'A';
+    if (total >= 65) return 'B';
+    if (total >= 50) return 'C';
+    return 'F';
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setTimeout(() => {
+      setSaving(false);
+      toast.success('Grades saved and published successfully!');
+      setSelectedCourse(null);
+    }, 1200);
+  }
+
+  if (selectedCourse) {
+    return (
+      <div>
+        <PageHeader
+          title={`Gradebook: ${selectedCourse.courseCode}`}
+          subtitle={`Enter grades for ${selectedCourse.courseName}`}
+          breadcrumbs={[
+            { label: 'Dashboard', onClick: () => setSelectedCourse(null) },
+            { label: 'Grade Submission', onClick: () => setSelectedCourse(null) },
+            { label: selectedCourse.courseCode }
+          ]}
+        >
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-outline btn-sm" onClick={() => setSelectedCourse(null)}>Back</button>
+            <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Publish Grades'}
+            </button>
+          </div>
+        </PageHeader>
+
+        <div className="card" style={{ padding: 20, overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                <th style={{ padding: '12px 8px' }}>Student Name</th>
+                <th style={{ padding: '12px 8px' }}>Attendance</th>
+                <th style={{ padding: '12px 8px' }}>Assigment 1 (max 20)</th>
+                <th style={{ padding: '12px 8px' }}>Assignment 2 (max 20)</th>
+                <th style={{ padding: '12px 8px' }}>Exam (max 50)</th>
+                <th style={{ padding: '12px 8px' }}>Total (max 90)</th>
+                <th style={{ padding: '12px 8px' }}>Final Grade</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gradesData.map(s => {
+                const total = s.a1 + s.a2 + s.exam;
+                const letterGrade = getGrade(total);
+                return (
+                  <tr key={s.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '10px 8px', fontWeight: 600 }}>{s.name}</td>
+                    <td style={{ padding: '10px 8px', color: s.attendance.replace('%', '') < 75 ? 'var(--danger)' : 'var(--text-1)' }}>{s.attendance}</td>
+                    <td style={{ padding: '10px 8px' }}>
+                      <input
+                        type="number"
+                        className="form-input"
+                        style={{ width: 80, padding: '4px 8px' }}
+                        value={s.a1}
+                        onChange={e => handleGradeChange(s.id, 'a1', e.target.value)}
+                      />
+                    </td>
+                    <td style={{ padding: '10px 8px' }}>
+                      <input
+                        type="number"
+                        className="form-input"
+                        style={{ width: 80, padding: '4px 8px' }}
+                        value={s.a2}
+                        onChange={e => handleGradeChange(s.id, 'a2', e.target.value)}
+                      />
+                    </td>
+                    <td style={{ padding: '10px 8px' }}>
+                      <input
+                        type="number"
+                        className="form-input"
+                        style={{ width: 80, padding: '4px 8px' }}
+                        value={s.exam}
+                        onChange={e => handleGradeChange(s.id, 'exam', e.target.value)}
+                      />
+                    </td>
+                    <td style={{ padding: '10px 8px', fontWeight: 700 }}>{total} / 90</td>
+                    <td style={{ padding: '10px 8px' }}>
+                      <span className={`badge ${letterGrade === 'F' ? 'badge-danger' : 'badge-success'}`}>
+                        {letterGrade}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -297,7 +432,7 @@ export function GradeSubmission({ user }) {
           { key: 'deadline', label: 'Deadline', width: 100 },
           { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
           { key: 'courseId', label: 'Action', render: (_, row) => (
-            <button className="btn btn-primary btn-sm" disabled={row.status === 'submitted'}>
+            <button className="btn btn-primary btn-sm" disabled={row.status === 'submitted'} onClick={() => handleSelectCourse(row)}>
               {row.status === 'submitted' ? 'Submitted' : 'Enter Grades'}
             </button>
           ), sortable: false }

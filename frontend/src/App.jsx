@@ -6,10 +6,12 @@ import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import Layout from './components/Layout.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
 import StudentPortal from './portals/StudentPortal.jsx';
 import FacultyPortal from './portals/FacultyPortal.jsx';
 import AdminPortal from './portals/AdminPortal.jsx';
 import ManagementPortal from './portals/ManagementPortal.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // Default page per role
 const ROLE_DEFAULTS = {
@@ -21,8 +23,9 @@ const ROLE_DEFAULTS = {
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const [page, setPage]   = useState('dashboard');
-  const [search, setSearch] = useState('');
+  const [page, setPage]       = useState('dashboard');
+  const [search, setSearch]   = useState('');
+  const [authView, setAuthView] = useState('login'); // 'login' | 'register'
 
   if (loading) {
     return (
@@ -43,7 +46,11 @@ function AppContent() {
     );
   }
 
-  if (!user) return <LoginPage />;
+  if (!user) {
+    return authView === 'register'
+      ? <RegisterPage onSwitchToLogin={() => setAuthView('login')} />
+      : <LoginPage    onSwitchToRegister={() => setAuthView('register')} />;
+  }
 
   function handleNavigate(newPage) {
     setPage(newPage);
@@ -66,13 +73,15 @@ function AppContent() {
       searchQuery={search}
       onSearchChange={setSearch}
     >
-      {portal || (
-        <div style={{ padding: 40, textAlign: 'center' }}>
-          <h2 style={{ color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>
-            Unknown role: {user.role}
-          </h2>
-        </div>
-      )}
+      <ErrorBoundary key={`${user.role}-${page}`}>
+        {portal || (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <h2 style={{ color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>
+              Unknown role: {user.role}
+            </h2>
+          </div>
+        )}
+      </ErrorBoundary>
     </Layout>
   );
 }

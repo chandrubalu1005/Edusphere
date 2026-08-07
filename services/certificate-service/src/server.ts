@@ -76,7 +76,7 @@ function auth(req: express.Request, res: express.Response, next: express.NextFun
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey123') as any;
     (req as any).user = decoded;
     next();
   } catch { res.status(401).json({ error: 'Invalid token' }); }
@@ -205,7 +205,7 @@ app.get('/certificates', auth, async (req, res) => {
     }
 
     const certs = await Certificate.find(filter).sort({ issuedAt: -1 });
-    res.json(certs);
+    res.json({ certificates: certs, total: certs.length });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch certificates' });
   }

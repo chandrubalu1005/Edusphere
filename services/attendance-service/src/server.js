@@ -17,7 +17,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
 app.use('/', attendanceRoutes);
-app.get('/health', (req, res) => res.json({ status: 'UP', service: 'attendance-service' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'attendance-service' }));
 
 // Swagger Docs
 const swaggerDocument = {

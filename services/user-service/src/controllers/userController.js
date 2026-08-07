@@ -91,3 +91,19 @@ exports.deactivateProfile = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.bulkUpdateProfiles = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access forbidden. Admins only.' });
+    }
+    const { userIds, active } = req.body;
+    if (!userIds || !Array.isArray(userIds) || active === undefined) {
+      return res.status(400).json({ error: 'userIds array and active boolean are required' });
+    }
+    await Profile.updateMany({ userId: { $in: userIds } }, { active });
+    res.json({ message: `Successfully updated ${userIds.length} profiles.` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

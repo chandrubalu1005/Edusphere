@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
-import { COURSES, DEPARTMENTS, USERS, MONTHLY_ENROLLMENT, DEPT_PERFORMANCE, AUDIT_LOGS } from '../mockData.js';
+import {
+  COURSES, DEPARTMENTS, USERS, MONTHLY_ENROLLMENT, DEPT_PERFORMANCE, AUDIT_LOGS
+} from '../mockData.js';
+import {
+  useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs
+} from '../api/liveData.js';
 import * as F from './management/features.jsx';
 
 
@@ -19,6 +24,9 @@ function PageHeader({ title, subtitle, children }) {
 
 // ── EXECUTIVE DASHBOARD (Boardroom Mode) ────────────────────────────────────
 function ExecutiveDashboard({ user, onNavigate }) {
+  const { data: USERS } = useLiveAdminUsers();
+  const { data: COURSES } = useLiveCourses();
+
   const totalStudents = USERS.filter(u => u.role === 'student').length;
   const totalFaculty = USERS.filter(u => u.role === 'faculty').length;
   const publishedCourses = COURSES.filter(c => c.status === 'published').length;

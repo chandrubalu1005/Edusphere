@@ -13,9 +13,21 @@ const PORT = process.env.PORT || 3001;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_auth';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
+const rateLimit = require('express-rate-limit');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
 // Register routes
+app.use('/register', authLimiter);
+app.use('/login', authLimiter);
 app.use('/', authRoutes);
-app.get('/health', (req, res) => res.json({ status: 'UP', service: 'auth-service' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'auth-service' }));
 
 // Swagger API Documentation
 const swaggerDocument = {

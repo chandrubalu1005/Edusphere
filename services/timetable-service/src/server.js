@@ -6,6 +6,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use('/', timetableRoutes);
-app.get('/health', (req, res) => res.json({ status: 'UP' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'timetable-service' }));
 connectDB(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_timetable');
 app.listen(3009, () => console.log('Timetable Service running on 3009'));

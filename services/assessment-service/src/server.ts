@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { createClient } from 'redis';
 import { v4 as uuidv4 } from 'uuid';
 import winston from 'winston';
+import amqp from 'amqplib';
 
 dotenv.config();
 
@@ -115,6 +116,26 @@ const AttemptSchema = new Schema<IAttempt>({
 
 const Attempt = mongoose.model<IAttempt>('Attempt', AttemptSchema);
 
+// ── RabbitMQ Publisher ─────────────────────────────────────────────────────
+let mqChannel: amqp.Channel | null = null;
+
+async function connectRabbitMQ() {
+  try {
+    const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost:5672');
+    mqChannel = await conn.createChannel();
+    await mqChannel.assertExchange('domain_events', 'topic', { durable: true });
+    logger.info('RabbitMQ connected');
+  } catch (err) {
+    logger.warn('RabbitMQ unavailable — events disabled');
+  }
+}
+
+function publishEvent(routingKey: string, data: object) {
+  if (mqChannel) {
+    mqChannel.publish('domain_events', routingKey, Buffer.from(JSON.stringify(data)), { persistent: true });
+  }
+}
+
 // ── App Setup ──────────────────────────────────────────────────────────────
 const app = express();
 app.use(helmet());
@@ -140,7 +161,7 @@ function auth(req: express.Request, res: express.Response, next: express.NextFun
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey123') as any;
     (req as any).user = decoded;
     next();
   } catch { res.status(401).json({ error: 'Invalid token' }); }
@@ -334,6 +355,17 @@ app.post('/assessments/:id/submit', auth, requireRole('student'), async (req, re
 
     logger.info(`Assessment ${req.params.id} submitted by ${user.userId}: ${score}/${assessment.totalMarks} (${percentage}%)`);
 
+    // Publish assessment.graded event for analytics service
+    publishEvent('assessment.graded', {
+      studentId:    user.userId,
+      courseId:     assessment.courseId,
+      assessmentId: String(assessment._id),
+      score,
+      totalMarks:   assessment.totalMarks,
+      percentage,
+      passed,
+    });
+
     const response: Record<string, unknown> = { score, totalMarks: assessment.totalMarks, percentage, passed };
     if (assessment.showResults) response.gradedAnswers = gradedAnswers;
     res.json(response);
@@ -398,6 +430,7 @@ async function bootstrap() {
   await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_assessments');
   logger.info('MongoDB connected');
   await connectRedis();
+  await connectRabbitMQ();
 
   const PORT = process.env.PORT || 3005;
   app.listen(PORT, () => logger.info(`⚡ Assessment Service running on :${PORT}`));

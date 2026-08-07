@@ -5,10 +5,16 @@ import { useDropzone } from 'react-dropzone';
 import { useSubmitAssignment } from '../api/hooks.js';
 import toast from 'react-hot-toast';
 import {
-  COURSES, ENROLLMENTS, ATTENDANCE_RECORDS, ASSESSMENTS,
-  ASSIGNMENTS, SUBMISSIONS, CERTIFICATES, NOTIFICATIONS, SUPPORT_TICKETS
+  SUPPORT_TICKETS as MOCK_SUPPORT_TICKETS
 } from '../mockData.js';
+import {
+  useLiveCourses, useLiveAssignments, useLiveAssessments,
+  useLiveCertificates, useLiveNotifications, useLiveAttendance,
+  useLiveEnrollments
+} from '../api/liveData.js';
 import * as F from './student/features.jsx';
+
+const SUPPORT_TICKETS = MOCK_SUPPORT_TICKETS;
 
 
 // ── Reusable Components ────────────────────────────────────────────────────
@@ -26,12 +32,20 @@ function PageHeader({ title, subtitle, children }) {
 
 // ── STUDENT DASHBOARD ─────────────────────────────────────────────────────
 function StudentDashboard({ user, onNavigate }) {
-  const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id);
-  const myAttendance = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id);
+  const { data: COURSES } = useLiveCourses();
+  const { data: ENROLLMENTS } = useLiveEnrollments();
+  const { data: ATTENDANCE_RECORDS } = useLiveAttendance();
+  const { data: ASSIGNMENTS } = useLiveAssignments();
+  const { data: ASSESSMENTS } = useLiveAssessments();
+  const { data: CERTIFICATES } = useLiveCertificates();
+  const { data: NOTIFICATIONS } = useLiveNotifications();
+
+  const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id || e.studentId === user.userId);
+  const myAttendance = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id || a.studentId === user.userId);
   const present = myAttendance.filter(a => a.status === 'present').length;
   const attendancePct = myAttendance.length ? Math.round((present / myAttendance.length) * 100) : 0;
-  const pendingAssignments = ASSIGNMENTS.filter(a => a.status === 'active');
-  const upcomingQuizzes = ASSESSMENTS.filter(q => q.status === 'active' || q.status === 'upcoming');
+  const pendingAssignments = ASSIGNMENTS.filter(a => a.status === 'active' || a.status === 'published');
+  const upcomingQuizzes = ASSESSMENTS.filter(q => q.status === 'active' || q.status === 'upcoming' || q.status === 'published');
 
   return (
     <div>
@@ -185,11 +199,13 @@ function StudentDashboard({ user, onNavigate }) {
 }
 
 // ── MY COURSES ─────────────────────────────────────────────────────────────
-function StudentCourses({ user, onNavigate }) {
-  const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id);
+function StudentCourses({ user }) {
+  const { data: COURSES } = useLiveCourses();
+  const { data: ENROLLMENTS } = useLiveEnrollments();
+  const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id || e.studentId === user.userId);
   const [tab, setTab] = useState('enrolled');
   const availableCourses = COURSES.filter(c =>
-    c.status === 'published' && !enrolled.find(e => e.courseId === c.id)
+    (c.status === 'published' || c.status === 'active') && !enrolled.find(e => e.courseId === c.id || e.courseId === c._id)
   );
 
   return (
@@ -276,12 +292,45 @@ function StudentCourses({ user, onNavigate }) {
 
 // ── ATTENDANCE ─────────────────────────────────────────────────────────────
 function StudentAttendance({ user }) {
-  const records = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id);
-  const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id);
+  const { data: COURSES } = useLiveCourses();
+  const { data: ENROLLMENTS } = useLiveEnrollments();
+  const { data: ATTENDANCE_RECORDS } = useLiveAttendance();
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  const records = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id || a.studentId === user.userId);
+  const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id || e.studentId === user.userId);
 
   return (
     <div>
-      <PageHeader title="My Attendance" subtitle="Track your attendance across all enrolled courses." />
+      <PageHeader title="My Attendance" subtitle="Track your attendance across all enrolled courses.">
+        <button className="btn btn-primary btn-sm" onClick={() => setScannerOpen(true)}>📷 Scan Class QR Code</button>
+      </PageHeader>
+
+      {scannerOpen && (
+        <div className="modal-overlay" onClick={() => setScannerOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 420 }}>
+            <div className="modal-header">
+              <div className="modal-title">Scan Attendance QR Code</div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setScannerOpen(false)}><Icon d={ICONS.x} size={18} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <div style={{ position: 'relative', width: 220, height: 220, borderRadius: 12, overflow: 'hidden', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ border: '2px solid var(--accent)', width: 160, height: 160, borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
+                <div style={{ position: 'absolute', color: 'white', fontSize: 12, bottom: 12 }}>Align QR code within frame</div>
+              </div>
+              <button
+                className="btn btn-accent"
+                onClick={() => {
+                  toast.success('Attendance marked present via QR scan!');
+                  setScannerOpen(false);
+                }}
+              >
+                Simulate QR Scan Success
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="stat-grid" style={{ marginBottom: 24 }}>
         {enrolled.map(enr => {
@@ -353,6 +402,7 @@ function StudentAttendance({ user }) {
 
 // ── ASSESSMENTS / QUIZZES ──────────────────────────────────────────────────
 function StudentAssessments({ user }) {
+  const { data: ASSESSMENTS } = useLiveAssessments();
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -521,6 +571,9 @@ function StudentAssessments({ user }) {
 
 // ── ASSIGNMENTS ────────────────────────────────────────────────────────────
 function StudentAssignments({ user }) {
+  const { data: ASSIGNMENTS } = useLiveAssignments();
+  const { data: SUBMISSIONS } = { data: MOCK_SUBMISSIONS };
+
   const [selected, setSelected] = useState(null);
   const [file, setFile] = useState(null);
   const [remarks, setRemarks] = useState('');
@@ -541,7 +594,7 @@ function StudentAssignments({ user }) {
     if (!file || !selected) return;
     try {
       await submitAssignment.mutateAsync({
-        assignmentId: selected.id,
+        assignmentId: selected.id || selected._id,
         file,
         remarks
       });
@@ -559,7 +612,7 @@ function StudentAssignments({ user }) {
     }
   };
 
-  const mySubmissions = SUBMISSIONS.filter(s => s.studentId === user.id);
+  const mySubmissions = SUBMISSIONS.filter(s => s.studentId === user.id || s.studentId === user.userId);
 
   return (
     <div>
@@ -676,8 +729,9 @@ function StudentAssignments({ user }) {
 
 // ── CERTIFICATES ───────────────────────────────────────────────────────────
 function StudentCertificates({ user }) {
+  const { data: CERTIFICATES } = useLiveCertificates();
   const [preview, setPreview] = useState(null);
-  const myCerts = CERTIFICATES.filter(c => c.studentId === user.id);
+  const myCerts = CERTIFICATES.filter(c => c.studentId === user.id || c.studentId === user.userId);
 
   return (
     <div>
@@ -710,9 +764,14 @@ function StudentCertificates({ user }) {
                 </div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>{cert.certificateNo}</div>
               </div>
-              <div className="course-card-footer">
+              <div className="course-card-footer" style={{ flexWrap: 'wrap', gap: 6 }}>
                 <button className="btn btn-ghost btn-sm" onClick={() => setPreview(cert)}>Preview</button>
-                <button className="btn btn-primary btn-sm">
+                <button className="btn btn-outline btn-sm" onClick={() => {
+                  const link = `${window.location.origin}/verify/${cert.certificateNo || cert.id}`;
+                  navigator.clipboard.writeText(link);
+                  toast.success('Verification link copied to clipboard!');
+                }}>Share Link</button>
+                <button className="btn btn-primary btn-sm" onClick={() => toast.success('Certificate PDF download started.')}>
                   <Icon d={ICONS.download} size={13} /> Download PDF
                 </button>
               </div>

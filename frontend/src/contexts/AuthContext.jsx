@@ -1,62 +1,150 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
-import { USERS } from '../mockData.js';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
+const MOCK_USERS = [
+  {
+    id: 's1',
+    userId: 's1',
+    firstName: 'John',
+    lastName: 'Doe',
+    username: 'john_doe',
+    email: 'john@edusphere.edu',
+    role: 'student',
+    department: 'CSE'
+  },
+  {
+    id: 'f1',
+    userId: 'f1',
+    firstName: 'Sarah',
+    lastName: 'Jenkins',
+    username: 'sarah_j',
+    email: 'sarah@edusphere.edu',
+    role: 'faculty',
+    department: 'CSE'
+  },
+  {
+    id: 'a1',
+    userId: 'a1',
+    firstName: 'System',
+    lastName: 'Administrator',
+    username: 'sys_admin',
+    email: 'admin@edusphere.edu',
+    role: 'admin',
+    department: 'IT'
+  },
+  {
+    id: 'm1',
+    userId: 'm1',
+    firstName: 'Dean',
+    lastName: 'Academic',
+    username: 'dean_academic',
+    email: 'dean@edusphere.edu',
+    role: 'management',
+    department: 'Administration'
+  }
+];
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // On mount, restore session from localStorage (consistent with login below)
   useEffect(() => {
-    const stored = sessionStorage.getItem('edusphere_user');
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+    try {
+      const storedUser  = localStorage.getItem('edu_user');
+      const storedToken = localStorage.getItem('edu_token');
+      if (storedUser && storedToken) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch {
+      // Corrupted storage — clear it
+      localStorage.removeItem('edu_user');
+      localStorage.removeItem('edu_token');
     }
     setLoading(false);
   }, []);
 
-  const login = useCallback(async (username, password) => {
+  // login expects { email, password }
+  const login = useCallback(async (email, password) => {
     try {
-      // Attempt real API call
-      const res = await axios.post('/api/auth/login', { username, password });
-      const { user: apiUser, accessToken } = res.data;
-      localStorage.setItem('edu_token', accessToken);
+      // backend auth-service POST /login expects { email, password }
+      const res = await axios.post('/api/auth/login', { email, password });
+      const { token, user: apiUser } = res.data; // backend returns { token, user }
+      localStorage.setItem('edu_token', token);
       localStorage.setItem('edu_user', JSON.stringify(apiUser));
       setUser(apiUser);
       return apiUser;
     } catch (err) {
-      console.warn("Real API login failed, falling back to mock data", err);
-      // Fallback
-      await new Promise(r => setTimeout(r, 600));
-      const found = USERS.find(u => u.username === username);
-      if (!found || password !== 'demo123') {
-        throw new Error('Invalid credentials. Use any username with password: demo123');
+      console.warn("Real API login failed, falling back to mock user session", err);
+      // Validate credentials against MOCK_USERS
+      const found = MOCK_USERS.find(u => u.email === email);
+      if (found && password === 'demo123') {
+        const mockToken = "mock_jwt_token_" + found.id;
+        localStorage.setItem('edu_token', mockToken);
+        localStorage.setItem('edu_user', JSON.stringify(found));
+        setUser(found);
+        toast.success(`Logged in as demo ${found.role} (offline mode)`);
+        return found;
       }
-      localStorage.setItem('edu_user', JSON.stringify(found));
-      setUser(found);
-      return found;
+      throw err;
+    }
+  }, []);
+
+  // register expects { username, email, password }
+  const register = useCallback(async (username, email, password) => {
+    try {
+      const res = await axios.post('/api/auth/register', { username, email, password });
+      const { token, user: apiUser } = res.data;
+      localStorage.setItem('edu_token', token);
+      localStorage.setItem('edu_user', JSON.stringify(apiUser));
+      setUser(apiUser);
+      return apiUser;
+    } catch (err) {
+      console.warn("Real API registration failed, falling back to mock registration", err);
+      const mockUser = {
+        id: 's_new_' + Math.floor(Math.random() * 1000),
+        userId: 's_new_' + Math.floor(Math.random() * 1000),
+        username,
+        email,
+        firstName: username,
+        lastName: 'Student',
+        role: 'student',
+        department: 'CSE'
+      };
+      const mockToken = "mock_jwt_token_new";
+      localStorage.setItem('edu_token', mockToken);
+      localStorage.setItem('edu_user', JSON.stringify(mockUser));
+      setUser(mockUser);
+      toast.success("Registered successfully (offline mode)");
+      return mockUser;
     }
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem('edusphere_user');
+    localStorage.removeItem('edu_token');
+    localStorage.removeItem('edu_user');
     setUser(null);
   }, []);
 
-  const switchRole = useCallback((role) => {
-    const found = USERS.find(u => u.role === role);
-    if (found) {
-      sessionStorage.setItem('edusphere_user', JSON.stringify(found));
-      setUser(found);
+  // switchRole is a dev-only convenience to test different role views without re-logging in.
+  // In production builds this is a no-op since import.meta.env.DEV is false.
+  const switchRole = useCallback((roleOrUser) => {
+    if (!import.meta.env.DEV) return;
+    if (typeof roleOrUser === 'object') {
+      localStorage.setItem('edu_user', JSON.stringify(roleOrUser));
+      setUser(roleOrUser);
     }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
+

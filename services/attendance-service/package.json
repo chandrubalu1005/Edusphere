@@ -12,6 +12,8 @@
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.0.3",
     "redis": "^4.6.5",
-    "amqplib": "^0.10.3"
+    "amqplib": "^0.10.3",
+    "qrcode": "1.5.3",
+    "uuid": "9.0.0"
   }
 }
