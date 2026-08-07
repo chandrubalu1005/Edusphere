@@ -11,6 +11,22 @@
     "start:user": "npm run start --workspace=services/user-service",
     "start:course": "npm run start --workspace=services/course-service",
     "start:attendance": "npm run start --workspace=services/attendance-service",
-    "start:frontend": "npm run dev --workspace=frontend"
+    "start:admin": "npm run start --workspace=services/admin-service",
+    "start:analytics": "npm run start --workspace=services/analytics-service",
+    "start:assessment": "npm run start --workspace=services/assessment-service",
+    "start:assignment": "npm run start --workspace=services/assignment-service",
+    "start:calendar": "npm run start --workspace=services/calendar-service",
+    "start:certificate": "npm run start --workspace=services/certificate-service",
+    "start:discussion": "npm run start --workspace=services/discussion-service",
+    "start:library": "npm run start --workspace=services/library-service",
+    "start:notification": "npm run start --workspace=services/notification-service",
+    "start:placement": "npm run start --workspace=services/placement-service",
+    "start:timetable": "npm run start --workspace=services/timetable-service",
+    "start:frontend": "npm run dev --workspace=frontend",
+    "dev": "concurrently --kill-others \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:user\" \"npm run start:course\" \"npm run start:attendance\" \"npm run start:admin\" \"npm run start:analytics\" \"npm run start:assessment\" \"npm run start:assignment\" \"npm run start:calendar\" \"npm run start:certificate\" \"npm run start:discussion\" \"npm run start:library\" \"npm run start:notification\" \"npm run start:placement\" \"npm run start:timetable\"",
+    "start": "concurrently --kill-others \"npm run start:frontend\" \"npm run start:auth\" \"npm run start:user\" \"npm run start:course\" \"npm run start:attendance\" \"npm run start:admin\" \"npm run start:analytics\" \"npm run start:assessment\" \"npm run start:assignment\" \"npm run start:calendar\" \"npm run start:certificate\" \"npm run start:discussion\" \"npm run start:library\" \"npm run start:notification\" \"npm run start:placement\" \"npm run start:timetable\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4"
   }
 }
