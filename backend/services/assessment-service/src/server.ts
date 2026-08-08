@@ -26,7 +26,7 @@ interface IQuestion {
   text:     string;
   type:     'mcq' | 'true_false' | 'short_answer';
   options:  string[];
-  correct:  number | string;
+  correct?: number | string;
   marks:    number;
   explanation?: string;
 }
@@ -179,6 +179,7 @@ function requireRole(...roles: string[]) {
 
 // ── ASSESSMENT ENDPOINTS ───────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'assessment-service' }));
+app.get('/assessments/health', (_req, res) => res.json({ status: 'ok', service: 'assessment-service' }));
 
 // GET /assessments?courseId=&status=&type=
 app.get('/assessments', auth, async (req, res) => {

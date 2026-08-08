@@ -175,6 +175,7 @@ function requireRole(...roles: string[]) {
 
 // ── ASSIGNMENT ENDPOINTS ───────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'assignment-service' }));
+app.get('/assignments/health', (_req, res) => res.json({ status: 'ok', service: 'assignment-service' }));
 
 // GET /assignments
 app.get('/assignments', auth, async (req, res) => {

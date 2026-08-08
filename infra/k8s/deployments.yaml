@@ -11,31 +11,142 @@ metadata:
   name: edusphere-config
   namespace: edusphere-prod
 data:
-  JWT_SECRET: "supersecretjwtkey123"
-  RABBITMQ_URL: "amqp://rabbitmq.edusphere-prod.svc.cluster.local:5672"
-  MONGO_URI_AUTH: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_auth"
-  MONGO_URI_USERS: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_users"
-  MONGO_URI_COURSES: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_courses"
-  MONGO_URI_ATTENDANCE: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_attendance"
-  MONGO_URI_TIMETABLE: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_timetable"
-  MONGO_URI_CALENDAR: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_calendar"
-  MONGO_URI_LIBRARY: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_library"
-  MONGO_URI_PLACEMENT: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_placement"
-  MONGO_URI_DISCUSSIONS: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_discussions"
-  MONGO_URI_ANALYTICS: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_analytics"
-  MONGO_URI_ADMIN: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_admin"
+  JWT_SECRET: "edusphere_super_secret_jwt_key_change_in_production_2026"
+  RABBITMQ_URL: "amqp://edusphere:edusphere_pass@rabbitmq.edusphere-prod.svc.cluster.local:5672"
   REDIS_URL: "redis://redis.edusphere-prod.svc.cluster.local:6379"
 
 ---
 
-# Auth Service Deployment
+# ── Infrastructure Deployments & Services ──────────────────────────────────
+
+# MongoDB
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: edusphere-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:7.0
+        ports:
+        - containerPort: 27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: mongodb
+
+---
+
+# Redis
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: edusphere-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7.2-alpine
+        ports:
+        - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+
+---
+
+# RabbitMQ
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: edusphere-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3.12-management-alpine
+        ports:
+        - containerPort: 5672
+        - containerPort: 15672
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: "edusphere"
+        - name: RABBITMQ_DEFAULT_PASS
+          value: "edusphere_pass"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 5672
+    name: amqp
+    targetPort: 5672
+  - port: 15672
+    name: mgmt
+    targetPort: 15672
+  selector:
+    app: rabbitmq
+
+---
+
+# ── Microservices Deployments & Services ─────────────────────────────────
+
+# 1. Auth Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth-service
   namespace: edusphere-prod
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: auth-service
@@ -49,6 +160,11 @@ spec:
         image: edusphere/auth-service:latest
         ports:
         - containerPort: 3001
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_auth"
+        - name: PORT
+          value: "3001"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -64,9 +180,7 @@ spec:
             port: 3001
           initialDelaySeconds: 15
           periodSeconds: 15
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -81,7 +195,7 @@ spec:
 
 ---
 
-# User Service Deployment
+# 2. User Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -102,6 +216,11 @@ spec:
         image: edusphere/user-service:latest
         ports:
         - containerPort: 3002
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_users"
+        - name: PORT
+          value: "3002"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -111,9 +230,7 @@ spec:
             port: 3002
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -128,7 +245,7 @@ spec:
 
 ---
 
-# Course Service Deployment
+# 3. Course Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -149,6 +266,11 @@ spec:
         image: edusphere/course-service:latest
         ports:
         - containerPort: 3003
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_courses"
+        - name: PORT
+          value: "3003"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -158,9 +280,7 @@ spec:
             port: 3003
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -175,14 +295,214 @@ spec:
 
 ---
 
-# Attendance Service Deployment
+# 4. Notification Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: edusphere/notification-service:latest
+        ports:
+        - containerPort: 3004
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_notifications"
+        - name: PORT
+          value: "3004"
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3004
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3004
+    targetPort: 3004
+  selector:
+    app: notification-service
+
+---
+
+# 5. Assessment Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assessment-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assessment-service
+  template:
+    metadata:
+      labels:
+        app: assessment-service
+    spec:
+      containers:
+      - name: assessment-service
+        image: edusphere/assessment-service:latest
+        ports:
+        - containerPort: 3005
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_assessments"
+        - name: PORT
+          value: "3005"
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3005
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assessment-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3005
+    targetPort: 3005
+  selector:
+    app: assessment-service
+
+---
+
+# 6. Assignment Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assignment-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assignment-service
+  template:
+    metadata:
+      labels:
+        app: assignment-service
+    spec:
+      containers:
+      - name: assignment-service
+        image: edusphere/assignment-service:latest
+        ports:
+        - containerPort: 3006
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_assignments"
+        - name: PORT
+          value: "3006"
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3006
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assignment-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3006
+    targetPort: 3006
+  selector:
+    app: assignment-service
+
+---
+
+# 7. Certificate Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: certificate-service
+  namespace: edusphere-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: certificate-service
+  template:
+    metadata:
+      labels:
+        app: certificate-service
+    spec:
+      containers:
+      - name: certificate-service
+        image: edusphere/certificate-service:latest
+        ports:
+        - containerPort: 3007
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_certificates"
+        - name: PORT
+          value: "3007"
+        envFrom:
+        - configMapRef:
+            name: edusphere-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3007
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: certificate-service
+  namespace: edusphere-prod
+spec:
+  ports:
+  - port: 3007
+    targetPort: 3007
+  selector:
+    app: certificate-service
+
+---
+
+# 8. Attendance Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: attendance-service
   namespace: edusphere-prod
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: attendance-service
@@ -196,6 +516,11 @@ spec:
         image: edusphere/attendance-service:latest
         ports:
         - containerPort: 3008
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_attendance"
+        - name: PORT
+          value: "3008"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -205,9 +530,7 @@ spec:
             port: 3008
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -222,7 +545,7 @@ spec:
 
 ---
 
-# Timetable Service Deployment
+# 9. Timetable Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -243,6 +566,11 @@ spec:
         image: edusphere/timetable-service:latest
         ports:
         - containerPort: 3009
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_timetable"
+        - name: PORT
+          value: "3009"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -252,9 +580,7 @@ spec:
             port: 3009
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -269,7 +595,7 @@ spec:
 
 ---
 
-# Calendar Service Deployment
+# 10. Calendar Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -290,6 +616,11 @@ spec:
         image: edusphere/calendar-service:latest
         ports:
         - containerPort: 3010
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_calendar"
+        - name: PORT
+          value: "3010"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -299,9 +630,7 @@ spec:
             port: 3010
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -316,7 +645,7 @@ spec:
 
 ---
 
-# Library Service Deployment
+# 11. Library Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -337,6 +666,11 @@ spec:
         image: edusphere/library-service:latest
         ports:
         - containerPort: 3011
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_library"
+        - name: PORT
+          value: "3011"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -346,9 +680,7 @@ spec:
             port: 3011
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -363,7 +695,7 @@ spec:
 
 ---
 
-# Placement Service Deployment
+# 12. Placement Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -384,6 +716,11 @@ spec:
         image: edusphere/placement-service:latest
         ports:
         - containerPort: 3012
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_placement"
+        - name: PORT
+          value: "3012"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -393,9 +730,7 @@ spec:
             port: 3012
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -410,7 +745,7 @@ spec:
 
 ---
 
-# Discussion Service Deployment
+# 13. Discussion Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -431,6 +766,11 @@ spec:
         image: edusphere/discussion-service:latest
         ports:
         - containerPort: 3013
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_discussions"
+        - name: PORT
+          value: "3013"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -440,9 +780,7 @@ spec:
             port: 3013
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -457,7 +795,7 @@ spec:
 
 ---
 
-# Analytics Service Deployment
+# 14. Analytics Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -478,6 +816,11 @@ spec:
         image: edusphere/analytics-service:latest
         ports:
         - containerPort: 3014
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_analytics"
+        - name: PORT
+          value: "3014"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -487,9 +830,7 @@ spec:
             port: 3014
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -504,7 +845,7 @@ spec:
 
 ---
 
-# Admin Service Deployment
+# 15. Admin Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -525,6 +866,11 @@ spec:
         image: edusphere/admin-service:latest
         ports:
         - containerPort: 3015
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb.edusphere-prod.svc.cluster.local:27017/edusphere_admin"
+        - name: PORT
+          value: "3015"
         envFrom:
         - configMapRef:
             name: edusphere-config
@@ -534,9 +880,7 @@ spec:
             port: 3015
           initialDelaySeconds: 10
           periodSeconds: 10
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -572,9 +916,7 @@ spec:
         image: prom/prometheus:v2.45.0
         ports:
         - containerPort: 9090
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -589,7 +931,7 @@ spec:
 
 ---
 
-# Horizontal Pod Autoscaling (HPA) for peak load mitigation
+# Horizontal Pod Autoscaler for high-load services
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -600,8 +942,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: auth-service
-  minReplicas: 3
-  maxReplicas: 10
+  minReplicas: 2
+  maxReplicas: 8
   metrics:
   - type: Resource
     resource:
@@ -622,8 +964,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: attendance-service
-  minReplicas: 3
-  maxReplicas: 10
+  minReplicas: 2
+  maxReplicas: 8
   metrics:
   - type: Resource
     resource:

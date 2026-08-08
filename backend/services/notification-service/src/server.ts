@@ -120,6 +120,7 @@ io.on('connection', (socket: Socket) => {
 
 // ── REST Endpoints ─────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'notification-service' }));
+app.get('/notifications/health', (_req, res) => res.json({ status: 'ok', service: 'notification-service' }));
 
 // GET /notifications - list for user
 app.get('/notifications', authMiddleware, async (req, res) => {

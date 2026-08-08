@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import PDFDocument from 'pdfkit';
-import { createCanvas } from 'canvas';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -190,6 +189,7 @@ async function generateCertificatePDF(cert: ICertificate): Promise<string> {
 
 // ── ENDPOINTS ─────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'certificate-service' }));
+app.get('/certificates/health', (_req, res) => res.json({ status: 'ok', service: 'certificate-service' }));
 
 // GET /certificates?studentId=
 app.get('/certificates', auth, async (req, res) => {
