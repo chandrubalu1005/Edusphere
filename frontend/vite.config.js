@@ -5,10 +5,19 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Proxy /api/* to the nginx gateway (port 80) when running Vite dev server
+    // alongside the Docker stack. This means `npm run dev` in frontend/ works
+    // as long as `docker compose up` is also running.
     proxy: {
-      '/api/v1': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
+      '/api': {
+        target: 'http://localhost:80',
+        changeOrigin: true,
+        // Do NOT rewrite — the gateway expects /api/auth/, /api/users/, etc.
+      },
+      '/socket.io': {
+        target: 'http://localhost:80',
+        changeOrigin: true,
+        ws: true,
       }
     }
   }

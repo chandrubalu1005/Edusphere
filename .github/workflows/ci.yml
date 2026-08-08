@@ -18,7 +18,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-size: 18
+        node-version: 18
         cache: 'npm'
 
     - name: Install Root Dependencies
@@ -32,9 +32,8 @@ jobs:
 
     - name: Run Backend Auth Service Test
       run: |
-        cd services/auth-service
+        cd backend/services/auth-service
         npm install
-        # Simulating unit test step
         npm run start &
         sleep 5
         curl -f http://localhost:3001/health || exit 1
@@ -58,37 +57,37 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Build and Push Gateway Image
+    - name: Build and Push Frontend Image
       uses: docker/build-push-action@v4
       with:
-        context: ./gateway
+        context: ./frontend
         push: true
-        tags: edusphere/nginx-gateway:latest
+        tags: edusphere/frontend:latest
 
     - name: Build and Push Auth Service Image
       uses: docker/build-push-action@v4
       with:
-        context: ./services/auth-service
+        context: ./backend/services/auth-service
         push: true
         tags: edusphere/auth-service:latest
 
     - name: Build and Push User Service Image
       uses: docker/build-push-action@v4
       with:
-        context: ./services/user-service
+        context: ./backend/services/user-service
         push: true
         tags: edusphere/user-service:latest
 
     - name: Build and Push Course Service Image
       uses: docker/build-push-action@v4
       with:
-        context: ./services/course-service
+        context: ./backend/services/course-service
         push: true
         tags: edusphere/course-service:latest
 
     - name: Build and Push Attendance Service Image
       uses: docker/build-push-action@v4
       with:
-        context: ./services/attendance-service
+        context: ./backend/services/attendance-service
         push: true
         tags: edusphere/attendance-service:latest

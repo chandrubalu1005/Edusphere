@@ -1,0 +1,23 @@
+const mongoose = require('mongoose');
+
+const MAX_RETRIES = 10;
+const RETRY_DELAY_MS = 3000;
+
+async function connectDB(uri) {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      await mongoose.connect(uri);
+      console.log('Connected to MongoDB successfully');
+      return;
+    } catch (error) {
+      console.error(`MongoDB connection attempt ${attempt}/${MAX_RETRIES} failed: ${error.message}`);
+      if (attempt === MAX_RETRIES) {
+        console.error('Max MongoDB connection retries reached — exiting.');
+        process.exit(1);
+      }
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+    }
+  }
+}
+
+module.exports = connectDB;

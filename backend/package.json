@@ -1,0 +1,31 @@
+{
+  "name": "edusphere-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EduSphere Enterprise Backend — 15 microservices workspace root",
+  "workspaces": [
+    "services/*"
+  ],
+  "scripts": {
+    "start:auth":         "npm run start --workspace=services/auth-service",
+    "start:user":         "npm run start --workspace=services/user-service",
+    "start:course":       "npm run start --workspace=services/course-service",
+    "start:attendance":   "npm run start --workspace=services/attendance-service",
+    "start:admin":        "npm run start --workspace=services/admin-service",
+    "start:analytics":    "npm run start --workspace=services/analytics-service",
+    "start:assessment":   "npm run dev --workspace=services/assessment-service",
+    "start:assignment":   "npm run dev --workspace=services/assignment-service",
+    "start:calendar":     "npm run start --workspace=services/calendar-service",
+    "start:certificate":  "npm run dev --workspace=services/certificate-service",
+    "start:discussion":   "npm run start --workspace=services/discussion-service",
+    "start:library":      "npm run start --workspace=services/library-service",
+    "start:notification": "npm run dev --workspace=services/notification-service",
+    "start:placement":    "npm run start --workspace=services/placement-service",
+    "start:timetable":    "npm run start --workspace=services/timetable-service",
+    "seed": "node scripts/seed.js",
+    "smoke-test": "node scripts/smoke-test.js"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
+  }
+}
