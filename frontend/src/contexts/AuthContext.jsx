@@ -7,43 +7,58 @@ const AuthContext = createContext(null);
 const MOCK_USERS = [
   {
     id: 's1',
-    userId: 's1',
+    userId: 'john_doe',
     firstName: 'John',
     lastName: 'Doe',
     username: 'john_doe',
-    email: 'john@edusphere.edu',
+    email: 'john_doe@edusphere.edu',
+    altEmail: 'john@edusphere.edu',
     role: 'student',
-    department: 'CSE'
+    department: 'Computer Science'
+  },
+  {
+    id: 's2',
+    userId: 'jane_smith',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    username: 'jane_smith',
+    email: 'jane_smith@edusphere.edu',
+    altEmail: 'jane@edusphere.edu',
+    role: 'student',
+    department: 'Electronics'
   },
   {
     id: 'f1',
-    userId: 'f1',
+    userId: 'sarah_j',
     firstName: 'Sarah',
-    lastName: 'Jenkins',
+    lastName: 'Johnson',
     username: 'sarah_j',
-    email: 'sarah@edusphere.edu',
+    email: 'sarah_j@edusphere.edu',
+    altEmail: 'sarah@edusphere.edu',
     role: 'faculty',
-    department: 'CSE'
+    department: 'Computer Science'
   },
   {
     id: 'a1',
-    userId: 'a1',
+    userId: 'sys_admin',
     firstName: 'System',
     lastName: 'Administrator',
     username: 'sys_admin',
-    email: 'admin@edusphere.edu',
+    email: 'sys_admin@edusphere.edu',
+    altEmail: 'admin@edusphere.edu',
     role: 'admin',
-    department: 'IT'
+    department: 'Administration'
   },
   {
     id: 'm1',
-    userId: 'm1',
+    userId: 'dean_academic',
     firstName: 'Dean',
     lastName: 'Academic',
     username: 'dean_academic',
-    email: 'dean@edusphere.edu',
+    email: 'dean_academic@edusphere.edu',
+    altEmail: 'dean@edusphere.edu',
     role: 'management',
-    department: 'Administration'
+    department: 'Management'
   }
 ];
 
@@ -80,13 +95,18 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.warn("Real API login failed, falling back to mock user session", err);
       // Validate credentials against MOCK_USERS
-      const found = MOCK_USERS.find(u => u.email === email);
+      const cleanInput = (email || '').trim().toLowerCase();
+      const found = MOCK_USERS.find(u => 
+        u.email.toLowerCase() === cleanInput || 
+        u.altEmail?.toLowerCase() === cleanInput || 
+        u.username.toLowerCase() === cleanInput
+      );
       if (found && password === 'demo123') {
         const mockToken = "mock_jwt_token_" + found.id;
         localStorage.setItem('edu_token', mockToken);
         localStorage.setItem('edu_user', JSON.stringify(found));
         setUser(found);
-        toast.success(`Logged in as demo ${found.role} (offline mode)`);
+        toast.success(`Logged in as demo ${found.role} (${found.username})`);
         return found;
       }
       throw err;

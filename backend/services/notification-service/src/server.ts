@@ -1,3 +1,4 @@
+try { require('../../../../fix-dns.js'); } catch (e) { try { require('../../../fix-dns.js'); } catch (e2) {} }
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';

@@ -1,3 +1,4 @@
+try { require('../../../../fix-dns.js'); } catch (e) { try { require('../../../fix-dns.js'); } catch (e2) {} }
 import express from 'express';
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import cors from 'cors';

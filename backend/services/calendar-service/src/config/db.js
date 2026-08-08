@@ -1,3 +1,4 @@
+try { require('../../../../fix-dns.js'); } catch (e) { try { require('../../../fix-dns.js'); } catch (e2) {} }
 const mongoose = require('mongoose');
 
 const MAX_RETRIES = 10;
