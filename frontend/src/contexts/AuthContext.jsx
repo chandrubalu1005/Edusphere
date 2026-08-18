@@ -82,11 +82,11 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  // login expects { email, password }
-  const login = useCallback(async (email, password) => {
+  // login expects { identifier, password, domain }
+  const login = useCallback(async (identifier, password, domain) => {
     try {
-      // backend auth-service POST /login expects { email, password }
-      const res = await axios.post('/api/auth/login', { email, password });
+      // backend auth-service POST /login expects { identifier, password, domain }
+      const res = await axios.post('/api/auth/login', { identifier, password, domain });
       const { token, user: apiUser } = res.data; // backend returns { token, user }
       localStorage.setItem('edu_token', token);
       localStorage.setItem('edu_user', JSON.stringify(apiUser));
@@ -95,13 +95,16 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.warn("Real API login failed, falling back to mock user session", err);
       // Validate credentials against MOCK_USERS
-      const cleanInput = (email || '').trim().toLowerCase();
+      const cleanInput = (identifier || '').trim().toLowerCase();
       const found = MOCK_USERS.find(u => 
         u.email.toLowerCase() === cleanInput || 
         u.altEmail?.toLowerCase() === cleanInput || 
         u.username.toLowerCase() === cleanInput
       );
       if (found && password === 'demo123') {
+        if (found.role !== domain) {
+          throw new Error('Invalid credentials or access not permitted for this domain');
+        }
         const mockToken = "mock_jwt_token_" + found.id;
         localStorage.setItem('edu_token', mockToken);
         localStorage.setItem('edu_user', JSON.stringify(found));

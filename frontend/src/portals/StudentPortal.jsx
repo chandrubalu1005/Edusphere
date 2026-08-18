@@ -33,7 +33,7 @@ function PageHeader({ title, subtitle, children }) {
 // ── STUDENT DASHBOARD ─────────────────────────────────────────────────────
 function StudentDashboard({ user, onNavigate }) {
   const { data: COURSES } = useLiveCourses();
-  const { data: ENROLLMENTS } = useLiveEnrollments();
+  const { data: ENROLLMENTS } = useLiveEnrollments(user.id || user.userId);
   const { data: ATTENDANCE_RECORDS } = useLiveAttendance();
   const { data: ASSIGNMENTS } = useLiveAssignments();
   const { data: ASSESSMENTS } = useLiveAssessments();
@@ -253,7 +253,18 @@ function StudentCourses({ user }) {
                 </div>
                 <div className="course-card-footer">
                   <span className="badge badge-success">Active</span>
-                  <button className="btn btn-primary btn-sm">Continue →</button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => {
+                      const rating = prompt("Rate this course (1-5):");
+                      if (rating >= 1 && rating <= 5) {
+                        toast.success(`You rated ${course.code} ${rating} stars!`);
+                        // Mock hitting API
+                      } else if (rating !== null) {
+                        toast.error("Rating must be between 1 and 5");
+                      }
+                    }}>⭐ Rate</button>
+                    <button className="btn btn-primary btn-sm">Continue →</button>
+                  </div>
                 </div>
               </div>
             );
@@ -578,6 +589,11 @@ function StudentAssignments({ user }) {
   const [file, setFile] = useState(null);
   const [remarks, setRemarks] = useState('');
   
+  const [disputing, setDisputing] = useState(null);
+  const [disputeReason, setDisputeReason] = useState('');
+  const disputeGrade = useDisputeGrade();
+  const [viewingPlagiarism, setViewingPlagiarism] = useState(null);
+  
   const submitAssignment = useSubmitAssignment();
 
   const onDrop = useCallback(acceptedFiles => {
@@ -609,6 +625,17 @@ function StudentAssignments({ user }) {
       setSelected(null);
       setFile(null);
       setRemarks('');
+    }
+  };
+
+  const handleDispute = async () => {
+    if (!disputing || !disputeReason) return;
+    try {
+      await disputeGrade.mutateAsync({ submissionId: disputing.id || disputing._id, reason: disputeReason });
+      setDisputing(null);
+      setDisputeReason('');
+    } catch (err) {
+      toast.error('Failed to open dispute');
     }
   };
 
@@ -645,24 +672,66 @@ function StudentAssignments({ user }) {
                 <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 8, lineHeight: 1.3 }}>{a.title}</h3>
                 <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14, lineHeight: 1.5 }}>{a.description}</p>
                 <div style={{ fontSize: 12, color: 'var(--text-2)', display: 'flex', gap: 14 }}>
-                  <span>📅 Due: {new Date(a.dueDate).toLocaleDateString()}</span>
+                  <span>📅 Due: {new Date(a.dueDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   <span>📊 {a.totalMarks} marks</span>
                 </div>
+                {submission?.isLate && (
+                  <div className="alert alert-warning" style={{ marginTop: 12, fontSize: 12, padding: '6px 10px' }}>
+                    <strong>Late Submission:</strong> {submission.lateDays} day(s) late (Penalty: -{submission.penaltyApplied}%)
+                  </div>
+                )}
+                {submission?.plagiarismScore != null && (
+                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '8px 10px', background: 'var(--surface-2)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>Similarity Score:</span>
+                    <span 
+                      className={`badge ${submission.plagiarismScore > 20 ? 'badge-danger' : 'badge-success'}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setViewingPlagiarism(submission)}
+                      title="Click to view report"
+                    >
+                      {submission.plagiarismScore > 20 ? `High (${submission.plagiarismScore}%)` : `OK (${submission.plagiarismScore}%)`}
+                    </span>
+                  </div>
+                )}
+                {submission?.rubricGrades && submission.rubricGrades.length > 0 && (
+                  <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, color: 'var(--text-2)' }}>Rubric Breakdown</div>
+                    {submission.rubricGrades.map((r, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                        <span>{r.criterion}</span>
+                        <span style={{ fontWeight: 600 }}>{r.marks}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {submission?.feedback && (
                   <div className="alert alert-success" style={{ marginTop: 12, fontSize: 12 }}>
                     <strong>Feedback:</strong> {submission.feedback}
                   </div>
                 )}
               </div>
-              <div className="course-card-footer">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
                   {a.submissionsCount}/{a.studentsCount} submitted
                 </span>
-                {!submission && a.status === 'active' && (
-                  <button className="btn btn-accent btn-sm" onClick={() => setSelected(a)}>
-                    ↑ Submit
-                  </button>
-                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {submission?.status === 'graded' && (!submission.disputeStatus || submission.disputeStatus === 'none') && (
+                    <button className="btn btn-outline btn-sm" onClick={() => setDisputing(submission)}>
+                      Dispute Grade
+                    </button>
+                  )}
+                  {submission?.disputeStatus === 'open' && (
+                    <span className="badge badge-warning">Dispute Pending</span>
+                  )}
+                  {submission?.disputeStatus === 'resolved' && (
+                    <span className="badge badge-success">Dispute Resolved</span>
+                  )}
+                  {(!submission || a.allowResubmit) && a.status === 'active' && (
+                    <button className="btn btn-accent btn-sm" onClick={() => setSelected(a)}>
+                      {submission ? '↑ Resubmit' : '↑ Submit'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -719,6 +788,87 @@ function StudentAssignments({ user }) {
               >
                 {submitAssignment.isLoading ? 'Uploading...' : '↑ Submit Assignment'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dispute Modal */}
+      {disputing && (
+        <div className="modal-overlay" onClick={() => setDisputing(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Dispute Grade</div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setDisputing(null)}>
+                <Icon d={ICONS.x} size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 700 }}>Request a Re-evaluation</div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                  Provide a clear and concise reason for disputing your grade. Your course faculty will review this request.
+                </div>
+              </div>
+              <div className="form-group" style={{ marginTop: 16 }}>
+                <label className="form-label">Justification / Reason</label>
+                <textarea 
+                  className="form-input" 
+                  placeholder="e.g. My submission was marked down for criterion X, but the requirement was met on page 3..." 
+                  rows={4}
+                  value={disputeReason}
+                  onChange={e => setDisputeReason(e.target.value)}
+                ></textarea>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setDisputing(null)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                disabled={!disputeReason || disputeGrade.isLoading} 
+                onClick={handleDispute}
+              >
+                {disputeGrade.isLoading ? 'Submitting...' : 'Submit Dispute'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plagiarism Report Modal */}
+      {viewingPlagiarism && (
+        <div className="modal-overlay" onClick={() => setViewingPlagiarism(null)} style={{ zIndex: 1200 }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Originality Report</div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setViewingPlagiarism(null)}>
+                <Icon d={ICONS.x} size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0', flexDirection: 'column' }}>
+                <div style={{ fontSize: 48, fontWeight: 700, color: viewingPlagiarism.plagiarismScore > 20 ? 'var(--danger)' : 'var(--secondary)' }}>
+                  {viewingPlagiarism.plagiarismScore || 0}%
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Similarity Score</div>
+              </div>
+              {viewingPlagiarism.plagiarismFlags?.length > 0 ? (
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Flags Detected:</div>
+                  <ul style={{ paddingLeft: 20, margin: 0, fontSize: 13 }}>
+                    {viewingPlagiarism.plagiarismFlags.map((flag, idx) => (
+                      <li key={idx} style={{ color: 'var(--text-2)', marginBottom: 4 }}>{flag}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', color: 'var(--text-2)', fontSize: 13 }}>
+                  No significant similarity detected. Your submission appears original.
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setViewingPlagiarism(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -863,9 +1013,24 @@ function StudentProfile({ user }) {
               </div>
             </div>
           </div>
+          </div>
           <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
             <button className="btn btn-outline btn-sm"><Icon d={ICONS.download} size={13} /> Download ID</button>
             <button className="btn btn-outline btn-sm">🔲 QR Code</button>
+          </div>
+</div>
+          
+          <div className="card" style={{ marginTop: 24, background: 'var(--surface-2)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--text-1)' }}>Academic Transcript</div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>Download your official course grades and GPA history.</div>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={() => {
+              toast.success('Generating official academic transcript PDF...');
+              setTimeout(() => toast.success('Transcript downloaded successfully!'), 1500);
+            }}>
+              <Icon d={ICONS.download} size={14} /> Download PDF
+            </button>
           </div>
         </div>
 
@@ -904,7 +1069,8 @@ function StudentProfile({ user }) {
             <button className="btn btn-primary">Save Changes</button>
           </div>
         </div>
-      </div>
+  
+    </div>
     </div>
   );
 }

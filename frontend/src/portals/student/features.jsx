@@ -18,9 +18,11 @@ import {
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
   useLivePlacementDrives, useLivePlacementApplications, useLiveNotifications,
-  useLiveDiscussionThreads, useLiveThreadDetails
+  useLiveDiscussionThreads, useLiveThreadDetails,
+  useLiveLeaveRecords, useLiveLeaveBalance, useLiveCourses
 } from '../../api/liveData.js';
-import { useCreateReply } from '../../api/hooks.js';
+import { useCreateReply, useApplyForLeave, useWithdrawLeave } from '../../api/hooks.js';
+import toast from 'react-hot-toast';
 
 // ── WEEKLY TIMETABLE ────────────────────────────────────────────────────────
 export function StudentTimetable({ user }) {
@@ -939,6 +941,169 @@ export function StudentPlacement({ user }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── STUDENT LEAVE MANAGEMENT ───────────────────────────────────────────────
+export function StudentLeaveManagement({ user }) {
+  const { data: leaves } = useLiveLeaveRecords({ role: 'student', userId: user.id });
+  const { data: balanceData } = useLiveLeaveBalance(user.id);
+  const { data: ENROLLMENTS } = useLiveCourses();
+  
+  const applyMutation = useApplyForLeave();
+  const withdrawMutation = useWithdrawLeave();
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [type, setType] = useState('Casual Leave');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [reason, setReason] = useState('');
+  
+  const daysCount = useMemo(() => {
+    if (from && to) {
+      const d1 = new Date(from);
+      const d2 = new Date(to);
+      const diff = d2 - d1;
+      if (diff >= 0) {
+        return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+      }
+    }
+    return 0;
+  }, [from, to]);
+
+  const [affectedCourses, setAffectedCourses] = useState([]);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    applyMutation.mutate({
+      requesterId: user.id,
+      requesterRole: 'student',
+      leaveType: type,
+      startDate: from,
+      endDate: to,
+      daysCount,
+      affectedCourses,
+      reason
+    });
+    setModalOpen(false);
+  }
+
+  function handleWithdraw(id) {
+    withdrawMutation.mutate({ id, requesterId: user.id });
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Leave Management"
+        subtitle="Apply for leave, check your balance, and track approvals"
+        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Leave Management' }]}
+      >
+        <button className="btn btn-primary btn-sm" onClick={() => setModalOpen(true)}>Apply for Leave</button>
+      </PageHeader>
+
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+        {balanceData.map(b => (
+          <StatCard key={b.type} label={`${b.type} Balance`} value={`${b.remaining} / ${b.total}`} icon="📅" trend={`${b.used} used`} trendType="neutral" />
+        ))}
+        {balanceData.length === 0 && (
+           <StatCard label="Leave Policy" value="Loading..." icon="📅" />
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
+        <div className="card" style={{ padding: 20 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 16, color: 'var(--text-1)' }}>Leave History</h3>
+          <DataTable
+            columns={[
+              { key: 'leaveType', label: 'Type' },
+              { key: 'startDate', label: 'From Date' },
+              { key: 'endDate', label: 'To Date' },
+              { key: 'daysCount', label: 'Days', width: 70 },
+              { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
+              { key: 'id', label: 'Action', render: (v, row) => (
+                 row.status === 'pending' ? (
+                   <button className="btn btn-outline btn-sm" onClick={() => handleWithdraw(row._id || row.id)}>Withdraw</button>
+                 ) : null
+              ), sortable: false }
+            ]}
+            data={leaves}
+          />
+        </div>
+
+        <div className="card" style={{ padding: 20, alignSelf: 'start' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 12, color: 'var(--text-1)' }}>Upcoming Leaves</h3>
+          {leaves.filter(l => l.status === 'approved' && new Date(l.startDate) >= new Date()).length === 0 ? (
+            <p style={{ color: 'var(--text-3)', fontSize: 13 }}>No upcoming approved leaves.</p>
+          ) : (
+            leaves.filter(l => l.status === 'approved' && new Date(l.startDate) >= new Date()).map(l => (
+              <div key={l._id || l.id} style={{ padding: 12, background: 'var(--surface-2)', borderRadius: 8, marginBottom: 8, borderLeft: '3px solid var(--accent)' }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 14 }}>{l.leaveType}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>{l.startDate} to {l.endDate}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <Modal open={modalOpen} title="Apply for Leave" onClose={() => setModalOpen(false)}>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Leave Type</label>
+            <select className="form-select" value={type} onChange={e => setType(e.target.value)}>
+              {balanceData.map(b => <option key={b.type} value={b.type}>{b.type}</option>)}
+              {balanceData.length === 0 && <option value="Casual Leave">Casual Leave</option>}
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">From Date</label>
+              <input type="date" className="form-input" required value={from} onChange={e => setFrom(e.target.value)} />
+            </div>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">To Date</label>
+              <input type="date" className="form-input" required value={to} onChange={e => setTo(e.target.value)} />
+            </div>
+          </div>
+          {daysCount > 0 && (
+             <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--text-2)' }}>
+               Total days: <strong>{daysCount}</strong>
+               {(() => {
+                  const bal = balanceData.find(b => b.type === type);
+                  if (bal && bal.remaining < daysCount) {
+                     return <span style={{ color: 'var(--danger)', marginLeft: 8 }}>⚠️ Exceeds quota!</span>;
+                  }
+                  return <span style={{ color: 'var(--success)', marginLeft: 8 }}>✓ Within quota</span>;
+               })()}
+             </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">Affected Courses (Optional)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {ENROLLMENTS.map(c => (
+                 <label key={c.id || c._id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                   <input type="checkbox" checked={affectedCourses.includes(c.id || c._id)} onChange={(e) => {
+                     if (e.target.checked) setAffectedCourses([...affectedCourses, c.id || c._id]);
+                     else setAffectedCourses(affectedCourses.filter(id => id !== (c.id || c._id)));
+                   }} />
+                   {c.code || c.title}
+                 </label>
+              ))}
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Reason</label>
+            <textarea className="form-textarea" required value={reason} onChange={e => setReason(e.target.value)} rows={3} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+            <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={applyMutation.isLoading}>
+              {applyMutation.isLoading ? 'Submitting...' : 'Submit Application'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

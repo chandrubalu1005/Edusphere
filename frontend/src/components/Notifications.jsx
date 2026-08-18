@@ -4,9 +4,12 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppStore } from '../store';
 
+import { useQueryClient } from '@tanstack/react-query';
+
 export default function Notifications() {
   const { user } = useAuth();
   const incrementUnread = useAppStore((state) => state.incrementUnread);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!user) return;
@@ -37,6 +40,30 @@ export default function Notifications() {
       incrementUnread();
     });
 
+    // ── Live Domain Events ────────────────────────────────────────────────
+    socket.on('leave.newRequest', (data) => {
+      queryClient.invalidateQueries({ queryKey: ['leaveRequests'] });
+      toast.success('New leave request received!');
+    });
+    
+    socket.on('leave.statusChanged', (data) => {
+      queryClient.invalidateQueries({ queryKey: ['leaveRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveQuota'] });
+      toast(`Leave request ${data.status}`, { icon: data.status === 'approved' ? '✅' : '❌' });
+    });
+
+    socket.on('grade.updated', (data) => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['courseGrades'] });
+      toast.success('Your assignment has been graded!');
+    });
+
+    socket.on('submission.received', (data) => {
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      // Toast optional if it's too noisy for faculty
+    });
+
     socket.on('connect_error', (err) => {
       console.warn('Socket connection error (expected if backend is down):', err.message);
     });
@@ -44,7 +71,7 @@ export default function Notifications() {
     return () => {
       socket.disconnect();
     };
-  }, [user, incrementUnread]);
+  }, [user, incrementUnread, queryClient]);
 
   return null; // This is a headless component
 }

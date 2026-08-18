@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 3014;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_analytics';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
-app.use('/', analyticsRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'analytics-service' }));
+app.use('/', analyticsRoutes);
 
 async function startServer() {
   await connectDB(MONGO_URI);

@@ -2,6 +2,7 @@ try { require('../../../../fix-dns.js'); } catch (e) { try { require('../../../f
 import express from 'express';
 import mongoose, { Schema, Document } from 'mongoose';
 import cors from 'cors';
+
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
@@ -11,6 +12,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import winston from 'winston';
+import amqp from 'amqplib';
 
 dotenv.config();
 
@@ -56,7 +58,7 @@ const CertificateSchema = new Schema<ICertificate>({
   isRevoked:        { type: Boolean, default: false },
   revokedReason:    String,
   issuedAt:         { type: Date, default: Date.now },
-  expiresAt:        Date,
+  expiresAt:        { type: Date },
   fileUrl:          String,
 });
 
@@ -322,6 +324,59 @@ app.patch('/certificates/:id/revoke', auth, requireRole('admin'), async (req, re
   }
 });
 
+// ── RabbitMQ Consumer ──────────────────────────────────────────────────────
+async function consumeEvents() {
+  if (!process.env.RABBITMQ_URL) {
+    logger.warn('RABBITMQ_URL not set — auto-issuance disabled');
+    return;
+  }
+  try {
+    const conn = await amqp.connect(process.env.RABBITMQ_URL);
+    const ch   = await conn.createChannel();
+    await ch.assertExchange('domain_events', 'topic', { durable: true });
+    
+    const q = await ch.assertQueue('certificate_auto_issue', { durable: true });
+    await ch.bindQueue(q.queue, 'domain_events', 'assessment.graded');
+    
+    ch.consume(q.queue, async (msg) => {
+      if (!msg) return;
+      try {
+        const event = JSON.parse(msg.content.toString());
+        // Auto issue if passed
+        if (event.passed) {
+          const courseId = event.courseId;
+          const studentId = event.studentId;
+          
+          // Check if already issued
+          const existing = await Certificate.findOne({ studentId, courseId });
+          if (!existing) {
+            const grade = getGrade(event.percentage);
+            const certificateNo = generateCertNo(courseId);
+            const verificationHash = crypto.createHash('sha256').update(`${certificateNo}${studentId}${courseId}${Date.now()}`).digest('hex');
+
+            const cert = await Certificate.create({
+              certificateNo, studentId, studentName: event.studentName || studentId, courseId, courseTitle: event.courseTitle || courseId,
+              grade, score: event.percentage, issuedBy: 'System', verificationHash
+            });
+
+            generateCertificatePDF(cert).then(async (filename) => {
+              await Certificate.findByIdAndUpdate(cert._id, { fileUrl: `/certs/${filename}` });
+              logger.info(`Auto-issued certificate PDF generated: ${filename}`);
+            }).catch(err => logger.error('PDF generation failed', err));
+          }
+        }
+        ch.ack(msg);
+      } catch (err) {
+        logger.error('Failed to process event', err);
+        ch.nack(msg, false, false);
+      }
+    });
+  } catch (err) {
+    logger.error('RabbitMQ consumer failed, retrying in 10s...', err);
+    setTimeout(consumeEvents, 10000);
+  }
+}
+
 async function connectMongoWithRetry(uri: string, maxRetries = 10, delay = 3000): Promise<void> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -338,6 +393,7 @@ async function connectMongoWithRetry(uri: string, maxRetries = 10, delay = 3000)
 
 async function bootstrap() {
   await connectMongoWithRetry(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_certificates');
+  await consumeEvents();
   const PORT = process.env.PORT || 3007;
   app.listen(PORT, () => logger.info(`🏆 Certificate Service running on :${PORT}`));
 }

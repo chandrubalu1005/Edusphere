@@ -9,8 +9,14 @@ import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import winston from 'winston';
 import amqp from 'amqplib';
+import webpush from 'web-push';
 
 dotenv.config();
+
+// Web Push setup
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || 'BHwg1I4s-HOjfkKVuz7pGwRmMxTVMFBNmH-CHAYwhS7k4JVQHiVviXnz19RdzLJJB_liWhoT8tYyzEEp5m60f-U';
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || 'KMdoUSat_DsOPxKSLCLVkXIDkj-lfF4FqIybh0QH4oY';
+webpush.setVapidDetails('mailto:support@edusphere.edu', vapidPublicKey, vapidPrivateKey);
 
 // ── Logger ─────────────────────────────────────────────────────────────────
 const logger = winston.createLogger({
@@ -46,8 +52,26 @@ const NotificationSchema = new Schema<INotification>({
 
 // TTL index — auto-delete notifications after 90 days
 NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
+// Compound index for frequent unread count queries
+NotificationSchema.index({ userId: 1, read: 1 });
 
 const Notification = mongoose.model<INotification>('Notification', NotificationSchema);
+
+// ── Web Push Subscription Schema ───────────────────────────────────────────
+export interface IPushSubscription extends Document {
+  userId: string;
+  endpoint: string;
+  keys: { p256dh: string; auth: string; };
+}
+const PushSubscriptionSchema = new Schema<IPushSubscription>({
+  userId: { type: String, required: true, index: true },
+  endpoint: { type: String, required: true, unique: true },
+  keys: {
+    p256dh: { type: String, required: true },
+    auth: { type: String, required: true },
+  }
+});
+const PushSubscription = mongoose.model<IPushSubscription>('PushSubscription', PushSubscriptionSchema);
 
 // ── App Setup ──────────────────────────────────────────────────────────────
 const app  = express();
@@ -159,6 +183,23 @@ app.post('/notifications', async (req, res) => {
     const count = await Notification.countDocuments({ userId, read: false });
     io.to(`user:${userId}`).emit('unread_count', count);
 
+    // Send Web Push Notification
+    const subscriptions = await PushSubscription.find({ userId });
+    for (const sub of subscriptions) {
+      try {
+        await webpush.sendNotification({
+          endpoint: sub.endpoint,
+          keys: sub.keys
+        }, JSON.stringify({ title, body: description, type, url: '/' }));
+      } catch (err: any) {
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await PushSubscription.deleteOne({ _id: sub._id });
+        } else {
+          logger.error('Web push failed', err);
+        }
+      }
+    }
+
     // Queue email notification via RabbitMQ (if configured)
     if (process.env.RABBITMQ_URL) {
       try {
@@ -172,6 +213,25 @@ app.post('/notifications', async (req, res) => {
     res.status(201).json(notif);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create notification' });
+  }
+});
+
+// POST /notifications/subscribe - register web push
+app.post('/notifications/subscribe', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { subscription } = req.body;
+    if (!subscription || !subscription.endpoint) {
+      return res.status(400).json({ error: 'Invalid subscription object' });
+    }
+    await PushSubscription.updateOne(
+      { endpoint: subscription.endpoint },
+      { userId, endpoint: subscription.endpoint, keys: subscription.keys },
+      { upsert: true }
+    );
+    res.status(201).json({ message: 'Subscribed' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to subscribe' });
   }
 });
 
@@ -268,12 +328,69 @@ async function consumeEvents() {
         io.to(`user:${event.userId}`).emit('new_notification', notif);
         const count = await Notification.countDocuments({ userId: event.userId, read: false });
         io.to(`user:${event.userId}`).emit('unread_count', count);
+        
+        // Web push
+        const subscriptions = await PushSubscription.find({ userId: event.userId });
+        for (const sub of subscriptions) {
+          try {
+            await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify({ title: event.title, body: event.description, type: event.type, url: '/' }));
+          } catch (err: any) {
+            if (err.statusCode === 404 || err.statusCode === 410) await PushSubscription.deleteOne({ _id: sub._id });
+          }
+        }
+        
         ch.ack(msg);
       } catch (err) {
         logger.error('Failed to process event', err);
         ch.nack(msg, false, false); // dead letter
       }
     });
+
+    // ── Relay custom domain events to Socket.IO ──────────────────────────────
+    const RELAY_QUEUE = 'socket_relay_events';
+    await ch.assertQueue(RELAY_QUEUE, { durable: true, exclusive: false });
+    await ch.assertExchange('domain_events', 'topic', { durable: true });
+    
+    // Bind the relay queue to specific topics that need real-time UI updates
+    await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'leave.requested');
+    await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'leave.statusChanged');
+    await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'assessment.graded');
+    await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'submission.received');
+
+    ch.consume(RELAY_QUEUE, async (msg) => {
+      if (!msg) return;
+      try {
+        const routingKey = msg.fields.routingKey;
+        const eventData = JSON.parse(msg.content.toString());
+
+        if (routingKey === 'leave.requested') {
+          // Emit to faculty owner room
+          if (eventData.facultyOwnerId) {
+            io.to(`user:${eventData.facultyOwnerId}`).emit('leave.newRequest', eventData);
+          }
+        } else if (routingKey === 'leave.statusChanged') {
+          // Emit to requester
+          if (eventData.requesterId) {
+            io.to(`user:${eventData.requesterId}`).emit('leave.statusChanged', eventData);
+          }
+        } else if (routingKey === 'assessment.graded') {
+          // Emit to student
+          if (eventData.studentId) {
+            io.to(`user:${eventData.studentId}`).emit('grade.updated', eventData);
+          }
+        } else if (routingKey === 'submission.received') {
+          // Emit to course faculty
+          if (eventData.facultyOwnerId) {
+            io.to(`user:${eventData.facultyOwnerId}`).emit('submission.received', eventData);
+          }
+        }
+        ch.ack(msg);
+      } catch (err) {
+        logger.error(`Failed to process relay event`, err);
+        ch.nack(msg, false, false);
+      }
+    });
+
   } catch (err) {
     logger.error('RabbitMQ consumer failed, retrying in 10s…', err);
     setTimeout(consumeEvents, 10_000);

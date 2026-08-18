@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 const User = require('../models/User');
 const { publishEvent } = require('../config/rabbitmq');
 
@@ -17,12 +19,17 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'User already exists' });
     }
 
+    // Security: Only allow student/faculty self-registration.
+    // admin and management roles must be assigned by an existing admin.
+    const ALLOWED_SELF_REGISTER_ROLES = ['student', 'faculty'];
+    const assignedRole = ALLOWED_SELF_REGISTER_ROLES.includes(role) ? role : 'student';
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
-      role: role || 'student'
+      role: assignedRole
     });
 
     await newUser.save();
@@ -58,19 +65,38 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    const { identifier, password, domain } = req.body;
+    if (!identifier || !password || !domain) {
+      return res.status(400).json({ error: 'Identifier, password, and domain are required' });
     }
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const validDomains = ['student', 'faculty', 'admin', 'management'];
+    if (!validDomains.includes(domain)) {
+      return res.status(400).json({ error: 'Invalid domain' });
+    }
+
+    const user = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
+    if (!user || user.role !== domain) {
+      // Intentionally generic error message to prevent enumeration
+      return res.status(401).json({ error: 'Invalid credentials or access not permitted for this domain' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials or access not permitted for this domain' });
+    }
+
+    if (user.isTwoFactorEnabled) {
+      const tempToken = jwt.sign(
+        { userId: user._id, role: user.role, email: user.email, username: user.username, isTemp: true },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+      return res.json({
+        requires2FA: true,
+        tempToken,
+        message: '2FA required'
+      });
     }
 
     const token = jwt.sign(
@@ -87,6 +113,110 @@ exports.login = async (req, res) => {
 
     res.json({
       token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.setup2FA = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const secret = speakeasy.generateSecret({
+      name: `EduSphere (${user.email})`
+    });
+    
+    user.twoFactorSecret = secret.base32;
+    await user.save();
+    
+    qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
+      if (err) return res.status(500).json({ error: 'Failed to generate QR Code' });
+      res.json({
+        secret: secret.base32,
+        qrCode: data_url
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.verify2FA = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token
+    });
+    
+    if (verified) {
+      user.isTwoFactorEnabled = true;
+      await user.save();
+      return res.json({ message: '2FA enabled successfully' });
+    } else {
+      return res.status(400).json({ error: 'Invalid 2FA token' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.login2FA = async (req, res) => {
+  try {
+    const { tempToken, token } = req.body;
+    if (!tempToken || !token) {
+      return res.status(400).json({ error: 'tempToken and token are required' });
+    }
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, JWT_SECRET);
+      if (!decoded.isTemp) throw new Error();
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired temporary token' });
+    }
+    
+    const user = await User.findById(decoded.userId);
+    if (!user || !user.isTwoFactorEnabled) {
+      return res.status(401).json({ error: '2FA is not enabled for this user' });
+    }
+    
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token
+    });
+    
+    if (!verified) {
+      return res.status(401).json({ error: 'Invalid 2FA token' });
+    }
+    
+    const finalToken = jwt.sign(
+      { userId: user._id, role: user.role, email: user.email, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    publishEvent('user.login', {
+      userId: user._id,
+      username: user.username,
+      role: user.role
+    });
+
+    res.json({
+      token: finalToken,
       user: {
         id: user._id,
         username: user.username,

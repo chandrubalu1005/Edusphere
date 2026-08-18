@@ -10,9 +10,13 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
+
 // System
 router.get('/health',  authMiddleware, requireAdmin, adminController.getHealth);
 router.post('/backup', authMiddleware, requireAdmin, adminController.triggerBackup);
+router.get('/permission-matrix', authMiddleware, requireAdmin, adminController.getPermissionMatrix);
 
 // Audit Logs
 router.get('/audit-logs', authMiddleware, requireAdmin, adminController.getAuditLogs);
@@ -33,5 +37,6 @@ router.patch('/semesters/:id/activate', authMiddleware, requireAdmin, adminContr
 router.get('/users',  authMiddleware, requireAdmin, adminController.getUsers);
 router.post('/users', authMiddleware, requireAdmin, adminController.createUser);
 router.patch('/users/bulk', authMiddleware, requireAdmin, adminController.bulkUpdateUsers);
+router.post('/users/bulk/csv', authMiddleware, requireAdmin, upload.single('file'), adminController.bulkCreateUsersCsv);
 
 module.exports = router;

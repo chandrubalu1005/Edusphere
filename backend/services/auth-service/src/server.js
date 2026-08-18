@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 require('dotenv').config();
 
 const app = express();
+require('./config/passport');
 app.use(express.json());
 app.use(cors());
 
@@ -26,8 +27,8 @@ const authLimiter = rateLimit({
 // Register routes
 app.use('/register', authLimiter);
 app.use('/login', authLimiter);
-app.use('/', authRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'auth-service' }));
+app.use('/', authRoutes);
 
 // Swagger API Documentation
 const swaggerDocument = {
@@ -143,3 +144,4 @@ async function startServer() {
 }
 
 startServer();
+

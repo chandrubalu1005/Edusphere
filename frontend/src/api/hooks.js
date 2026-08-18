@@ -67,6 +67,20 @@ export const useCreateCourse = () => {
   });
 };
 
+export const useUpdateCourse = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...courseData }) => {
+      const res = await api.put(`/courses/${id}`, courseData);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Course updated successfully');
+      queryClient.invalidateQueries(['courses']);
+    },
+  });
+};
+
 export const useApproveCourse = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -251,6 +265,17 @@ export const useAssignments = (courseId) => {
   });
 };
 
+export const useAssignmentStats = () => {
+  return useQuery({
+    queryKey: ['assignmentStats'],
+    queryFn: async () => {
+      const res = await api.get('/assignments/stats');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
 export const useSubmitAssignment = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -271,6 +296,33 @@ export const useSubmitAssignment = () => {
   });
 };
 
+export const useDisputeGrade = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ submissionId, reason }) => {
+      const res = await api.post(`/submissions/${submissionId}/dispute`, { reason });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Grade dispute submitted. Your faculty will be notified.');
+      queryClient.invalidateQueries(['assignments']);
+    },
+  });
+};
+export const useResolveDispute = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ submissionId, resolution, newGrade }) => {
+      const res = await api.patch(`/submissions/${submissionId}/resolve-dispute`, { resolution, newGrade });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Dispute resolved');
+      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries(['assignmentSubmissions']);
+    },
+  });
+};
 // ── Certificates ──────────────────────────────────────────────────────────
 export const useCertificates = () => {
   return useQuery({
@@ -735,7 +787,23 @@ export const useGradeSubmission = () => {
     },
     onSuccess: () => {
       toast.success('Submission graded successfully!');
-      queryClient.invalidateQueries(['submissions']);
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['assignmentStats'] });
+    },
+  });
+};
+
+export const useBulkGradeAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ assignmentId, grades }) => {
+      const res = await api.post(`/assignments/${assignmentId}/bulk-grade`, { grades });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Bulk grading successful!');
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['assignmentStats'] });
     },
   });
 };
@@ -793,3 +861,84 @@ export const useBulkEnroll = () => {
     },
   });
 };
+
+// ── Leave Management ──────────────────────────────────────────────────────
+export const useLeaveRecords = (params) => {
+  return useQuery({
+    queryKey: ['leaveRecords', params],
+    queryFn: async () => {
+      const res = await api.get('/leave/requests', { params });
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useLeaveBalance = (userId) => {
+  return useQuery({
+    queryKey: ['leaveBalance', userId],
+    queryFn: async () => {
+      const res = await api.get(`/leave/quota/${userId}`);
+      return res.data;
+    },
+    enabled: Boolean(userId),
+    retry: 1,
+  });
+};
+
+export const useApplyForLeave = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/leave/requests', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Leave application submitted!');
+      queryClient.invalidateQueries(['leaveRecords']);
+    },
+  });
+};
+
+export const useApproveLeave = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, approverId, isOverride }) => {
+      const res = await api.patch(`/leave/requests/${id}/approve`, { approverId, isOverride });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Leave request approved!');
+      queryClient.invalidateQueries(['leaveRecords']);
+    },
+  });
+};
+
+export const useRejectLeave = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, approverId, rejectionReason, isOverride }) => {
+      const res = await api.patch(`/leave/requests/${id}/reject`, { approverId, rejectionReason, isOverride });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Leave request rejected.');
+      queryClient.invalidateQueries(['leaveRecords']);
+    },
+  });
+};
+
+export const useWithdrawLeave = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, requesterId }) => {
+      const res = await api.patch(`/leave/requests/${id}/withdraw`, { requesterId });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Leave request withdrawn.');
+      queryClient.invalidateQueries(['leaveRecords']);
+    },
+  });
+};
+

@@ -2,6 +2,8 @@ const AuditLog   = require('../models/AuditLog');
 const Department = require('../models/Department');
 const Semester   = require('../models/Semester');
 const axios      = require('axios');
+const csv = require('csv-parser');
+const stream = require('stream');
 
 // ── Internal service URLs ──────────────────────────────────────────────────
 const AUTH_URL    = process.env.AUTH_SERVICE_URL    || 'http://localhost:3001';
@@ -216,4 +218,71 @@ exports.bulkUpdateUsers = async (req, res) => {
   } catch (error) {
     res.status(error.response?.status || 502).json({ error: error.response?.data?.error || 'Failed to bulk update users' });
   }
+};
+
+exports.bulkCreateUsersCsv = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No CSV file uploaded' });
+
+    const results = [];
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(req.file.buffer);
+
+    bufferStream
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', async () => {
+        let successCount = 0;
+        let failCount = 0;
+        const token = req.headers.authorization;
+
+        for (const user of results) {
+          try {
+            await axios.post(`${AUTH_URL}/register`, user, {
+              headers: { Authorization: token, 'Content-Type': 'application/json' },
+              timeout: 5000
+            });
+            successCount++;
+          } catch (err) {
+            failCount++;
+          }
+        }
+        
+        const log = new AuditLog({
+          action: 'users_bulk_imported',
+          userId: req.user.userId,
+          username: req.user.username,
+          details: `CSV Import: ${successCount} succeeded, ${failCount} failed`
+        });
+        await log.save();
+
+        res.json({ message: 'CSV Import Completed', successCount, failCount });
+      });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getPermissionMatrix = (req, res) => {
+  // Return read-only matrix mapping roles to domains/features
+  const matrix = {
+    roles: ['student', 'faculty', 'admin', 'management'],
+    domains: {
+      auth: { student: ['login', '2fa'], faculty: ['login', '2fa'], admin: ['login', '2fa'], management: ['login', '2fa'] },
+      user: { student: ['read_own', 'update_own'], faculty: ['read_own', 'update_own'], admin: ['read_all', 'update_all'], management: ['read_all'] },
+      course: { student: ['read'], faculty: ['read', 'create', 'update'], admin: ['read_all', 'update_all'], management: ['read_all'] },
+      assessment: { student: ['take_exam'], faculty: ['create_exam', 'grade'], admin: ['manage_all'], management: ['read_reports'] },
+      assignment: { student: ['submit', 'peer_review'], faculty: ['create', 'grade'], admin: ['manage_all'], management: ['read_reports'] },
+      certificate: { student: ['view_own', 'download'], faculty: ['issue'], admin: ['manage_all'], management: ['view_all'] },
+      attendance: { student: ['scan_qr', 'view_own'], faculty: ['generate_qr', 'edit_records'], admin: ['manage_all'], management: ['view_reports'] },
+      timetable: { student: ['view_own'], faculty: ['view_own'], admin: ['create', 'edit', 'resolve_conflicts'], management: ['view_all'] },
+      calendar: { student: ['view'], faculty: ['view'], admin: ['create_events', 'edit_events'], management: ['view'] },
+      library: { student: ['search', 'reserve'], faculty: ['search', 'reserve'], admin: ['manage_books', 'manage_holds'], management: ['view_stats'] },
+      placement: { student: ['build_resume', 'book_slot'], faculty: ['view_slots'], admin: ['manage_drives', 'manage_slots'], management: ['view_reports'] },
+      discussion: { student: ['post', 'reply', 'upvote'], faculty: ['post', 'reply', 'moderate'], admin: ['manage_forums', 'moderate'], management: ['view'] },
+      analytics: { student: ['view_own_risk'], faculty: ['view_course_risk'], admin: ['view_all_risk'], management: ['view_all_kpis', 'export_reports'] },
+      admin: { student: [], faculty: [], admin: ['manage_system', 'bulk_import', 'view_audit_logs'], management: [] }
+    }
+  };
+  res.json(matrix);
 };

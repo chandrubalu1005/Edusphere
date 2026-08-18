@@ -1,5 +1,6 @@
 const PlacementDrive       = require('../models/PlacementDrive');
 const PlacementApplication = require('../models/PlacementApplication');
+const PDFDocument = require('pdfkit');
 
 exports.getDrives = async (req, res) => {
   try {
@@ -63,4 +64,63 @@ exports.getDriveApplicants = async (req, res) => {
     const applications = await PlacementApplication.find({ driveId: req.params.driveId }).sort({ appliedAt: -1 });
     res.json({ applications, total: applications.length, driveId: req.params.driveId });
   } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+exports.buildResume = async (req, res) => {
+  try {
+    const { name, email, phone, education, experience, skills } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    const doc = new PDFDocument({ margin: 50 });
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_')}_Resume.pdf"`
+    });
+
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(24).text(name, { align: 'center' });
+    doc.fontSize(12).text(`${email} | ${phone || ''}`, { align: 'center' });
+    doc.moveDown();
+
+    // Education
+    if (education && education.length > 0) {
+      doc.fontSize(16).text('Education', { underline: true });
+      doc.moveDown(0.5);
+      education.forEach(edu => {
+        doc.fontSize(12).text(`${edu.degree} - ${edu.institution} (${edu.year})`);
+      });
+      doc.moveDown();
+    }
+
+    // Experience
+    if (experience && experience.length > 0) {
+      doc.fontSize(16).text('Experience', { underline: true });
+      doc.moveDown(0.5);
+      experience.forEach(exp => {
+        doc.fontSize(12).text(`${exp.role} at ${exp.company} (${exp.duration})`);
+        if (exp.description) {
+          doc.fontSize(10).text(exp.description, { indent: 20 });
+        }
+        doc.moveDown(0.5);
+      });
+      doc.moveDown();
+    }
+
+    // Skills
+    if (skills && skills.length > 0) {
+      doc.fontSize(16).text('Skills', { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(12).text(skills.join(', '));
+    }
+
+    doc.end();
+  } catch (error) {
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 };

@@ -9,6 +9,9 @@ const QRSessionSchema = new mongoose.Schema({
   date:       { type: String, required: true },
   facultyId:  { type: String, required: true },
   windowMins: { type: Number, default: 10 },
+  latitude:   { type: Number },
+  longitude:  { type: Number },
+  radius:     { type: Number }, // in meters
   expiresAt:  { type: Date, required: true, index: { expireAfterSeconds: 0 } },
   active:     { type: Boolean, default: true },
   createdAt:  { type: Date, default: Date.now },

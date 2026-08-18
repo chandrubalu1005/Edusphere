@@ -7,8 +7,8 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use('/', discussionRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'discussion-service' }));
+app.use('/', discussionRoutes);
 
 const PORT = process.env.PORT || 3013;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_discussions';

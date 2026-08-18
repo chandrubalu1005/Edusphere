@@ -26,8 +26,10 @@ import {
 } from '../../mockData.js';
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveCourses,
-  useLiveAssignments, useLiveAssessments, useLiveAttendance
+  useLiveAssignments, useLiveAssessments, useLiveAttendance,
+  useLiveLeaveRecords, useLiveLeaveBalance, useLiveNotifications
 } from '../../api/liveData.js';
+import { useApplyForLeave, useApproveLeave, useRejectLeave, useWithdrawLeave } from '../../api/hooks.js';
 
 // ── FACULTY TIMETABLE ───────────────────────────────────────────────────────
 export function FacultyTimetable({ user }) {
@@ -50,7 +52,7 @@ export function FacultyTimetable({ user }) {
 
 // ── STUDENT PERFORMANCE ANALYTICS ───────────────────────────────────────────
 export function StudentPerformance({ user }) {
-  const students = USERS.filter(u => u.role === 'student');
+  const students = MOCK_USERS.filter(u => u.role === 'student');
 
   return (
     <div>
@@ -86,72 +88,130 @@ export function StudentPerformance({ user }) {
 
 // ── LEAVE MANAGEMENT ────────────────────────────────────────────────────────
 export function LeaveManagement({ user }) {
-  const [leaves, setLeaves] = useState(LEAVE_RECORDS.filter(l => l.facultyId === user.id || l.facultyName.includes(user.lastName)));
-  const balance = LEAVE_BALANCE.find(b => b.facultyId === user.id) || { casual: 10, medical: 12, earned: 15, used_casual: 2, used_medical: 1, used_earned: 0 };
+  const { data: myRecords } = useLiveLeaveRecords({ role: 'student', userId: user.id }); // Using student role for faculty's own leaves to filter by requesterId easily
+  const { data: studentRequests } = useLiveLeaveRecords({ role: 'faculty' });
+  const { data: balanceData } = useLiveLeaveBalance(user.id);
+  
+  const applyMutation = useApplyForLeave();
+  const approveMutation = useApproveLeave();
+  const rejectMutation = useRejectLeave();
+  const withdrawMutation = useWithdrawLeave();
+
+  const [activeTab, setActiveTab] = useState('queue');
   const [modalOpen, setModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [type, setType] = useState('Casual Leave');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [reason, setReason] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
 
   function handleSubmit(e) {
     e.preventDefault();
-    const newLeave = {
-      id: `lv${leaves.length + 1}`,
-      facultyId: user.id,
-      facultyName: `Dr. ${user.lastName}`,
-      type,
-      fromDate: from,
-      toDate: to,
-      days: 3,
-      reason,
-      status: 'pending',
-      approvedBy: null,
-      appliedAt: new Date().toISOString().split('T')[0]
-    };
-    setLeaves([newLeave, ...leaves]);
+    applyMutation.mutate({
+      requesterId: user.id,
+      requesterRole: 'faculty',
+      leaveType: type,
+      startDate: from,
+      endDate: to,
+      daysCount: 1, // simplified
+      affectedCourses: [],
+      reason
+    });
     setModalOpen(false);
+  }
+
+  function handleApprove(id) {
+    approveMutation.mutate({ id, approverId: user.id });
+  }
+
+  function handleRejectSubmit(e) {
+    e.preventDefault();
+    rejectMutation.mutate({ id: selectedRequest._id || selectedRequest.id, approverId: user.id, rejectionReason });
+    setRejectModalOpen(false);
   }
 
   return (
     <div>
       <PageHeader
         title="Leave Management"
-        subtitle="Apply for leave, view status, and track leave balances"
+        subtitle="Manage student leave approvals and apply for your own leaves"
         breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Leave Management' }]}
       >
         <button className="btn btn-primary btn-sm" onClick={() => setModalOpen(true)}>Apply Leave</button>
       </PageHeader>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Casual Leave Bal" value={`${balance.casual - balance.used_casual} / ${balance.casual}`} icon="📅" />
-        <StatCard label="Medical Leave Bal" value={`${balance.medical - balance.used_medical} / ${balance.medical}`} icon="🩺" />
-        <StatCard label="Earned Leave Bal" value={`${balance.earned - balance.used_earned} / ${balance.earned}`} icon="📝" />
-      </div>
+      <Tabs tabs={[
+        { id: 'queue', label: 'Student Approvals', icon: '📋', badge: studentRequests.filter(r => r.status === 'pending').length },
+        { id: 'myleaves', label: 'My Leaves', icon: '📅' }
+      ]} active={activeTab} onChange={setActiveTab} />
 
-      <DataTable
-        columns={[
-          { key: 'type', label: 'Type' },
-          { key: 'fromDate', label: 'From Date' },
-          { key: 'toDate', label: 'To Date' },
-          { key: 'days', label: 'Days', width: 70 },
-          { key: 'reason', label: 'Reason' },
-          { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
-          { key: 'approvedBy', label: 'Approver', render: v => v || '—' }
-        ]}
-        data={leaves}
-        searchable={false}
-      />
+      {activeTab === 'queue' && (
+        <div style={{ marginTop: 20 }}>
+          <div className="card" style={{ padding: 20 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 16, color: 'var(--text-1)' }}>Pending Approvals</h3>
+            <DataTable
+              columns={[
+                { key: 'requesterId', label: 'Student ID' },
+                { key: 'leaveType', label: 'Type' },
+                { key: 'startDate', label: 'From' },
+                { key: 'endDate', label: 'To' },
+                { key: 'reason', label: 'Reason' },
+                { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
+                { key: 'id', label: 'Action', width: 160, render: (v, row) => (
+                  row.status === 'pending' ? (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-success btn-sm" onClick={() => handleApprove(row._id || row.id)}>Approve</button>
+                      <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => { setSelectedRequest(row); setRejectModalOpen(true); }}>Reject</button>
+                    </div>
+                  ) : <span style={{ color: 'var(--text-3)', fontSize: 13 }}>Processed</span>
+                ), sortable: false }
+              ]}
+              data={studentRequests}
+            />
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'myleaves' && (
+        <div style={{ marginTop: 20 }}>
+          <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+            {balanceData.map(b => (
+              <StatCard key={b.type} label={`${b.type} Balance`} value={`${b.remaining} / ${b.total}`} icon="📅" trend={`${b.used} used`} trendType="neutral" />
+            ))}
+            {balanceData.length === 0 && (
+               <StatCard label="Leave Policy" value="Loading..." icon="📅" />
+            )}
+          </div>
+          <div className="card" style={{ padding: 20 }}>
+             <DataTable
+              columns={[
+                { key: 'leaveType', label: 'Type' },
+                { key: 'startDate', label: 'From Date' },
+                { key: 'endDate', label: 'To Date' },
+                { key: 'reason', label: 'Reason' },
+                { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
+                { key: 'id', label: 'Action', render: (v, row) => (
+                   row.status === 'pending' ? (
+                     <button className="btn btn-outline btn-sm" onClick={() => withdrawMutation.mutate({ id: row._id || row.id, requesterId: user.id })}>Withdraw</button>
+                   ) : null
+                ), sortable: false }
+              ]}
+              data={myRecords}
+              searchable={false}
+            />
+          </div>
+        </div>
+      )}
 
       <Modal open={modalOpen} title="Apply for Leave" onClose={() => setModalOpen(false)}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">Leave Type</label>
             <select className="form-select" value={type} onChange={e => setType(e.target.value)}>
-              <option value="Casual Leave">Casual Leave</option>
-              <option value="Medical Leave">Medical Leave</option>
-              <option value="Earned Leave">Earned Leave</option>
-              <option value="Conference">Conference/OD</option>
+              {balanceData.map(b => <option key={b.type} value={b.type}>{b.type}</option>)}
+              {balanceData.length === 0 && <option value="Casual Leave">Casual Leave</option>}
             </select>
           </div>
           <div className="form-group">
@@ -168,7 +228,20 @@ export function LeaveManagement({ user }) {
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Submit Application</button>
+            <button type="submit" className="btn btn-primary" disabled={applyMutation.isLoading}>Submit Application</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={rejectModalOpen} title="Reject Leave Request" onClose={() => setRejectModalOpen(false)}>
+        <form onSubmit={handleRejectSubmit}>
+          <div className="form-group">
+            <label className="form-label">Rejection Reason (Required)</label>
+            <textarea className="form-textarea" required value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} rows={3} placeholder="Provide a reason for rejection..." />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+            <button type="button" className="btn btn-ghost" onClick={() => setRejectModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" style={{ background: 'var(--danger)' }} disabled={rejectMutation.isLoading}>Reject Request</button>
           </div>
         </form>
       </Modal>
@@ -178,7 +251,7 @@ export function LeaveManagement({ user }) {
 
 // ── ANNOUNCEMENT MANAGEMENT ─────────────────────────────────────────────────
 export function AnnouncementMgmt({ user }) {
-  const [announcements, setAnnouncements] = useState(ANNOUNCEMENTS.filter(a => a.authorId === user.id || a.author.includes(user.lastName)));
+  const [announcements, setAnnouncements] = useState(MOCK_ANNOUNCEMENTS.filter(a => a.authorId === user.id || a.author.includes(user.lastName)));
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -260,7 +333,7 @@ export function AnnouncementMgmt({ user }) {
 
 // ── DISCUSSION MODERATION ───────────────────────────────────────────────────
 export function DiscussionModeration({ user }) {
-  const discussions = DISCUSSIONS.filter(d => d.courseId === 'c1'); // Simulating faculty course
+  const discussions = MOCK_DISCUSSIONS.filter(d => d.courseId === 'c1'); // Simulating faculty course
   return (
     <div>
       <PageHeader
@@ -645,6 +718,329 @@ export function StudentFeedback({ user }) {
                 </div>
               ))}
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+// ── FACULTY PROFILE ────────────────────────────────────────────────────────
+export function FacultyProfile({ user }) {
+  const [form, setForm] = useState({
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
+    email: user.email || '',
+    phone: user.phone || '',
+    department: user.department || '',
+    designation: user.designation || 'Assistant Professor',
+    bio: user.bio || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [pwMode, setPwMode] = useState(false);
+  const [pw, setPw] = useState({ current: '', newPw: '', confirm: '' });
+
+  async function handleSave(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await fetch(`/api/users/${user.id || user.userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
+        body: JSON.stringify(form)
+      });
+      toast.success('Profile updated successfully!');
+    } catch {
+      toast.error('Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePasswordChange(e) {
+    e.preventDefault();
+    if (pw.newPw !== pw.confirm) { toast.error('Passwords do not match.'); return; }
+    if (pw.newPw.length < 8) { toast.error('Password must be at least 8 characters.'); return; }
+    setSaving(true);
+    try {
+      await fetch(`/api/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
+        body: JSON.stringify({ currentPassword: pw.current, newPassword: pw.newPw })
+      });
+      toast.success('Password changed successfully!');
+      setPwMode(false);
+      setPw({ current: '', newPw: '', confirm: '' });
+    } catch {
+      toast.error('Failed to change password. Check your current password.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const fieldStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 };
+
+  return (
+    <div>
+      <PageHeader
+        title="My Profile"
+        subtitle="Manage your personal information and account settings"
+        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Profile' }]}
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24, alignItems: 'start' }}>
+        {/* Avatar Card */}
+        <div className="card" style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{
+            width: 100, height: 100, borderRadius: '50%', margin: '0 auto 16px',
+            background: 'linear-gradient(135deg, var(--accent), var(--secondary))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 40, fontWeight: 700, color: 'white'
+          }}>
+            {(user.firstName || 'F')[0]}
+          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>
+            {user.firstName} {user.lastName}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>{form.designation}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{form.department}</div>
+          <div style={{ marginTop: 16 }}>
+            <span className="badge badge-success">Faculty</span>
+          </div>
+          <div style={{ marginTop: 20 }}>
+            <button className="btn btn-outline btn-sm" style={{ width: '100%' }} onClick={() => setPwMode(!pwMode)}>
+              {pwMode ? '✕ Cancel' : '🔒 Change Password'}
+            </button>
+          </div>
+        </div>
+
+        {/* Form Card */}
+        <div className="card" style={{ padding: 24 }}>
+          {!pwMode ? (
+            <form onSubmit={handleSave}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 20, color: 'var(--text-1)' }}>Personal Information</h3>
+              <div style={fieldStyle}>
+                <div className="form-group">
+                  <label className="form-label">First Name</label>
+                  <input className="form-input" value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Last Name</label>
+                  <input className="form-input" value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input className="form-input" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Phone</label>
+                  <input className="form-input" type="tel" value={form.phone} placeholder="+91-xxxxx" onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <input className="form-input" value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Designation</label>
+                  <select className="form-input" value={form.designation} onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}>
+                    <option>Assistant Professor</option>
+                    <option>Associate Professor</option>
+                    <option>Professor</option>
+                    <option>Lecturer</option>
+                    <option>HOD</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-group" style={{ marginTop: 8 }}>
+                <label className="form-label">Bio</label>
+                <textarea className="form-textarea" rows={3} value={form.bio} placeholder="A short bio about you..." onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : '💾 Save Changes'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handlePasswordChange}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 20, color: 'var(--text-1)' }}>Change Password</h3>
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <input className="form-input" type="password" required value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <input className="form-input" type="password" required minLength={8} value={pw.newPw} onChange={e => setPw(p => ({ ...p, newPw: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Confirm New Password</label>
+                <input className="form-input" type="password" required value={pw.confirm} onChange={e => setPw(p => ({ ...p, confirm: e.target.value }))} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setPwMode(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Updating...' : 'Update Password'}</button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── FACULTY ASSESSMENTS ─────────────────────────────────────────────────────
+export function FacultyAssessments({ user }) {
+  const { data: COURSES } = useLiveCourses();
+  const { data: ASSESSMENTS } = useLiveAssessments();
+  const myCourses = COURSES.filter(c => c.facultyOwnerId === (user.id || user.userId));
+  const myAssessments = ASSESSMENTS.filter(a => myCourses.find(c => c._id === a.courseId || c.id === a.courseId));
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [title, setTitle] = useState('');
+  const [courseId, setCourseId] = useState('');
+  const [duration, setDuration] = useState(60);
+  const [totalMarks, setTotalMarks] = useState(100);
+  const [type, setType] = useState('quiz');
+  const [scheduledAt, setScheduledAt] = useState('');
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
+        body: JSON.stringify({ title, courseId, duration: Number(duration), totalMarks: Number(totalMarks), type, scheduledAt })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success('Assessment created successfully!');
+      setShowCreate(false);
+    } catch (err) {
+      toast.error('Failed to create assessment: ' + err.message);
+    }
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Assessments"
+        subtitle="Create and manage quizzes, exams, and tests for your courses"
+        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Assessments' }]}
+      >
+        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? '✕ Cancel' : '+ Create Assessment'}
+        </button>
+      </PageHeader>
+
+      {showCreate && (
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, marginBottom: 16 }}>New Assessment</h3>
+          <form onSubmit={handleCreate}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">Title</label>
+                <input className="form-input" required value={title} onChange={e => setTitle(e.target.value)} placeholder="Mid-term Quiz 1" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Course</label>
+                <select className="form-input" required value={courseId} onChange={e => setCourseId(e.target.value)}>
+                  <option value="">Select Course</option>
+                  {myCourses.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.title} ({c.code})</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Type</label>
+                <select className="form-input" value={type} onChange={e => setType(e.target.value)}>
+                  <option value="quiz">Quiz</option>
+                  <option value="exam">Exam</option>
+                  <option value="assignment">Practical</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Duration (minutes)</label>
+                <input className="form-input" type="number" min={10} max={300} value={duration} onChange={e => setDuration(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Total Marks</label>
+                <input className="form-input" type="number" min={1} value={totalMarks} onChange={e => setTotalMarks(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Scheduled At</label>
+                <input className="form-input" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button type="submit" className="btn btn-primary">Create Assessment</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {myAssessments.length === 0 ? (
+          <div className="empty-state" style={{ padding: 60 }}>
+            <div className="empty-state-icon">📝</div>
+            <div className="empty-state-title">No assessments yet</div>
+            <div className="empty-state-desc">Create your first assessment using the button above.</div>
+          </div>
+        ) : (
+          <DataTable
+            columns={[
+              { key: 'title', label: 'Title' },
+              { key: 'courseId', label: 'Course', render: (v) => myCourses.find(c => (c._id || c.id) === v)?.title || v },
+              { key: 'type', label: 'Type', render: v => <span className={`badge badge-${v === 'exam' ? 'danger' : 'info'}`}>{v}</span> },
+              { key: 'duration', label: 'Duration', render: v => `${v} min` },
+              { key: 'totalMarks', label: 'Marks' },
+              { key: 'status', label: 'Status', render: v => <span className={`badge badge-${v === 'published' || v === 'active' ? 'success' : 'neutral'}`}>{v || 'draft'}</span> },
+              { key: 'scheduledAt', label: 'Scheduled', render: v => v ? new Date(v).toLocaleDateString() : '—' },
+            ]}
+            data={myAssessments}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── FACULTY NOTIFICATIONS ───────────────────────────────────────────────────
+export function FacultyNotifications({ user }) {
+  const { data, isLoading } = useLiveNotifications();
+  const notifications = data.filter(n => !n.role || n.role === 'faculty' || n.role === 'all');
+  const [filter, setFilter] = useState('all');
+  const typeIcon = { assignment: '📝', attendance: '📅', leave: '🏖️', grade: '🎓', system: '⚙️', announcement: '📢' };
+
+  const filtered = filter === 'all' ? notifications
+    : filter === 'unread' ? notifications.filter(n => !n.read)
+    : notifications.filter(n => n.type === filter);
+
+  return (
+    <div>
+      <PageHeader title="Notifications" subtitle="Stay updated with department and course alerts" />
+
+      <div className="tabs" style={{ marginBottom: 16 }}>
+        {['all', 'unread', 'assignment', 'leave', 'announcement', 'system'].map(t => (
+          <div key={t} className={`tab ${filter === t ? 'active' : ''}`} onClick={() => setFilter(t)}>
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'unread' && <span className="nav-badge" style={{ position: 'static', marginLeft: 4 }}>{notifications.filter(n => !n.read).length}</span>}
+          </div>
+        ))}
+      </div>
+
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {isLoading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Loading notifications…</div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state" style={{ padding: 60 }}>
+            <div className="empty-state-icon">🔔</div>
+            <div className="empty-state-title">All caught up!</div>
+          </div>
+        ) : filtered.map(n => (
+          <div key={n.id || n._id} className={`notif-item ${!n.read ? 'unread' : ''}`} style={{ cursor: 'default', padding: '14px 18px' }}>
+            <div style={{ fontSize: 22, flexShrink: 0 }}>{typeIcon[n.type] || '🔔'}</div>
+            <div className="notif-content" style={{ flex: 1 }}>
+              <div className="notif-title" style={{ fontSize: 14 }}>{n.title}</div>
+              <div className="notif-desc" style={{ fontSize: 13 }}>{n.description || n.message}</div>
+              <div className="notif-time" style={{ marginTop: 5 }}>{n.createdAt}</div>
+            </div>
+            {!n.read && <span className="badge badge-accent">New</span>}
           </div>
         ))}
       </div>

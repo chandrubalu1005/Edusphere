@@ -7,8 +7,8 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use('/', calendarRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'calendar-service' }));
+app.use('/', calendarRoutes);
 
 const PORT = process.env.PORT || 3010;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_calendar';

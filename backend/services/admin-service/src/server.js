@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 3015;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_admin';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
-app.use('/', adminRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'admin-service' }));
+app.use('/', adminRoutes);
 
 async function startServer() {
   await connectDB(MONGO_URI);

@@ -14,8 +14,11 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
 // Register routes
-app.use('/', userRoutes);
+
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'user-service' }));
+app.get('/users/health', (req, res) => res.json({ status: 'ok', service: 'user-service' }));
+app.use('/', userRoutes);
+
 
 // Swagger API Documentation
 const swaggerDocument = {

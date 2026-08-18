@@ -4,6 +4,7 @@ const redis = require('redis');
 const connectDB = require('./config/db');
 const { connectRabbitMQ } = require('./config/rabbitmq');
 const attendanceRoutes = require('./routes/attendanceRoutes');
+const leaveRoutes = require('./routes/leaveRoutes');
 const attendanceController = require('./controllers/attendanceController');
 require('dotenv').config();
 
@@ -16,8 +17,9 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
-app.use('/', attendanceRoutes);
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'attendance-service' }));
+app.use('/', attendanceRoutes);
+app.use('/leave', leaveRoutes);
 
 // Swagger Docs
 const swaggerDocument = {
@@ -72,7 +74,7 @@ async function startServer() {
   await connectRabbitMQ(RABBITMQ_URL);
   
   try {
-    const redisClient = redis.createClient({ url: REDIS_URL });
+    const redisClient = redis.createClient({ url: REDIS_URL, socket: { reconnectStrategy: false } });
     redisClient.on('error', (err) => console.error('Redis Client Error', err));
     await redisClient.connect();
     console.log('Connected to Redis');

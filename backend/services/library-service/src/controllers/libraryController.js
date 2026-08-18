@@ -1,5 +1,7 @@
 const LibraryBook = require('../models/LibraryBook');
 const BookIssue   = require('../models/BookIssue');
+const fs = require('fs');
+const path = require('path');
 
 exports.getBooks = async (req, res) => {
   try {
@@ -31,23 +33,23 @@ exports.issueBook = async (req, res) => {
     const { bookId, dueDate } = req.body;
     if (!bookId || !dueDate) return res.status(400).json({ error: 'bookId and dueDate are required' });
 
-    const book = await LibraryBook.findById(bookId);
-    if (!book) return res.status(404).json({ error: 'Book not found' });
-    if (book.availableCopies <= 0) return res.status(409).json({ error: 'No copies available' });
-
     // Check if user already has this book
     const existing = await BookIssue.findOne({ bookId, userId: req.user.userId, status: 'issued' });
     if (existing) return res.status(409).json({ error: 'You already have this book issued' });
 
-    book.availableCopies -= 1;
-    await book.save();
+    const updatedBook = await LibraryBook.findOneAndUpdate(
+      { _id: bookId, availableCopies: { $gt: 0 } },
+      { $inc: { availableCopies: -1 } },
+      { new: true }
+    );
+    if (!updatedBook) return res.status(409).json({ error: 'No copies available or book not found' });
 
     const issue = await BookIssue.create({
       bookId,
-      bookTitle: book.title,
+      bookTitle: updatedBook.title,
       userId:    req.user.userId,
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate,
+      issueDate: new Date(),
+      dueDate:   new Date(dueDate),
       status:    'issued',
     });
     res.status(201).json(issue);
@@ -65,11 +67,44 @@ exports.returnBook = async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    issue.status = 'returned';
-    await issue.save();
+    const updatedIssue = await BookIssue.findOneAndUpdate(
+      { _id: req.params.id, status: { $ne: 'returned' } },
+      { $set: { status: 'returned' } },
+      { new: true }
+    );
+    if (!updatedIssue) return res.status(409).json({ error: 'Book already returned or issue not found' });
 
     await LibraryBook.findByIdAndUpdate(issue.bookId, { $inc: { availableCopies: 1 } });
 
     res.json({ message: 'Book returned successfully', issue });
   } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+exports.streamBook = async (req, res) => {
+  try {
+    const book = await LibraryBook.findById(req.params.id);
+    if (!book) return res.status(404).json({ error: 'Book not found' });
+    if (!book.isEbook || !book.fileUrl) return res.status(400).json({ error: 'This book is not available as an E-book' });
+
+    // Validate that the user actually has it issued if it's required, or maybe all students can stream?
+    // Let's assume you must issue it to stream it if availableCopies logic applies, or e-books are free for all.
+    // For now, allow streaming for authenticated users.
+    
+    const filePath = path.resolve(process.cwd(), book.fileUrl);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'E-book file not found on server' });
+    }
+
+    const stat = fs.statSync(filePath);
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Length': stat.size,
+      'Content-Disposition': `inline; filename="${book.title}.pdf"`
+    });
+
+    const readStream = fs.createReadStream(filePath);
+    readStream.pipe(res);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };

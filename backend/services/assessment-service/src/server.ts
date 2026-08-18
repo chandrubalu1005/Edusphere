@@ -97,6 +97,8 @@ interface IAttempt extends Document {
   status:       'in_progress' | 'submitted' | 'auto_submitted';
   ipAddress:    string;
   browserInfo:  string;
+  tabSwitches:  number;
+  proctoringEvents: Array<{ type: string; timestamp: Date }>;
 }
 
 const AttemptSchema = new Schema<IAttempt>({
@@ -113,6 +115,8 @@ const AttemptSchema = new Schema<IAttempt>({
   status:       { type: String, enum: ['in_progress', 'submitted', 'auto_submitted'], default: 'in_progress' },
   ipAddress:    String,
   browserInfo:  String,
+  tabSwitches:  { type: Number, default: 0 },
+  proctoringEvents: [{ type: { type: String }, timestamp: { type: Date, default: Date.now } }],
 }, { timestamps: true });
 
 const Attempt = mongoose.model<IAttempt>('Attempt', AttemptSchema);
@@ -148,7 +152,7 @@ let redis: ReturnType<typeof createClient> | null = null;
 
 async function connectRedis() {
   try {
-    redis = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+    redis = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379', socket: { reconnectStrategy: false } });
     redis.on('error', (err) => logger.error('Redis error', err));
     await redis.connect();
     logger.info('Redis connected');
@@ -373,6 +377,47 @@ app.post('/assessments/:id/submit', auth, requireRole('student'), async (req, re
     res.json(response);
   } catch (err) {
     res.status(500).json({ error: 'Failed to submit assessment' });
+  }
+});
+
+// POST /assessments/:id/log-event — tab switches / proctoring
+app.post('/assessments/:id/log-event', auth, requireRole('student'), async (req, res) => {
+  try {
+    const { sessionId, type } = req.body;
+    const user = (req as any).user;
+    
+    const updateQuery: any = { 
+      $push: { proctoringEvents: { type, timestamp: new Date() } } 
+    };
+    if (type === 'tab_switch') {
+      updateQuery.$inc = { tabSwitches: 1 };
+    }
+    
+    let attempt = await Attempt.findOneAndUpdate(
+      { sessionId, studentId: user.userId, status: 'in_progress' },
+      updateQuery,
+      { new: true }
+    );
+    
+    if (!attempt) return res.status(404).json({ error: 'Active attempt not found' });
+    
+    if (type === 'tab_switch') {
+      // Auto-submit if > 3 switches
+      if (attempt.tabSwitches > 3) {
+        attempt = await Attempt.findOneAndUpdate(
+          { _id: attempt._id, status: 'in_progress' },
+          { $set: { status: 'auto_submitted', submittedAt: new Date() } },
+          { new: true }
+        ) || attempt;
+        
+        logger.warn(`Assessment auto-submitted for ${user.userId} due to excessive tab switches.`);
+        return res.json({ autoSubmitted: true, message: 'Excessive tab switching detected. Assessment auto-submitted.' });
+      }
+    }
+    
+    res.json({ success: true, tabSwitches: attempt.tabSwitches });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to log event' });
   }
 });
 

@@ -148,3 +148,64 @@ exports.getDepartmentKPIs = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// ── Student Risk Modeling ──────────────────────────────────────────────────
+exports.getStudentRisk = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    // Students can only see their own risk score, faculty/admin can see any
+    if (req.user.role === 'student' && req.user.userId !== studentId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const [attendanceStats, assessmentStats] = await Promise.all([
+      AttendanceEvent.aggregate([
+        { $match: { studentId } },
+        { $group: { _id: null, total: { $sum: 1 }, present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } } } }
+      ]),
+      AssessmentEvent.aggregate([
+        { $match: { studentId } },
+        { $group: { _id: null, avgScore: { $avg: '$percentage' }, total: { $sum: 1 } } }
+      ])
+    ]);
+
+    const att = attendanceStats[0] || { total: 0, present: 0 };
+    const asm = assessmentStats[0] || { total: 0, avgScore: 0 };
+
+    const attendanceRate = att.total > 0 ? (att.present / att.total) * 100 : 100;
+    const avgScore = asm.total > 0 ? asm.avgScore : 100;
+
+    // Simple Risk Score: 
+    // Attendance risk: < 75% is high risk (adds up to 50 points)
+    // Grade risk: < 50% is high risk (adds up to 50 points)
+    let riskScore = 0;
+    
+    if (attendanceRate < 75) {
+      riskScore += ((75 - attendanceRate) / 75) * 50;
+    }
+    
+    if (avgScore < 50) {
+      riskScore += ((50 - avgScore) / 50) * 50;
+    }
+
+    // Cap at 100
+    riskScore = Math.min(Math.round(riskScore), 100);
+
+    let riskLevel = 'Low';
+    if (riskScore > 60) riskLevel = 'High';
+    else if (riskScore > 30) riskLevel = 'Medium';
+
+    res.json({
+      studentId,
+      riskScore,
+      riskLevel,
+      factors: {
+        attendanceRate: Math.round(attendanceRate),
+        avgScore: Math.round(avgScore)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

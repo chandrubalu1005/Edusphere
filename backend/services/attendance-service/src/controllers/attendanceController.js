@@ -21,6 +21,21 @@ async function invalidateCache(studentId, courseId, date) {
   }
 }
 
+// ── Distance Calculation (Haversine) ────────────────────────────────────────
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // metres
+  const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // in metres
+}
+
 // ── Manual Attendance Mark ──────────────────────────────────────────────────
 exports.markAttendance = async (req, res) => {
   try {
@@ -31,6 +46,24 @@ exports.markAttendance = async (req, res) => {
     if (!studentId || !studentName || !courseId || !status || !date) {
       return res.status(400).json({ error: 'All fields are required' });
     }
+
+    // 1.4 Authorization Scoping Fix
+    if (req.user.role === 'faculty') {
+      try {
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const resp = await fetch(`${COURSE_URL}/courses/${courseId}`, {
+          headers: { Authorization: req.headers.authorization }
+        });
+        if (!resp.ok) return res.status(404).json({ error: 'Course not found' });
+        const course = await resp.json();
+        if (course.facultyOwnerId !== req.user.userId) {
+          return res.status(403).json({ error: 'Access denied: You are not the owner of this course' });
+        }
+      } catch (err) {
+        return res.status(500).json({ error: 'Failed to verify course ownership' });
+      }
+    }
+
     const record = await Attendance.findOneAndUpdate(
       { studentId, courseId, date },
       { studentName, status, markedBy: req.user.username, markMethod: 'manual', qrSessionId: null },
@@ -54,6 +87,24 @@ exports.markAllAttendance = async (req, res) => {
     if (!courseId || !date || !records || !Array.isArray(records)) {
       return res.status(400).json({ error: 'CourseId, date, and records array are required' });
     }
+
+    // 1.4 Authorization Scoping Fix
+    if (req.user.role === 'faculty') {
+      try {
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const resp = await fetch(`${COURSE_URL}/courses/${courseId}`, {
+          headers: { Authorization: req.headers.authorization }
+        });
+        if (!resp.ok) return res.status(404).json({ error: 'Course not found' });
+        const course = await resp.json();
+        if (course.facultyOwnerId !== req.user.userId) {
+          return res.status(403).json({ error: 'Access denied: You are not the owner of this course' });
+        }
+      } catch (err) {
+        return res.status(500).json({ error: 'Failed to verify course ownership' });
+      }
+    }
+
     const operations = records.map(rec => ({
       updateOne: {
         filter: { studentId: rec.studentId, courseId, date },
@@ -168,7 +219,7 @@ exports.createQRSession = async (req, res) => {
     if (req.user.role !== 'faculty' && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access forbidden. Faculty or Admin only.' });
     }
-    const { courseId, date, windowMins = 10 } = req.body;
+    const { courseId, date, windowMins = 10, latitude, longitude, radius = 50 } = req.body;
     if (!courseId || !date) {
       return res.status(400).json({ error: 'courseId and date are required' });
     }
@@ -177,14 +228,14 @@ exports.createQRSession = async (req, res) => {
     const expiresAt = new Date(Date.now() + windowMins * 60 * 1000);
 
     // Persist to Mongo (TTL fallback)
-    await QRSession.create({ sessionId, courseId, date, facultyId: req.user.userId, windowMins, expiresAt });
+    await QRSession.create({ sessionId, courseId, date, facultyId: req.user.userId, windowMins, expiresAt, latitude, longitude, radius });
 
     // Store in Redis with TTL (primary)
     if (redisClient) {
       await redisClient.setEx(
         `qrsession:${sessionId}`,
         windowMins * 60,
-        JSON.stringify({ courseId, date, facultyId: req.user.userId, expiresAt })
+        JSON.stringify({ courseId, date, facultyId: req.user.userId, expiresAt, latitude, longitude, radius })
       );
     }
 
@@ -220,10 +271,22 @@ exports.scanQRSession = async (req, res) => {
       if (!session || session.expiresAt < new Date()) {
         return res.status(410).json({ error: 'QR session has expired or does not exist' });
       }
-      sessionData = { courseId: session.courseId, date: session.date };
+      sessionData = { courseId: session.courseId, date: session.date, latitude: session.latitude, longitude: session.longitude, radius: session.radius };
     }
 
-    const { courseId, date } = sessionData;
+    const { courseId, date, latitude: sessionLat, longitude: sessionLon, radius: sessionRadius } = sessionData;
+    
+    // Validate Geofencing
+    if (sessionLat !== undefined && sessionLon !== undefined) {
+      const { latitude, longitude } = req.body;
+      if (latitude === undefined || longitude === undefined) {
+        return res.status(400).json({ error: 'Location required for this session' });
+      }
+      const distance = getDistance(sessionLat, sessionLon, latitude, longitude);
+      if (distance > (sessionRadius || 50)) {
+        return res.status(403).json({ error: `You are too far from the classroom (${Math.round(distance)}m)` });
+      }
+    }
 
     // 2. Prevent duplicate scan for the same session
     const alreadyMarked = await Attendance.findOne({ studentId, courseId, date });

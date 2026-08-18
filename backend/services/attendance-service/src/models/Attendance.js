@@ -3,7 +3,7 @@ const AttendanceSchema = new mongoose.Schema({
   studentId:   { type: String, required: true },
   studentName: { type: String, required: true },
   courseId:    { type: String, required: true },
-  status:      { type: String, required: true, enum: ['present', 'absent'] },
+  status:      { type: String, required: true, enum: ['present', 'absent', 'excused'] },
   date:        { type: String, required: true },
   markedBy:    { type: String, required: true },
   // markMethod defaults to 'manual' so existing records are unaffected

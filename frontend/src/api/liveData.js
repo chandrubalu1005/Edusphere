@@ -6,6 +6,7 @@ export function useLiveCourses(params) {
   const list = data?.courses || (Array.isArray(data) ? data : []);
   return {
     data: list.length ? list : mock.COURSES,
+    total: data?.total !== undefined ? data.total : (list.length ? list.length : mock.COURSES.length),
     isLoading,
     error
   };
@@ -132,6 +133,7 @@ export function useLiveAdminUsers(params) {
   const list = data?.users || (Array.isArray(data) ? data : []);
   return {
     data: list.length ? list : mock.USERS,
+    total: data?.total !== undefined ? data.total : (list.length ? list.length : mock.USERS.length),
     isLoading,
     error
   };
@@ -160,17 +162,24 @@ export function useLiveAttendance(courseId, date) {
   };
 }
 
-export function useLiveEnrollments() {
+export function useLiveEnrollments(userId) {
   const { data: courseData, isLoading, error } = hooks.useCourses();
   const list = courseData?.courses || [];
-  const enrollments = list.map(c => ({
+  
+  // Only map courses where the user is actually enrolled
+  const enrolledCourses = userId 
+    ? list.filter(c => c.enrolledStudents && c.enrolledStudents.includes(userId))
+    : [];
+
+  const enrollments = enrolledCourses.map(c => ({
     id: `enr-${c._id || c.id}`,
     courseId: c._id || c.id,
     courseTitle: c.title,
-    enrolledAt: new Date(c.createdAt || Date.now()).toLocaleDateString()
+    enrolledAt: new Date(c.createdAt || Date.now()).toLocaleDateString(),
+    progress: c.content?.length ? Math.min(100, c.content.length * 10) : 0 // Fake progress based on content length
   }));
   return {
-    data: enrollments.length ? enrollments : mock.ENROLLMENTS,
+    data: enrollments.length ? enrollments : mock.ENROLLMENTS.filter(e => e.studentId === userId),
     isLoading,
     error
   };
@@ -204,6 +213,15 @@ export function useLiveAssignmentSubmissions(assignmentId) {
   };
 }
 
+export function useLiveAssignmentStats() {
+  const { data, isLoading, error } = hooks.useAssignmentStats();
+  return {
+    data: data || [],
+    isLoading,
+    error
+  };
+}
+
 export function useLiveDiscussionThreads(courseId) {
   const { data, isLoading, error } = hooks.useDiscussionThreads(courseId);
   const list = data?.threads || (Array.isArray(data) ? data : []);
@@ -231,6 +249,26 @@ export function useLiveThreadDetails(threadId) {
   }
   return {
     data: data || fallback,
+    isLoading,
+    error
+  };
+}
+
+export function useLiveLeaveRecords(params) {
+  const { data, isLoading, error } = hooks.useLeaveRecords(params);
+  const list = data?.requests || data?.records || (Array.isArray(data) ? data : []);
+  return {
+    data: list,
+    isLoading,
+    error
+  };
+}
+
+export function useLiveLeaveBalance(userId) {
+  const { data, isLoading, error } = hooks.useLeaveBalance(userId);
+  const list = data?.balance || (Array.isArray(data) ? data : []);
+  return {
+    data: list,
     isLoading,
     error
   };

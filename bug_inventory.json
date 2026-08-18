@@ -1,0 +1,53 @@
+[
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/favicon.ico",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "CRAWLER_ERROR",
+    "role": "student",
+    "message": "Waiting for selector `.login-right button` failed"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+    "type": "CRAWLER_ERROR",
+    "role": "faculty",
+    "message": "Waiting for selector `.login-right button` failed"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+    "type": "CRAWLER_ERROR",
+    "role": "admin",
+    "message": "Waiting for selector `.login-right button` failed"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+    "type": "CRAWLER_ERROR",
+    "role": "management",
+    "message": "Waiting for selector `.login-right button` failed"
+  }
+]

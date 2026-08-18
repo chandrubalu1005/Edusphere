@@ -62,10 +62,10 @@ function ExecutiveDashboard({ user, onNavigate }) {
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Enrollment', value: totalStudents.toLocaleString(), delta: '+12.4%', icon: '🎓', good: true },
-          { label: 'Active Faculty', value: totalFaculty, delta: '+2 this semester', icon: '👩‍🏫', good: true },
-          { label: 'Published Courses', value: publishedCourses, delta: `${pendingApprovals} pending`, icon: '📚', good: null },
-          { label: 'Avg Attendance', value: '89.3%', delta: '↑ 3.2% YoY', icon: '📊', good: true },
+          { label: 'Active Students', value: totalStudents.toLocaleString(), icon: '👨‍🎓' },
+          { label: 'Total Faculty', value: totalFaculty.toLocaleString(), icon: '👨‍🏫' },
+          { label: 'Course Catalog', value: publishedCourses.toLocaleString(), icon: '📚' },
+          { label: 'Pending Approvals', value: pendingApprovals.toLocaleString(), icon: '⏳', color: 'var(--warning)' },
         ].map(kpi => (
           <div key={kpi.label} className="card" style={{ overflow: 'visible' }}>
             <div className="card-body">

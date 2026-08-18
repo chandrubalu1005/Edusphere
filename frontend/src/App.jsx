@@ -5,8 +5,8 @@ import Notifications from './components/Notifications.jsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import Layout from './components/Layout.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import RegisterPage from './pages/RegisterPage.jsx';
+import DomainSelection from './pages/auth/DomainSelection.jsx';
+import DomainLogin from './pages/auth/DomainLogin.jsx';
 import StudentPortal from './portals/StudentPortal.jsx';
 import FacultyPortal from './portals/FacultyPortal.jsx';
 import AdminPortal from './portals/AdminPortal.jsx';
@@ -25,7 +25,7 @@ function AppContent() {
   const { user, loading } = useAuth();
   const [page, setPage]       = useState('dashboard');
   const [search, setSearch]   = useState('');
-  const [authView, setAuthView] = useState('login'); // 'login' | 'register'
+  const [authDomain, setAuthDomain] = useState(null);
 
   if (loading) {
     return (
@@ -47,9 +47,10 @@ function AppContent() {
   }
 
   if (!user) {
-    return authView === 'register'
-      ? <RegisterPage onSwitchToLogin={() => setAuthView('login')} />
-      : <LoginPage    onSwitchToRegister={() => setAuthView('register')} />;
+    if (!authDomain) {
+      return <DomainSelection onSelectDomain={setAuthDomain} />;
+    }
+    return <DomainLogin domainId={authDomain} onBack={() => setAuthDomain(null)} />;
   }
 
   function handleNavigate(newPage) {

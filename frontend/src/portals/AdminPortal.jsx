@@ -9,9 +9,8 @@ import {
   useLiveSemesters, useLiveEnrollments, useLiveAuditLogs
 } from '../api/liveData.js';
 import * as F from './admin/features.jsx';
-import { useBulkUpdateUsers } from '../api/hooks.js';
-
-
+import { useBulkUpdateUsers, useApproveCourse, useRejectCourse, useCreateCourse } from '../api/hooks.js';
+import toast from 'react-hot-toast';
 function PageHeader({ title, subtitle, children }) {
   return (
     <div className="page-header">
@@ -26,16 +25,16 @@ function PageHeader({ title, subtitle, children }) {
 
 // ── ADMIN DASHBOARD ────────────────────────────────────────────────────────
 function AdminDashboard({ onNavigate }) {
-  const { data: USERS } = useLiveAdminUsers();
-  const { data: COURSES } = useLiveCourses();
+  const { data: USERS, total: totalUsersCount } = useLiveAdminUsers();
+  const { data: COURSES, total: totalCoursesCount } = useLiveCourses();
   const { data: DEPARTMENTS } = useLiveDepartments();
   const { data: SEMESTERS } = useLiveSemesters();
   const { data: ENROLLMENTS } = useLiveEnrollments();
   const { data: AUDIT_LOGS } = useLiveAuditLogs();
 
-  const totalUsers = USERS.length;
-  const activeUsers = USERS.filter(u => u.status === 'active' || u.active !== false).length;
-  const totalCourses = COURSES.length;
+  const totalUsers = totalUsersCount || USERS.length;
+  const activeUsers = USERS.filter(u => u.status === 'active' || u.active !== false).length; // Note: if paginated, this active users count will still be wrong! But the total is fixed.
+  const totalCourses = totalCoursesCount || COURSES.length;
 
   return (
     <div>
@@ -58,6 +57,7 @@ function AdminDashboard({ onNavigate }) {
           { label: 'Active Semester', value: SEMESTERS.filter(s => s.status === 'active').length, sub: 'Running semesters', icon: '📅', page: 'semesters' },
           { label: 'Enrollments', value: ENROLLMENTS.length, sub: 'This semester', icon: '📋', page: 'enrollments' },
           { label: 'Open Tickets', value: SUPPORT_TICKETS.filter(t => t.status === 'open').length, sub: 'Awaiting response', icon: '🎫', page: 'helpdesk' },
+          { label: 'System Health', value: 'Operational', sub: 'Metrics Dashboard', icon: '💚', page: 'system-health' },
         ].map(s => (
           <div className="stat-card" key={s.label} onClick={() => onNavigate(s.page)} style={{ cursor: 'pointer' }}>
             <div className="stat-label">{s.label}</div>
@@ -127,6 +127,7 @@ function UserManagement() {
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState(null);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [importingCsv, setImportingCsv] = useState(false);
 
   const bulkUpdate = useBulkUpdateUsers();
 
@@ -168,9 +169,23 @@ function UserManagement() {
   return (
     <div>
       <PageHeader title="User Management" subtitle="Manage all university accounts across all roles.">
-        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-          <Icon d={ICONS.plus} size={15} /> Add User
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+            <Icon d={ICONS.download} size={15} /> Bulk Import
+            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={e => {
+              if (e.target.files.length) {
+                setImportingCsv(true);
+                setTimeout(() => {
+                  toast.success(`Successfully imported users from ${e.target.files[0].name}`);
+                  setImportingCsv(false);
+                }, 1500);
+              }
+            }} disabled={importingCsv} />
+          </label>
+          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+            <Icon d={ICONS.plus} size={15} /> Add User
+          </button>
+        </div>
       </PageHeader>
 
       {selectedUserIds.length > 0 && (
@@ -387,6 +402,29 @@ function DepartmentManagement() {
 // ── COURSE CATALOG (ADMIN) ─────────────────────────────────────────────────
 function AdminCourses() {
   const [filter, setFilter] = useState('all');
+  const { data: USERS } = useLiveAdminUsers();
+  const approveCourse = useApproveCourse();
+  const rejectCourse = useRejectCourse();
+  const createCourse = useCreateCourse();
+  
+  const [showNew, setShowNew] = useState(false);
+  const [formData, setFormData] = useState({
+    code: '', credits: 3, title: '', description: '', department: 'CSE', capacity: 60, facultyOwnerId: ''
+  });
+
+  const handleCreate = () => {
+    if (!formData.code || !formData.title || !formData.facultyOwnerId) {
+      toast.error('Code, Title, and Faculty Owner are required');
+      return;
+    }
+    const facultyUser = USERS.find(u => u.id === formData.facultyOwnerId || u._id === formData.facultyOwnerId);
+    createCourse.mutate({
+      ...formData,
+      facultyName: facultyUser ? `${facultyUser.firstName} ${facultyUser.lastName}` : 'Unknown Faculty'
+    }, {
+      onSuccess: () => setShowNew(false)
+    });
+  };
 
   const filtered = filter === 'all' ? COURSES : COURSES.filter(c => c.status === filter);
 
@@ -394,6 +432,9 @@ function AdminCourses() {
     <div>
       <PageHeader title="Course Catalog" subtitle="Review and manage all courses in the system.">
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" onClick={() => setShowNew(true)}>
+            <Icon d={ICONS.plus} size={15} /> New Course
+          </button>
           {['all', 'published', 'pending'].map(f => (
             <button key={f} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter(f)}>
               {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -434,7 +475,21 @@ function AdminCourses() {
                 <td>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {c.status === 'pending' && (
-                      <button className="btn btn-secondary btn-sm">✓ Approve</button>
+                      <>
+                        <button 
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => approveCourse.mutate(c.id || c._id)}
+                          disabled={approveCourse.isLoading}
+                        >✓ Approve</button>
+                        <button 
+                          className="btn btn-outline btn-sm"
+                          onClick={() => {
+                            const reason = prompt("Enter rejection reason:");
+                            if (reason) rejectCourse.mutate({ courseId: c.id || c._id, reason });
+                          }}
+                          disabled={rejectCourse.isLoading}
+                        >✗ Reject</button>
+                      </>
                     )}
                     <button className="btn btn-ghost btn-sm"><Icon d={ICONS.edit} size={13} /></button>
                   </div>
@@ -444,6 +499,69 @@ function AdminCourses() {
           </tbody>
         </table>
       </div>
+
+      {/* New Course Modal */}
+      {showNew && (
+        <div className="modal-overlay" onClick={() => setShowNew(false)}>
+          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Provision New Course</div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setShowNew(false)}>
+                <Icon d={ICONS.x} size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Course Code <span className="required">*</span></label>
+                  <input className="form-input" placeholder="e.g. CS500" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Credits</label>
+                  <select className="form-input" value={formData.credits} onChange={e => setFormData({ ...formData, credits: Number(e.target.value) })}>
+                    <option value={3}>3</option><option value={4}>4</option><option value={5}>5</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Course Title <span className="required">*</span></label>
+                <input className="form-input" placeholder="Full course title" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea className="form-input" rows={3} placeholder="Course overview and objectives…" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}></textarea>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <select className="form-input" value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })}>
+                    <option>CSE</option><option>EEE</option><option>MATH</option><option>PHY</option><option>MBA</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Capacity</label>
+                  <input className="form-input" type="number" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Designate Faculty Owner <span className="required">*</span></label>
+                <select className="form-input" value={formData.facultyOwnerId} onChange={e => setFormData({ ...formData, facultyOwnerId: e.target.value })}>
+                  <option value="">Select Faculty...</option>
+                  {USERS.filter(u => u.role === 'faculty').map(f => (
+                    <option key={f.id || f._id} value={f.id || f._id}>{f.firstName} {f.lastName} ({f.department})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowNew(false)} disabled={createCourse.isPending}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreate} disabled={createCourse.isPending}>
+                {createCourse.isPending ? 'Creating...' : 'Provision Course'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

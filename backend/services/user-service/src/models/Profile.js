@@ -7,6 +7,12 @@ const ProfileSchema = new mongoose.Schema({
   firstName: { type: String, default: '' },
   lastName: { type: String, default: '' },
   bio: { type: String, default: '' },
+  avatarUrl: { type: String, default: '' },
+  links: {
+    github: { type: String, default: '' },
+    linkedin: { type: String, default: '' },
+    portfolio: { type: String, default: '' }
+  },
   preferences: {
     darkMode: { type: Boolean, default: false },
     themeName: { type: String, default: 'university' }

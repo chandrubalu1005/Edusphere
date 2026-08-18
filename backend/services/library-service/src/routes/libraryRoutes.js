@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get('/books',              authMiddleware, libraryController.getBooks);
 router.post('/books',             authMiddleware, libraryController.createBook);
+router.get('/books/:id/stream',   authMiddleware, libraryController.streamBook);
 router.get('/issues/:userId',     authMiddleware, libraryController.getIssues);
 router.post('/issues',            authMiddleware, libraryController.issueBook);
 router.patch('/issues/:id/return',authMiddleware, libraryController.returnBook);

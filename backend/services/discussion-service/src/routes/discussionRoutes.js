@@ -8,5 +8,7 @@ router.post('/threads',               authMiddleware, discussionController.creat
 // Single thread + replies — must come before /:id/reply to avoid route collision
 router.get('/thread/:id',             authMiddleware, discussionController.getThread);
 router.post('/threads/:id/reply',     authMiddleware, discussionController.replyToThread);
+router.post('/threads/:id/vote',      authMiddleware, discussionController.voteThread);
+router.post('/replies/:replyId/vote', authMiddleware, discussionController.voteReply);
 
 module.exports = router;
