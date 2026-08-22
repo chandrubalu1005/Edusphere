@@ -15,6 +15,7 @@ const CourseSchema = new mongoose.Schema({
     title: { type: String, required: true },
     type: { type: String, enum: ['document', 'video', 'link'], default: 'document' },
     url: { type: String, required: true },
+    unlockDate: { type: Date, default: null },
     addedAt: { type: Date, default: Date.now }
   }],
   syllabusVersions: [{
@@ -27,17 +28,5 @@ const CourseSchema = new mongoose.Schema({
   enrolledStudents: [{ type: String }],
   createdAt: { type: Date, default: Date.now }
 });
-
-// Indexes for common query patterns
-CourseSchema.index({ department: 1, status: 1 });
-CourseSchema.index({ facultyOwnerId: 1, status: 1 });
-CourseSchema.index({ status: 1, createdAt: -1 });
-
-// Virtual for backward compatibility: 'students_enrolled' used in some dashboard code
-CourseSchema.virtual('students_enrolled').get(function() {
-  return this.enrolledStudents ? this.enrolledStudents.length : 0;
-});
-CourseSchema.set('toJSON', { virtuals: true });
-CourseSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Course', CourseSchema);

@@ -10,6 +10,7 @@ import nodemailer from 'nodemailer';
 import winston from 'winston';
 import amqp from 'amqplib';
 import webpush from 'web-push';
+import twilio from 'twilio';
 
 dotenv.config();
 
@@ -200,6 +201,24 @@ app.post('/notifications', async (req, res) => {
       }
     }
 
+    // Twilio SMS Integration (Gated/Inert)
+    // FLAG: Requires a paid Twilio account for production use.
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+      if (metadata && metadata.phoneNumber) {
+        try {
+          const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+          await twilioClient.messages.create({
+            body: `EduSphere: ${title}\n${description}`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: metadata.phoneNumber as string
+          });
+          logger.info(`SMS sent to ${metadata.phoneNumber}`);
+        } catch (smsErr) {
+          logger.warn('Twilio SMS failed', smsErr);
+        }
+      }
+    }
+
     // Queue email notification via RabbitMQ (if configured)
     if (process.env.RABBITMQ_URL) {
       try {
@@ -292,6 +311,83 @@ app.delete('/notifications/:id', authMiddleware, async (req, res) => {
     res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete notification' });
+  }
+});
+
+// ── Announcement Schema ────────────────────────────────────────────────────
+interface IAnnouncement extends Document {
+  title:        string;
+  content:      string;
+  author:       string;
+  authorId:     string;
+  targetRoles:  string[];
+  targetDept:   string | null;
+  priority:     string;
+  expiresAt:    Date | null;
+  createdAt:    Date;
+}
+const AnnouncementSchema = new Schema<IAnnouncement>({
+  title:        { type: String, required: true, maxlength: 200 },
+  content:      { type: String, required: true, maxlength: 5000 },
+  author:       { type: String, required: true },
+  authorId:     { type: String, required: true },
+  targetRoles:  { type: [String], default: ['student', 'faculty', 'admin', 'management'] },
+  targetDept:   { type: String, default: null },
+  priority:     { type: String, enum: ['low', 'normal', 'high', 'urgent'], default: 'normal' },
+  expiresAt:    { type: Date, default: null },
+  createdAt:    { type: Date, default: Date.now },
+});
+// TTL: auto-delete expired announcements
+AnnouncementSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, sparse: true });
+const Announcement = mongoose.model<IAnnouncement>('Announcement', AnnouncementSchema);
+
+// GET /notifications/announcements
+app.get('/notifications/announcements', authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const { page = 1, limit = 20, priority } = req.query;
+    const filter: Record<string, unknown> = {
+      $and: [
+        { $or: [{ targetRoles: user.role }, { targetRoles: { $size: 0 } }] },
+        { $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }
+      ]
+    };
+    if (priority) filter.priority = priority;
+    const announcements = await Announcement.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit));
+    const total = await Announcement.countDocuments({ targetRoles: user.role });
+    res.json({ announcements, total, page: Number(page) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+// POST /notifications/announcements — faculty/admin only
+app.post('/notifications/announcements', authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!['faculty', 'admin', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({ error: 'Faculty or admin access required' });
+    }
+    const { title, content, targetRoles, targetDept, priority, expiresAt } = req.body;
+    if (!title || !content) return res.status(400).json({ error: 'title and content are required' });
+    const announcement = await Announcement.create({
+      title, content, priority: priority || 'normal',
+      targetRoles: targetRoles || ['student', 'faculty', 'admin', 'management'],
+      targetDept: targetDept || null,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      author:   user.username || user.userId,
+      authorId: user.userId,
+    });
+    // Fan-out notification to all target users via Socket.IO broadcast
+    const rooms = announcement.targetRoles.map((r: string) => `role:${r}`);
+    io.to(rooms).emit('new_announcement', announcement);
+    logger.info(`Announcement published by ${user.userId}: "${title}"`);
+    res.status(201).json(announcement);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to publish announcement' });
   }
 });
 
@@ -440,9 +536,18 @@ async function bootstrap() {
 
   const PORT = process.env.PORT || 3004;
   http.listen(PORT, () => logger.info(`🔔 Notification Service running on :${PORT}`));
+  
+  // Weekly digest cron placeholder (Simulated)
+  setInterval(() => {
+    logger.info('Weekly digest job execution skipped (Stub/CRON configured)');
+  }, 7 * 24 * 60 * 60 * 1000);
 }
 
 bootstrap().catch(err => {
   logger.error('Bootstrap failed', err);
   process.exit(1);
 });
+
+process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
+process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
+

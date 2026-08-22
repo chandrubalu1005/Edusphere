@@ -54,28 +54,34 @@ exports.updateProfile = async (req, res) => {
       return res.status(403).json({ error: 'Access forbidden. Can only update own profile.' });
     }
 
-    const { firstName, lastName, bio, preferences } = req.body;
-    const profile = await Profile.findOne({ userId: req.params.id });
+    const { firstName, lastName, bio, preferences, links } = req.body;
+    
+    let updateFields = {};
+    if (firstName !== undefined) updateFields.firstName = firstName;
+    if (lastName !== undefined) updateFields.lastName = lastName;
+    if (bio !== undefined) updateFields.bio = bio;
+    
+    if (links) {
+      if (links.github !== undefined) updateFields['links.github'] = links.github;
+      if (links.linkedin !== undefined) updateFields['links.linkedin'] = links.linkedin;
+      if (links.portfolio !== undefined) updateFields['links.portfolio'] = links.portfolio;
+    }
+
+    if (preferences) {
+      if (preferences.darkMode !== undefined) updateFields['preferences.darkMode'] = preferences.darkMode;
+      if (preferences.themeName !== undefined) updateFields['preferences.themeName'] = preferences.themeName;
+    }
+
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.params.id },
+      { $set: updateFields },
+      { new: true }
+    );
+
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    if (firstName !== undefined) profile.firstName = firstName;
-    if (lastName !== undefined) profile.lastName = lastName;
-    if (bio !== undefined) profile.bio = bio;
-    
-    if (req.body.links) {
-      if (req.body.links.github !== undefined) profile.links.github = req.body.links.github;
-      if (req.body.links.linkedin !== undefined) profile.links.linkedin = req.body.links.linkedin;
-      if (req.body.links.portfolio !== undefined) profile.links.portfolio = req.body.links.portfolio;
-    }
-
-    if (preferences !== undefined) {
-      if (preferences.darkMode !== undefined) profile.preferences.darkMode = preferences.darkMode;
-      if (preferences.themeName !== undefined) profile.preferences.themeName = preferences.themeName;
-    }
-
-    await profile.save();
     res.json({ message: 'Profile updated successfully', profile });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -88,13 +94,15 @@ exports.deactivateProfile = async (req, res) => {
       return res.status(403).json({ error: 'Access forbidden. Admins only.' });
     }
 
-    const profile = await Profile.findOne({ userId: req.params.id });
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.params.id },
+      { $set: { active: false } },
+      { new: true }
+    );
+    
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
-
-    profile.active = false;
-    await profile.save();
 
     res.json({ message: 'Profile deactivated successfully', profile });
   } catch (error) {

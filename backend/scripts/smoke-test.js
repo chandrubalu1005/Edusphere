@@ -9,7 +9,29 @@
 
 const http = require('http');
 
+const net = require('net');
+
 const USE_GATEWAY = process.argv.includes('--gateway');
+
+async function checkInfrastructure(host, port, name) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(2000);
+    socket.on('connect', () => {
+      socket.destroy();
+      resolve({ name, status: 'UP' });
+    });
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve({ name, status: 'DOWN', error: 'Timeout' });
+    });
+    socket.on('error', (err) => {
+      socket.destroy();
+      resolve({ name, status: 'DOWN', error: err.message });
+    });
+    socket.connect(port, host);
+  });
+}
 
 // Correct port → service mapping (verified against each service's server.js PORT fallback)
 const SERVICES = [
@@ -71,6 +93,18 @@ async function runSmokeTest() {
   console.log(` Mode: ${mode}`);
   console.log('═══════════════════════════════════════════════════════\n');
 
+  console.log('--- Checking Core Infrastructure ---');
+  const mongoCheck = await checkInfrastructure('127.0.0.1', 27017, 'MongoDB');
+  if (mongoCheck.status === 'UP') {
+    console.log('✅ [MongoDB] port 27017: UP');
+  } else {
+    console.log(`❌ [MongoDB] port 27017: DOWN (${mongoCheck.error})`);
+    console.log('\nFATAL: MongoDB is unreachable. The microservices will crash instantly.');
+    console.log('Please start MongoDB (e.g. docker run -d -p 27017:27017 mongo) before proceeding.');
+    process.exit(1);
+  }
+
+  console.log('\n--- Checking Microservices ---');
   const results = await Promise.all(SERVICES.map(checkService));
 
   let passed = 0;

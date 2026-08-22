@@ -47,6 +47,16 @@ export default function CommandPalette({ isOpen, onClose, onNavigate }) {
           console.warn('Courses search failed:', err.message);
         }
 
+        if ('attendance'.includes(query.toLowerCase()) || 'otp'.includes(query.toLowerCase())) {
+          fetchedResults.push({
+            id: 'otp-attendance-action',
+            title: 'Mark OTP Attendance',
+            category: 'Actions',
+            icon: '⏱️',
+            action: () => onNavigate('attendance')
+          });
+        }
+
         // 2. Search Discussions (local filter fallback or fetch)
         try {
           const res = await api.get('/discussions');

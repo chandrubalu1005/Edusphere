@@ -5,6 +5,7 @@ const DiscussionReplySchema = new mongoose.Schema({
   upvotedBy: [{ type: String }],
   downvotedBy: [{ type: String }],
   isSpam: { type: Boolean, default: false },
+  isAiSuggested: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 module.exports = mongoose.model('DiscussionReply', DiscussionReplySchema);

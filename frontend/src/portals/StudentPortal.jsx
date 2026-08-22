@@ -5,7 +5,8 @@ import { useDropzone } from 'react-dropzone';
 import { useSubmitAssignment } from '../api/hooks.js';
 import toast from 'react-hot-toast';
 import {
-  SUPPORT_TICKETS as MOCK_SUPPORT_TICKETS
+  SUPPORT_TICKETS as MOCK_SUPPORT_TICKETS,
+  SUBMISSIONS as MOCK_SUBMISSIONS
 } from '../mockData.js';
 import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
@@ -13,6 +14,7 @@ import {
   useLiveEnrollments
 } from '../api/liveData.js';
 import * as F from './student/features.jsx';
+import OtpAttendanceWidget from '../components/OtpAttendanceWidget.jsx';
 
 const SUPPORT_TICKETS = MOCK_SUPPORT_TICKETS;
 
@@ -307,6 +309,7 @@ function StudentAttendance({ user }) {
   const { data: ENROLLMENTS } = useLiveEnrollments();
   const { data: ATTENDANCE_RECORDS } = useLiveAttendance();
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
 
   const records = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id || a.studentId === user.userId);
   const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id || e.studentId === user.userId);
@@ -314,7 +317,10 @@ function StudentAttendance({ user }) {
   return (
     <div>
       <PageHeader title="My Attendance" subtitle="Track your attendance across all enrolled courses.">
-        <button className="btn btn-primary btn-sm" onClick={() => setScannerOpen(true)}>📷 Scan Class QR Code</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary btn-sm" onClick={() => setScannerOpen(true)}>📷 Scan Class QR Code</button>
+          <button className="btn btn-outline btn-sm" onClick={() => setOtpOpen(true)}>⏱️ Enter OTP</button>
+        </div>
       </PageHeader>
 
       {scannerOpen && (
@@ -337,6 +343,72 @@ function StudentAttendance({ user }) {
                 }}
               >
                 Simulate QR Scan Success
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {otpOpen && (
+        <div className="modal-overlay" onClick={() => setOtpOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 420 }}>
+            <div className="modal-header">
+              <div className="modal-title">Enter Attendance OTP</div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setOtpOpen(false)}><Icon d={ICONS.x} size={18} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Enter the 6-digit OTP displayed by your faculty.</p>
+              <input
+                type="text"
+                maxLength="6"
+                placeholder="------"
+                id="otp-manual-input"
+                style={{ width: '100%', textAlign: 'center', fontSize: 24, letterSpacing: '0.5em', padding: 12, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', fontFamily: 'var(--font-mono)' }}
+                onChange={e => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+              />
+              <button
+                className="btn btn-accent"
+                onClick={async () => {
+                  const otp = document.getElementById('otp-manual-input').value;
+                  if (otp.length !== 6) {
+                    toast.error('Please enter a 6-digit OTP');
+                    return;
+                  }
+                  try {
+                    // Try to hit the OTP check endpoint
+                    const token = localStorage.getItem('token');
+                    // Find active session
+                    const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
+                    const resSessions = await fetch(`${ATTEND_URL}/otp-attendance/sessions`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const sessions = await resSessions.json();
+                    if (!sessions || sessions.length === 0) {
+                      toast.error('No active attendance sessions found.');
+                      return;
+                    }
+                    const res = await fetch(`${ATTEND_URL}/otp-attendance/submit`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                      },
+                      body: JSON.stringify({
+                        sessionId: sessions[0]._id,
+                        otp,
+                        deviceFingerprint: localStorage.getItem('device_fp') + '|' + navigator.userAgent
+                      })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Failed to submit OTP');
+                    toast.success('Attendance marked successfully!');
+                    setOtpOpen(false);
+                  } catch (err) {
+                    toast.error(err.message);
+                  }
+                }}
+              >
+                Submit OTP
               </button>
             </div>
           </div>
@@ -1013,13 +1085,12 @@ function StudentProfile({ user }) {
               </div>
             </div>
           </div>
-          </div>
+
           <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
             <button className="btn btn-outline btn-sm"><Icon d={ICONS.download} size={13} /> Download ID</button>
             <button className="btn btn-outline btn-sm">🔲 QR Code</button>
           </div>
-</div>
-          
+
           <div className="card" style={{ marginTop: 24, background: 'var(--surface-2)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
             <div>
               <div style={{ fontWeight: 700, color: 'var(--text-1)' }}>Academic Transcript</div>
@@ -1425,5 +1496,10 @@ export default function StudentPortal({ page, onNavigate }) {
     'ai-assistant': <F.AIAssistant user={user} />,
   };
 
-  return pages[page] || pages.dashboard;
+  return (
+    <>
+      {pages[page] || pages.dashboard}
+      {user?.token && <OtpAttendanceWidget token={user.token} />}
+    </>
+  );
 }

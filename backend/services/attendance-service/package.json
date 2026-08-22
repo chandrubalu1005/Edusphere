@@ -6,14 +6,15 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "amqplib": "^0.10.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.0.3",
-    "redis": "^4.6.5",
-    "amqplib": "^0.10.3",
+    "otplib": "^13.4.1",
     "qrcode": "1.5.3",
+    "redis": "^4.6.5",
     "uuid": "9.0.0"
   }
 }

@@ -33,27 +33,27 @@ exports.createDrive = async (req, res) => {
 };
 
 exports.applyToDrive = async (req, res) => {
+  if (req.user.role !== 'student') return res.status(403).json({ error: 'Students only' });
+  const { driveId } = req.body;
+  if (!driveId) return res.status(400).json({ error: 'driveId is required' });
   try {
-    if (req.user.role !== 'student') return res.status(403).json({ error: 'Students only' });
-    const { driveId } = req.body;
-    if (!driveId) return res.status(400).json({ error: 'driveId is required' });
-
     const drive = await PlacementDrive.findById(driveId);
     if (!drive) return res.status(404).json({ error: 'Drive not found' });
     if (drive.status !== 'active') return res.status(400).json({ error: 'Drive is no longer accepting applications' });
-
-    const existing = await PlacementApplication.findOne({ driveId, studentId: req.user.userId });
-    if (existing) return res.status(409).json({ error: 'You have already applied to this drive' });
-
+    // Atomic create — let the DB unique index (driveId, studentId) enforce deduplication.
+    // No findOne needed; code 11000 = duplicate key = already applied.
     const application = await PlacementApplication.create({
       driveId,
-      studentId: req.user.userId,
+      studentId:   req.user.userId,
       studentName: req.user.username,
-      appliedAt: new Date(),
-      status: 'applied',
+      appliedAt:   new Date(),
+      status:      'applied',
     });
     res.status(201).json(application);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ error: 'You have already applied to this drive' });
+    res.status(500).json({ error: error.message });
+  }
 };
 
 exports.getDriveApplicants = async (req, res) => {
@@ -64,6 +64,32 @@ exports.getDriveApplicants = async (req, res) => {
     const applications = await PlacementApplication.find({ driveId: req.params.driveId }).sort({ appliedAt: -1 });
     res.json({ applications, total: applications.length, driveId: req.params.driveId });
   } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+const { publishEvent } = require('../config/rabbitmq');
+
+exports.updateApplicationStatus = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin' && req.user.role !== 'management') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const app = await PlacementApplication.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true }
+    );
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+
+    publishEvent('placement.status_updated', {
+      studentId: app.studentId,
+      driveId: app.driveId,
+      status: app.status
+    });
+
+    res.json(app);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 exports.buildResume = async (req, res) => {

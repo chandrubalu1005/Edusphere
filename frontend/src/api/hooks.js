@@ -942,3 +942,311 @@ export const useWithdrawLeave = () => {
   });
 };
 
+// ── Student Grades & Transcript ───────────────────────────────────────────
+export const useStudentGrades = (studentId) => {
+  return useQuery({
+    queryKey: ['studentGrades', studentId],
+    queryFn: async () => {
+      const res = await api.get(`/analytics/grades/${studentId}`);
+      return res.data;
+    },
+    enabled: Boolean(studentId),
+    retry: 1,
+  });
+};
+
+// ── Course Resources (Download Center) ────────────────────────────────────
+export const useCourseResources = (courseId) => {
+  return useQuery({
+    queryKey: ['courseResources', courseId],
+    queryFn: async () => {
+      const res = await api.get(`/courses/${courseId}/content`);
+      return res.data;
+    },
+    enabled: Boolean(courseId),
+    retry: 1,
+  });
+};
+
+// ── All Course Resources (aggregated for Download Center) ─────────────────
+export const useAllCourseResources = () => {
+  return useQuery({
+    queryKey: ['allCourseResources'],
+    queryFn: async () => {
+      const res = await api.get('/courses/resources/all');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+// ── Announcements ─────────────────────────────────────────────────────────
+export const useAnnouncements = (params) => {
+  return useQuery({
+    queryKey: ['announcements', params],
+    queryFn: async () => {
+      const res = await api.get('/notifications/announcements', { params });
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useCreateAnnouncement = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/notifications/announcements', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Announcement published!');
+      queryClient.invalidateQueries(['announcements']);
+    },
+  });
+};
+
+// ── Attendance Weekly Summary (Faculty Dashboard Chart) ───────────────────
+export const useWeeklyAttendanceSummary = (params) => {
+  return useQuery({
+    queryKey: ['weeklyAttendanceSummary', params],
+    queryFn: async () => {
+      const res = await api.get('/attendance/weekly-summary', { params });
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+// ── AI Heuristic Endpoints (analytics-service) ────────────────────────────
+export const useStudentRisk = (studentId) => {
+  return useQuery({
+    queryKey: ['studentRisk', studentId],
+    queryFn: async () => {
+      const res = await api.get(`/analytics/risk/${studentId}`);
+      return res.data;
+    },
+    enabled: Boolean(studentId),
+    retry: 1,
+  });
+};
+
+export const useRubricTemplates = () => {
+  return useQuery({
+    queryKey: ['rubricTemplates'],
+    queryFn: async () => {
+      const res = await api.get('/analytics/ai/rubric-templates');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useKPIForecast = () => {
+  return useQuery({
+    queryKey: ['kpiForecast'],
+    queryFn: async () => {
+      const res = await api.get('/analytics/ai/kpi-forecast');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+// ── Faculty Performance (Management) ─────────────────────────────────────
+export const useFacultyPerformance = () => {
+  return useQuery({
+    queryKey: ['facultyPerformance'],
+    queryFn: async () => {
+      const res = await api.get('/analytics/management/faculty-performance');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+// ── Placement Stats (Management Analytics) ───────────────────────────────
+export const usePlacementStats = () => {
+  return useQuery({
+    queryKey: ['placementStats'],
+    queryFn: async () => {
+      const res = await api.get('/analytics/management/placement-stats');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+// ── Help Desk / Support Tickets ───────────────────────────────────────────
+export const useSupportTickets = (params) => {
+  return useQuery({
+    queryKey: ['supportTickets', params],
+    queryFn: async () => {
+      const res = await api.get('/admin/helpdesk/tickets', { params });
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useCreateSupportTicket = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/admin/helpdesk/tickets', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Support ticket submitted! We will respond within 24 hours.');
+      queryClient.invalidateQueries(['supportTickets']);
+    },
+  });
+};
+
+export const useRespondToTicket = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ticketId, response, status }) => {
+      const res = await api.patch(`/admin/helpdesk/tickets/${ticketId}`, { response, status });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Response sent to student.');
+      queryClient.invalidateQueries(['supportTickets']);
+    },
+  });
+};
+
+// ── System Health (All Services) ──────────────────────────────────────────
+export const useAllServicesHealth = () => {
+  return useQuery({
+    queryKey: ['allServicesHealth'],
+    queryFn: async () => {
+      const res = await api.get('/admin/health/all');
+      return res.data;
+    },
+    refetchInterval: 30000,
+    retry: 0, // Don't retry health checks — fail fast
+  });
+};
+
+// ── Backup Records ────────────────────────────────────────────────────────
+export const useBackupRecords = () => {
+  return useQuery({
+    queryKey: ['backupRecords'],
+    queryFn: async () => {
+      const res = await api.get('/admin/backups');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+// ── Management: Department Performance ───────────────────────────────────
+export const useDepartmentPerformance = () => {
+  return useQuery({
+    queryKey: ['departmentPerformance'],
+    queryFn: async () => {
+      const res = await api.get('/analytics/management/department-performance');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+// ── Feedback Surveys ──────────────────────────────────────────────────────
+export const useFeedbackSurveys = (courseId) => {
+  return useQuery({
+    queryKey: ['feedbackSurveys', courseId],
+    queryFn: async () => {
+      const res = await api.get('/courses/feedback', { params: { courseId } });
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useSubmitFeedback = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/courses/feedback', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Feedback submitted anonymously!');
+      queryClient.invalidateQueries(['feedbackSurveys']);
+    },
+  });
+};
+
+// ── Roles & Permissions (auth-service) ────────────────────────────────────
+export const useRoles = () => {
+  return useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const res = await api.get('/auth/roles');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useUpdateRolePermissions = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ role, permissions }) => {
+      const res = await api.put(`/auth/roles/${role}`, { permissions });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Role permissions updated');
+      queryClient.invalidateQueries(['roles']);
+    },
+  });
+};
+
+// ── Course Prerequisites ──────────────────────────────────────────────────
+export const useUpdateCoursePrerequisites = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courseId, prerequisites }) => {
+      const res = await api.patch(`/courses/${courseId}/prerequisites`, { prerequisites });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Prerequisites updated');
+      queryClient.invalidateQueries(['courses']);
+    },
+  });
+};
+
+// ── Grade Dispute Resolution (faculty) ───────────────────────────────────
+export const usePendingDisputes = (courseId) => {
+  return useQuery({
+    queryKey: ['pendingDisputes', courseId],
+    queryFn: async () => {
+      const res = await api.get('/assignments/disputes', { params: { courseId } });
+      return res.data;
+    },
+    enabled: Boolean(courseId),
+    retry: 1,
+  });
+};
+
+// ── Semester Snapshot ─────────────────────────────────────────────────────
+export const useCloseSemester = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (semesterId) => {
+      const res = await api.post(`/admin/semesters/${semesterId}/close`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Semester closed and snapshot saved');
+      queryClient.invalidateQueries(['semesters']);
+    },
+  });
+};
+
+

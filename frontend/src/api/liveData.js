@@ -12,6 +12,18 @@ export function useLiveCourses(params) {
   };
 }
 
+export function useLiveUsers(role) {
+  const { data, isLoading, error } = hooks.useUsers(role);
+  const list = data?.users || (Array.isArray(data) ? data : []);
+  const fallback = role ? mock.USERS.filter(u => u.role === role) : mock.USERS;
+  return {
+    data: list.length ? list : fallback,
+    total: data?.total !== undefined ? data.total : fallback.length,
+    isLoading,
+    error
+  };
+}
+
 export function useLiveAssignments(courseId) {
   const { data, isLoading, error } = hooks.useAssignments(courseId);
   const list = data?.assignments || (Array.isArray(data) ? data : []);
@@ -166,20 +178,38 @@ export function useLiveEnrollments(userId) {
   const { data: courseData, isLoading, error } = hooks.useCourses();
   const list = courseData?.courses || [];
   
-  // Only map courses where the user is actually enrolled
+  // Map courses based on whether a userId filter is provided
   const enrolledCourses = userId 
     ? list.filter(c => c.enrolledStudents && c.enrolledStudents.includes(userId))
-    : [];
+    : list.filter(c => c.enrolledStudents && c.enrolledStudents.length > 0);
 
-  const enrollments = enrolledCourses.map(c => ({
-    id: `enr-${c._id || c.id}`,
-    courseId: c._id || c.id,
-    courseTitle: c.title,
-    enrolledAt: new Date(c.createdAt || Date.now()).toLocaleDateString(),
-    progress: c.content?.length ? Math.min(100, c.content.length * 10) : 0 // Fake progress based on content length
-  }));
+  let enrollments = [];
+  if (userId) {
+    enrollments = enrolledCourses.map(c => ({
+      id: `enr-${c._id || c.id}`,
+      courseId: c._id || c.id,
+      courseTitle: c.title,
+      enrolledAt: new Date(c.createdAt || Date.now()).toLocaleDateString(),
+      progress: c.content?.length ? Math.min(100, c.content.length * 10) : 0
+    }));
+  } else {
+    // For admin view: flatten all students in all courses
+    enrolledCourses.forEach(c => {
+      c.enrolledStudents.forEach(studentId => {
+        enrollments.push({
+          id: `enr-${c._id || c.id}-${studentId}`,
+          courseId: c._id || c.id,
+          courseTitle: c.title,
+          studentId: studentId,
+          enrolledAt: new Date(c.createdAt || Date.now()).toLocaleDateString(),
+          progress: c.content?.length ? Math.min(100, c.content.length * 10) : 0
+        });
+      });
+    });
+  }
+
   return {
-    data: enrollments.length ? enrollments : mock.ENROLLMENTS.filter(e => e.studentId === userId),
+    data: enrollments.length ? enrollments : (userId ? mock.ENROLLMENTS.filter(e => e.studentId === userId) : mock.ENROLLMENTS),
     isLoading,
     error
   };
@@ -269,6 +299,59 @@ export function useLiveLeaveBalance(userId) {
   const list = data?.balance || (Array.isArray(data) ? data : []);
   return {
     data: list,
+    isLoading,
+    error
+  };
+}
+
+export function useLiveDepartmentPerformance() {
+  const { data, isLoading, error } = hooks.useDepartmentPerformance();
+  return {
+    data: data?.performance || mock.MOCK_DEPT_PERFORMANCE,
+    isLoading,
+    error
+  };
+}
+
+export function useLiveFacultyPerformance() {
+  const { data, isLoading, error } = hooks.useFacultyPerformance();
+  return {
+    data: data?.metrics || [],
+    isLoading,
+    error
+  };
+}
+
+export function useLivePlacementStats() {
+  const { data, isLoading, error } = hooks.usePlacementStats();
+  return {
+    data: data?.stats || mock.MOCK_PREDICTIVE_DATA,
+    isLoading,
+    error
+  };
+}
+export function useLiveKPIForecast() {
+  const { data, isLoading, error } = hooks.useKPIForecast();
+  return {
+    data: data || null,
+    isLoading,
+    error
+  };
+}
+
+export function useLiveBudgets() {
+  const { data, isLoading, error } = hooks.useAnalyticsBudgets();
+  return {
+    data: data || [],
+    isLoading,
+    error
+  };
+}
+
+export function useLiveKPIs() {
+  const { data, isLoading, error } = hooks.useAnalyticsKPIs();
+  return {
+    data: data || null,
     isLoading,
     error
   };

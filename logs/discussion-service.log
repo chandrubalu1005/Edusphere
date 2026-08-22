@@ -2,3 +2,5 @@
 > discussion-service@1.0.0 start
 > node server.js
 
+Connected to MongoDB successfully
+discussion-service running on port 3013

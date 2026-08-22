@@ -1,0 +1,6 @@
+
+> calendar-service@1.0.0 start
+> node server.js
+
+Connected to MongoDB successfully
+calendar-service running on port 3010

@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Icon, ICONS } from '../../components/Layout.jsx';
 import toast from 'react-hot-toast';
-import { useTriggerBackup, useSystemHealth } from '../../api/hooks.js';
+import { useTriggerBackup, useSystemHealth, useAllServicesHealth, useBackupRecords } from '../../api/hooks.js';
 import {
   PageHeader, StatCard, DataTable, StatusBadge, Tabs, FilterBar,
   CalendarWidget, TimetableGrid, Timeline, BarChart, DonutChart,
@@ -30,13 +30,14 @@ import {
 } from '../../mockData.js';
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
-  useLivePlacementDrives, useLiveAuditLogs
+  useLivePlacementDrives, useLiveAuditLogs, useLiveCourses
 } from '../../api/liveData.js';
 
-// ── TIMETABLE MANAGEMENT ────────────────────────────────────────────────────
+// ── MOCK_TIMETABLE MANAGEMENT ────────────────────────────────────────────────────
 export function TimetableMgmt({ user }) {
-  const { data: TIMETABLE } = useLiveTimetable();
-  const [slots, setSlots] = useState(TIMETABLE || MOCK_TIMETABLE);
+  const { data: MOCK_TIMETABLE } = useLiveTimetable();
+  const { data: COURSES } = useLiveCourses();
+  const [slots, setSlots] = useState(MOCK_TIMETABLE || MOCK_TIMETABLE);
   
   const [modalOpen, setModalOpen] = useState(false);
   const [day, setDay] = useState('Monday');
@@ -46,12 +47,12 @@ export function TimetableMgmt({ user }) {
   const [type, setType] = useState('lecture');
 
   useEffect(() => {
-    if (TIMETABLE) setSlots(TIMETABLE);
-  }, [TIMETABLE]);
+    if (MOCK_TIMETABLE) setSlots(MOCK_TIMETABLE);
+  }, [MOCK_TIMETABLE]);
 
   function handleAdd(e) {
     e.preventDefault();
-    const courseObj = COURSES.find(c => c.id === course) || { code: 'CS101', title: 'Intro to CS', facultyName: 'Dr. Sarah Jenkins' };
+    const courseObj = COURSES.find(c => c.id === course || c.code === course) || { code: 'CS101', title: 'Intro to CS', facultyName: 'Dr. Sarah Jenkins' };
     const newSlot = {
       id: `tt${slots.length + 1}`,
       day,
@@ -61,7 +62,7 @@ export function TimetableMgmt({ user }) {
       courseCode: courseObj.code,
       courseTitle: courseObj.title,
       room,
-      faculty: courseObj.facultyName,
+      faculty: courseObj.facultyName || courseObj.facultyOwnerId,
       type
     };
     setSlots([...slots, newSlot]);
@@ -99,7 +100,7 @@ export function TimetableMgmt({ user }) {
           <div className="form-group">
             <label className="form-label">Course</label>
             <select className="form-select" value={course} onChange={e => setCourse(e.target.value)}>
-              {COURSES.map(c => <option key={c.id} value={c.id}>{c.code} - {c.title}</option>)}
+              {COURSES.map(c => <option key={c.id || c.code} value={c.id || c.code}>{c.code} - {c.title}</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -178,6 +179,13 @@ export function RolePermissions({ user }) {
 
 // ── SYSTEM HEALTH / MONITORING DASHBOARD ────────────────────────────────────
 export function SystemHealth({ user }) {
+  const { data: healthData, isLoading } = useAllServicesHealth();
+
+  if (isLoading) return <div style={{ padding: 20 }}>Checking system health...</div>;
+
+  const services = healthData?.services || [];
+  const activeCount = services.filter(s => s.status === 'online').length;
+
   return (
     <div>
       <PageHeader
@@ -187,10 +195,10 @@ export function SystemHealth({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Overall Status" value="Operational" icon="💚" />
-        <StatCard label="Active Services" value="8 / 8" icon="⚙️" />
-        <StatCard label="Active DB Conns" value={SYSTEM_HEALTH.database.connections} icon="💾" />
-        <StatCard label="Database Ops" value={`${SYSTEM_HEALTH.database.opsPerSec} ops/s`} icon="📈" />
+        <StatCard label="Overall Status" value={healthData?.overall === 'healthy' ? 'Operational' : 'Degraded'} icon="💚" />
+        <StatCard label="Active Services" value={`${activeCount} / ${services.length}`} icon="⚙️" />
+        <StatCard label="Active DB Conns" value={healthData?.database?.connections || 0} icon="💾" />
+        <StatCard label="Database Ops" value={`${healthData?.database?.opsPerSec || 0} ops/s`} icon="📈" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
@@ -207,7 +215,7 @@ export function SystemHealth({ user }) {
               { key: 'cpu', label: 'CPU' },
               { key: 'memory', label: 'RAM' }
             ]}
-            data={SYSTEM_HEALTH.services}
+            data={services}
             searchable={false}
             paginated={false}
           />
@@ -216,27 +224,14 @@ export function SystemHealth({ user }) {
         {/* Infrastructure & DB */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div className="card" style={{ padding: 20 }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 16, color: 'var(--text-1)' }}>Infrastructure</h3>
-            {SYSTEM_HEALTH.infrastructure.map(infra => (
-              <div key={infra.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>{infra.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{infra.details}</div>
-                </div>
-                <StatusBadge status={infra.status} />
-              </div>
-            ))}
-          </div>
-
-          <div className="card" style={{ padding: 20 }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 16, color: 'var(--text-1)' }}>Database Stats</h3>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
               <span>Total Database Size:</span>
-              <strong>{SYSTEM_HEALTH.database.totalSize}</strong>
+              <strong>{healthData?.database?.totalSize || 'Unknown'}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
               <span>Connection Pool:</span>
-              <strong>{SYSTEM_HEALTH.database.connections} Active</strong>
+              <strong>{healthData?.database?.connections || 0} Active</strong>
             </div>
           </div>
         </div>
@@ -247,9 +242,12 @@ export function SystemHealth({ user }) {
 
 // ── BACKUP & RESTORE ────────────────────────────────────────────────────────
 export function BackupRestore({ user }) {
-  const [backups, setBackups] = useState(BACKUP_RECORDS);
+  const { data: backupData } = useBackupRecords();
+  const [localBackups, setLocalBackups] = useState([]);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const backupMutation = useTriggerBackup();
+
+  const backups = backupData?.backups || localBackups;
 
   function triggerBackup() {
     setIsBackingUp(true);
@@ -265,7 +263,7 @@ export function BackupRestore({ user }) {
           completedAt: new Date().toISOString().replace('T',' ').substring(0, 16),
           triggeredBy: 'sys_admin'
         };
-        setBackups([newBackup, ...backups]);
+        setLocalBackups([newBackup, ...backups]);
       },
       onError: () => {
         // Fallback simulation
@@ -280,7 +278,7 @@ export function BackupRestore({ user }) {
             completedAt: new Date().toISOString().replace('T',' ').substring(0, 16),
             triggeredBy: 'sys_admin'
           };
-          setBackups([newBackup, ...backups]);
+          setLocalBackups([newBackup, ...backups]);
           toast.success("Database Backup successful! Snapshot: edusphere_prod_backup.tar.gz");
         }, 1800);
       }
@@ -352,7 +350,7 @@ export function AuditLogsCenter({ user }) {
               { key: 'duration', label: 'Latency', width: 80 },
               { key: 'ip', label: 'IP Address', width: 120 }
             ]}
-            data={API_LOGS}
+            data={MOCK_API_LOGS}
           />
         )}
       </div>
@@ -379,7 +377,7 @@ export function LibraryManagement({ user }) {
           { key: 'copies', label: 'Total Copies', width: 90 },
           { key: 'available', label: 'Available', width: 90 }
         ]}
-        data={LIBRARY_RESOURCES}
+        data={MOCK_LIBRARY_RESOURCES}
       />
     </div>
   );
@@ -406,7 +404,7 @@ export function PlacementManagement({ user }) {
           { key: 'selected', label: 'Selected', width: 80 },
           { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> }
         ]}
-        data={PLACEMENT_DRIVES}
+        data={MOCK_PLACEMENT_DRIVES}
       />
     </div>
   );

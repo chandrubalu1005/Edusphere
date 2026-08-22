@@ -5,11 +5,8 @@ const DiscussionThreadSchema = new mongoose.Schema({
   upvotedBy: [{ type: String }],
   downvotedBy: [{ type: String }],
   pinned: { type: Boolean, default: false },
-  isSpam: { type: Boolean, default: false }
-}, { timestamps: true });
-
-// Indexes for course-level thread listing
-DiscussionThreadSchema.index({ courseId: 1, createdAt: -1 });
-DiscussionThreadSchema.index({ courseId: 1, pinned: -1, votes: -1 }); // Pinned + popular
-
+  isSpam: { type: Boolean, default: false },
+  replyCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
 module.exports = mongoose.model('DiscussionThread', DiscussionThreadSchema);

@@ -15,7 +15,19 @@ exports.getBooks = async (req, res) => {
 exports.getIssues = async (req, res) => {
   try {
     const issues = await BookIssue.find({ userId: req.params.userId }).sort({ issueDate: -1 });
-    res.json({ issues, total: issues.length });
+    
+    // Server-computed fines (e.g. $1 per day late)
+    const now = new Date();
+    const processedIssues = issues.map(issue => {
+      let fine = 0;
+      if (issue.status === 'issued' && issue.dueDate && now > issue.dueDate) {
+         const lateDays = Math.ceil((now - issue.dueDate) / (1000 * 60 * 60 * 24));
+         fine = lateDays * 1; // 1 unit per day
+      }
+      return { ...issue.toObject(), computedFine: fine };
+    });
+
+    res.json({ issues: processedIssues, total: processedIssues.length });
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
@@ -56,6 +68,8 @@ exports.issueBook = async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
+const { publishEvent } = require('../config/rabbitmq');
+
 exports.returnBook = async (req, res) => {
   try {
     const issue = await BookIssue.findById(req.params.id);
@@ -74,7 +88,13 @@ exports.returnBook = async (req, res) => {
     );
     if (!updatedIssue) return res.status(409).json({ error: 'Book already returned or issue not found' });
 
-    await LibraryBook.findByIdAndUpdate(issue.bookId, { $inc: { availableCopies: 1 } });
+    const updatedBook = await LibraryBook.findByIdAndUpdate(issue.bookId, { $inc: { availableCopies: 1 } }, { new: true });
+
+    publishEvent('library.book_available', {
+      bookId: issue.bookId,
+      bookTitle: issue.bookTitle,
+      availableCopies: updatedBook.availableCopies
+    });
 
     res.json({ message: 'Book returned successfully', issue });
   } catch (error) { res.status(500).json({ error: error.message }); }

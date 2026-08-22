@@ -56,6 +56,8 @@ interface IAssignment extends Document {
   createdBy:     string;
   allowResubmit: boolean;
   rubric:        Array<{ criterion: string; maxMarks: number; description: string }>;
+  deadlineOverrides: Array<{ studentId: string; dueDate: Date }>;
+  groupId:       string | null;
   createdAt:     Date;
   updatedAt:     Date;
 }
@@ -224,12 +226,12 @@ app.get('/assignments', auth, async (req, res) => {
 
     if (user.role === 'student') {
       try {
-        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
         const resp = await fetch(`${COURSE_URL}/courses?enrolledStudentId=${user.userId}&limit=1000`, {
           headers: { Authorization: req.headers.authorization as string }
         });
         if (resp.ok) {
-          const data = await resp.json();
+          const data = (await resp.json()) as any;
           const enrolledCourseIds = data.courses.map((c: any) => c._id);
           if (courseId) {
              if (!enrolledCourseIds.includes(courseId)) {
@@ -274,13 +276,13 @@ app.post('/assignments', auth, requireRole('faculty', 'admin'), async (req, res)
     // Verify course ownership
     if (user.role === 'faculty' && req.body.courseId) {
       try {
-        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
         const resp = await fetch(`${COURSE_URL}/courses/${req.body.courseId}`, {
           headers: { Authorization: req.headers.authorization as string }
         });
         if (!resp.ok) return res.status(404).json({ error: 'Course not found' });
-        const course = await resp.json();
-        if (course.facultyOwnerId !== user.userId) {
+        const data = (await resp.json()) as any;
+        if (data.facultyOwnerId !== user.userId && !data.coInstructors?.includes(user.userId)) {
           return res.status(403).json({ error: 'Access denied: You do not own this course' });
         }
       } catch (err) {
@@ -350,12 +352,12 @@ app.post('/assignments/:id/submit', auth, requireRole('student'), upload.single(
 
     // Verify course enrollment
     try {
-      const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+      const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
       const resp = await fetch(`${COURSE_URL}/courses/${assignment.courseId}`, {
         headers: { Authorization: req.headers.authorization as string }
       });
       if (!resp.ok) return res.status(404).json({ error: 'Course not found' });
-      const course = await resp.json();
+      const course = (await resp.json()) as any;
       if (!course.enrolledStudents || !course.enrolledStudents.includes(user.userId)) {
         return res.status(403).json({ error: 'Access denied: You are not enrolled in this course' });
       }
@@ -479,15 +481,15 @@ app.patch('/submissions/:submissionId/grade', auth, requireRole('faculty', 'admi
 
     // Only fire event if the grade actually changed or was previously ungraded
     if (submission.finalGrade !== finalGrade) {
-      publishEvent('assessment.graded', {
-        studentId:    submission.studentId,
-        courseId:     assignment.courseId,
-        assessmentId: String(assignment._id),
-        score:        finalGrade,
-        totalMarks:   assignment.totalMarks,
-        percentage:   percentage,
-        passed:       passed,
-      });
+        publishEvent('assessment.grade_recorded', {
+          studentId: submission.studentId,
+          courseId: assignment.courseId,
+          assessmentId: assignment._id,
+          score: grade,
+          totalMarks: assignment.totalMarks,
+          percentage: percentage,
+          passed: passed
+        } as any);
     }
 
     logger.info(`Graded: submission=${req.params.submissionId} grade=${grade} final=${finalGrade}`);
@@ -592,35 +594,32 @@ app.post('/assignments/:id/bulk-grade', auth, requireRole('faculty', 'admin'), a
     // Validate ownership
     if (user.role === 'faculty') {
       try {
-        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
         const resp = await fetch(`${COURSE_URL}/courses/${assignment.courseId}`, {
           headers: { Authorization: req.headers.authorization as string }
         });
         if (resp.ok) {
-           const course = await resp.json();
+           const course = (await resp.json()) as any;
            if (course.facultyOwnerId !== user.userId) return res.status(403).json({ error: 'Access denied' });
         }
       } catch (err) {}
     }
 
     const submissions = await Submission.find({ assignmentId: assignment._id });
-    const bulkOps = [];
-    const eventsToPublish = [];
-
-    for (const g of grades) {
+    const bulkOps = grades.map((g: any) => {
       const sub = submissions.find(s => s.studentId === g.studentId);
       if (sub && typeof g.grade === 'number') {
         const finalGrade = Math.max(0, Math.round(g.grade * (1 - (sub.penaltyApplied || 0) / 100)));
         const passed = finalGrade >= assignment.passMarks;
         const percentage = Math.round((finalGrade / assignment.totalMarks) * 100);
 
-        bulkOps.push({
+        return {
           updateOne: {
             filter: { _id: sub._id },
             update: {
               $set: {
                 grade: g.grade,
-                feedback: g.feedback || '',
+                feedback: g.feedback,
                 finalGrade,
                 status: 'graded',
                 gradedBy: user.userId,
@@ -628,10 +627,19 @@ app.post('/assignments/:id/bulk-grade', auth, requireRole('faculty', 'admin'), a
               }
             }
           }
-        });
+        } as any;
+      }
+      return null;
+    }).filter(Boolean);
 
+    const eventsToPublish = grades.map((g: any) => {
+      const sub = submissions.find(s => s.studentId === g.studentId);
+      if (sub && typeof g.grade === 'number') {
+        const finalGrade = Math.max(0, Math.round(g.grade * (1 - (sub.penaltyApplied || 0) / 100)));
+        const percentage = Math.round((finalGrade / assignment.totalMarks) * 100);
+        const passed = percentage >= assignment.passMarks;
         if (sub.finalGrade !== finalGrade) {
-          eventsToPublish.push({
+          return {
             studentId:    sub.studentId,
             courseId:     assignment.courseId,
             assessmentId: String(assignment._id),
@@ -639,10 +647,11 @@ app.post('/assignments/:id/bulk-grade', auth, requireRole('faculty', 'admin'), a
             totalMarks:   assignment.totalMarks,
             percentage:   percentage,
             passed:       passed,
-          });
+          };
         }
       }
-    }
+      return null;
+    }).filter(Boolean);
 
     if (bulkOps.length > 0) {
       await Submission.bulkWrite(bulkOps);
@@ -698,3 +707,7 @@ bootstrap().catch(err => {
   logger.error('Bootstrap failed', err);
   process.exit(1);
 });
+
+process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
+process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
+

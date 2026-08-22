@@ -50,7 +50,7 @@ exports.markAttendance = async (req, res) => {
     // 1.4 Authorization Scoping Fix
     if (req.user.role === 'faculty') {
       try {
-        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
         const resp = await fetch(`${COURSE_URL}/courses/${courseId}`, {
           headers: { Authorization: req.headers.authorization }
         });
@@ -91,7 +91,7 @@ exports.markAllAttendance = async (req, res) => {
     // 1.4 Authorization Scoping Fix
     if (req.user.role === 'faculty') {
       try {
-        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
         const resp = await fetch(`${COURSE_URL}/courses/${courseId}`, {
           headers: { Authorization: req.headers.authorization }
         });
@@ -288,13 +288,8 @@ exports.scanQRSession = async (req, res) => {
       }
     }
 
-    // 2. Prevent duplicate scan for the same session
-    const alreadyMarked = await Attendance.findOne({ studentId, courseId, date });
-    if (alreadyMarked) {
-      return res.status(409).json({ error: 'Attendance already recorded for this session' });
-    }
-
-    // 3. Mark attendance
+    // 2. Mark attendance — let the DB unique index (studentId, courseId, date) enforce deduplication.
+    // No findOne needed; code 11000 = already marked for this session date.
     const record = await Attendance.create({
       studentId,
       studentName,
@@ -308,6 +303,7 @@ exports.scanQRSession = async (req, res) => {
 
     await invalidateCache(studentId, courseId, date);
 
+
     // 4. Publish event (same payload shape as manual mark)
     publishEvent('attendance.marked', {
       studentId, courseId, status: 'present', date,
@@ -319,6 +315,48 @@ exports.scanQRSession = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ error: 'Attendance already recorded for this session' });
     }
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Weekly Attendance Summary (Faculty Dashboard) ──────────────────────────
+exports.getWeeklySummary = async (req, res) => {
+  try {
+    const { courseId, facultyId } = req.query;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    const dateStr = sevenDaysAgo.toISOString().slice(0, 10);
+
+    const filter = {};
+    if (courseId) filter.courseId = courseId;
+
+    // Build last 7 dates
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+
+    const records = await Attendance.find({
+      ...filter,
+      date: { $gte: dateStr },
+    }).lean();
+
+    // Group by date
+    const grouped = {};
+    days.forEach(d => { grouped[d] = { date: d, present: 0, absent: 0, total: 0 }; });
+    records.forEach(r => {
+      if (grouped[r.date]) {
+        grouped[r.date].total++;
+        if (r.status === 'present') grouped[r.date].present++;
+        else grouped[r.date].absent++;
+      }
+    });
+
+    const summary = days.map(d => grouped[d]);
+    res.json({ summary, days: days.length, courseId: courseId || 'all' });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };

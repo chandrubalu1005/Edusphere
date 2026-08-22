@@ -54,9 +54,9 @@ async function runCrawler() {
       await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
       await page.evaluate(() => localStorage.clear());
       // Wait for React to render
-      await page.waitForTimeout(2000); // allow initial React render
+      await delay(2000); // allow initial React render
       await page.waitForSelector('.login-right', { visible: true, timeout: 60000 });
-      await page.waitForTimeout(500); // ensure layout stable
+      await delay(500); // ensure layout stable
       // Log number of button candidates
       let cardCount = await page.$$eval('.login-right button', els => els.length);
       console.log('DEBUG: .login-right button count', cardCount);
@@ -70,7 +70,7 @@ async function runCrawler() {
         const text = await page.evaluate(el => el.textContent, card);
         if (text.toLowerCase().includes(role.domain)) {
           await card.click();
-          await page.waitForTimeout(500); // allow DomainLogin component to render
+          await delay(500); // allow DomainLogin component to render
           // Wait for the login form fields to appear before proceeding
           await page.waitForSelector('input[type="text"]', { visible: true, timeout: 30000 });
           clicked = true;
@@ -85,24 +85,28 @@ async function runCrawler() {
       await page.type('input[type="password"]', PASSWORD);
       await page.click('button[type="submit"]');
       
-      // Wait for navigation
-      await page.waitForNavigation({ waitUntil: 'networkidle2' });
-      await delay(2000); // Give React time to render sidebar
+      // Wait for login to complete and dashboard to load (SPA navigation)
+      await page.waitForSelector('.sidebar-nav', { visible: true, timeout: 30000 });
+      await delay(2000); // Give React time to fully render the dashboard
+
       
       // Get all sidebar links
-      const links = await page.$$eval('.sidebar-nav a', els => els.map(a => a.href));
-      console.log(`Found ${links.length} nav links for ${role.domain}`);
+      const navItemCount = await page.$$eval('.sidebar-nav .nav-item', els => els.length);
+      console.log(`Found ${navItemCount} nav links for ${role.domain}`);
       
-      for (const href of links) {
-        if (!href) continue;
-        console.log(`  Visiting ${href}`);
-        await page.goto(href, { waitUntil: 'networkidle2' });
+      for (let i = 0; i < navItemCount; i++) {
+        const navItems = await page.$$('.sidebar-nav .nav-item');
+        const item = navItems[i];
+        if (!item) continue;
+        const text = await page.evaluate(el => el.textContent.trim(), item);
+        console.log(`  Visiting ${text}`);
+        await item.click();
         await delay(2000); // Wait for API calls to settle and UI to render
         
         // Basic check for empty state bugs
         const html = await page.content();
         if (html.includes('NaN') || html.includes('undefined') || html.includes('Invalid Date')) {
-           bugInventory.push({ type: 'RENDER_ERROR', url: href, message: 'Found NaN, undefined, or Invalid Date in HTML text' });
+           bugInventory.push({ type: 'RENDER_ERROR', url: text, message: 'Found NaN, undefined, or Invalid Date in HTML text' });
         }
       }
       

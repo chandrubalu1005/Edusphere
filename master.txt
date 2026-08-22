@@ -1,0 +1,3378 @@
+# EDUSPHERE ENTERPRISE — AUTONOMOUS OWNERSHIP MISSION BRIEF FOR GOOGLE ANTIGRAVITY (GEMINI) — v4.1
+
+**Project:** EduSphere Enterprise (Project ID: 2026AC331) — MERN + TypeScript Learning Management System
+**Scope:** 4 portals (Student, Faculty, Admin, Management), 15 backend microservices, verified against the uploaded architecture document
+**Status of this document:** v4.0 replaces v3.0's inferred/placeholder architecture with the real, uploaded EduSphere Enterprise architecture spec. Every service name, port, page, and role in this brief is now sourced from that document rather than assumed. Where the real document is ambiguous or internally inconsistent, this brief flags it explicitly rather than silently guessing — the same 'verify, don't assume' standard the mission itself enforces on the agent team now applies to this brief's own contents.
+
+# CHANGE LOG: v3.0 → v4.0 (what was wrong before, and what's now confirmed)
+
+| # | v3.0 (inferred/placeholder) | v4.0 (from the real architecture doc) |
+|---|---|---|
+| 1 | 15 generically-named services (`grade-service`, `leave-service`, `fee-service`, `exam-service`, `enrollment-service`, `reporting-service`, etc.) | The real 15: `auth`, `user`, `course`, `admin`, `attendance`, `timetable`, `calendar`, `assignment`, `assessment`, `notification`, `discussion`, `library`, `placement`, `certificate`, `analytics` — with real ports 3001–3015, grouped into Core / Academic / Operations & Engagement / Executive tiers |
+| 2 | 4 roles (Student, Faculty, Admin, Management), Management assumed fully read-only | **5** roles — `admin` and `super_admin` are distinct tiers — and Management explicitly has write access for approvals (Approval Center, Course Approvals, Budget Overview), not pure read-only |
+| 3 | 52 pages across 4 portals (16/14/13/9) | **79** pages (20/18/22/19) grouped into 4 real functional modules per portal — see 1.6 for a flagged count discrepancy in the source doc's own Admin total |
+| 4 | Generic per-page Socket.IO room/event convention, agent free to invent a room per page | Real-time is **centralized**: all portals multiplex through exactly two services, `attendance-service` and `notification-service` — no other service should open its own socket layer (see 1.6, Section 5) |
+| 5 | Race-condition fix shown only as an atomic `$inc` counter update | Real convention confirmed: idempotency on attendance/leave/payment/placement writes is enforced via **compound unique indices** in MongoDB, not application-level locking (see 1.6, Section 7) |
+| 6 | No mention of Redis | Redis (port 6379) is a real, explicitly *optional* cache/rate-limit layer — Phase 3 must confirm the app degrades gracefully if Redis is down, not treat it as a hard dependency |
+| 7 | No visibility into unresolved service ownership | New Section 1.7 names the specific pages (Grades, Leave, Fees, Help Desk, AI features, Command Palette) with no obvious owning service among the 15, so Phase 1 has concrete research targets instead of silently assuming |
+
+RabbitMQ-based eventing and the `{ resource: [...], total }` REST response shape, both referenced later in this brief, are conventions carried forward from earlier project context. The uploaded architecture document doesn't mention either one — it neither confirms nor contradicts them. Treat both as **unconfirmed pending Phase 1/2 verification against the real codebase**, not as established fact the way the service list and Socket.IO model now are.
+
+**v4.0 → v4.1:** a full self-audit of v4.0 (every stale reference grepped, every inline section cross-reference checked against a real header, every stated count checked against the actual list/table length) found the document internally consistent — no broken references, no leftover fake service names, no count mismatches. That audit surfaced one real gap in the thinking rather than the arithmetic: v4.0 treated the uploaded architecture document as proof of what's already built, with no step confirming the repo actually matches it. New **Section 0.0 (Ground-Truth Reconciliation)** closes that gap — it's now the literal first thing the agent team does, before Phase 1 research begins. Three smaller additions ride along: a shared/common-code conflict rule for the 15 parallel service branches (0.4), an explicit definition of what counts as a "resolved" ownership question rather than a guess (1.7), and a real-time column on the Phase 2 route table so Phase 4 can consume it directly (3.6).
+
+---
+
+# 0. OWNERSHIP HANDOFF: THIS IS AN AUTONOMOUS MISSION BRIEF, NOT A MANUAL CHECKLIST
+
+This document hands **complete ownership** of finishing EduSphere Enterprise — research, verification, fixes, missing features, final regression — to a Google Antigravity agent team running on Gemini. Chandru's role shifts from implementer to **architect/reviewer**: setting direction once (by handing over this file), then approving the Artifacts the agents produce, stepping in only at the explicit STOP conditions in 0.8.
+
+### 0.0 Ground-Truth Reconciliation — run this before Phase 1, not after
+
+Everything in Section 1 is transcribed faithfully from the uploaded architecture document. That document describes what EduSphere Enterprise is **supposed to be** — it is not proof that the running repo already matches it. This step exists so every later phase doesn't inherit a wrong assumption from this brief itself.
+
+- For each of the 15 services in 1.1, confirm a corresponding service directory/package actually exists in the repo (e.g. `services/auth-service/package.json`) and that it listens on its stated port in its own config — not just in this document.
+- For each of the 4 portals, confirm the frontend actually has route entries and sidebar links for every page named in 1.2–1.5. A page named in the spec that doesn't exist in the code yet is not a Phase 1 finding — it's a Phase 5 backlog item. Don't send a subagent hunting for a page that was never built.
+- If a named service doesn't exist at all, don't guess where its responsibilities went. Record it as a new row in 1.7, using the same LOW/MEDIUM/HIGH confidence format already established there.
+- If the repo has services or pages that AREN'T named in this document, add them to Section 1 rather than skipping them — this spec is a starting map, not a ceiling.
+- Post the result as a short Implementation Plan artifact — **Architecture Reconciliation** — before Phase 1 begins. This is the single highest-leverage check in the whole mission: every later phase inherits whatever this step gets wrong.
+
+### 0.1 What "complete ownership" means, precisely
+
+- The agent team may read, edit, create, and delete files inside the EduSphere repo; run the dev servers and test suites; drive a real browser session against the running app to verify behavior; and commit to working branches — all without asking permission first — for everything inside Phases 1–6 of this brief.
+- The agent team does **not** need to check in after every file edit or every route fixed. Check-ins happen at phase boundaries via Artifacts (0.5) and at STOP conditions (0.8) only.
+- Ownership is scoped to this repo and this brief. It does not extend to production deployment, real user data, live money movement through whichever service ends up owning Fee & Payments (still unresolved — see 1.7), or anything outside the 4 portals and 15 services named in Section 1.1.
+
+### 0.2 Loading this brief into Antigravity
+
+- Save this file as `ANTIGRAVITY_MISSION.md` at the repo root so every agent and subagent spawned during the mission can read it directly, rather than relying on it being re-pasted into each new conversation.
+- Open the project in Antigravity 2.0's command center (or the Antigravity IDE's Manager View, if working dual-wield with an editor), create a new **Project** for this mission, and give the primary agent its first instruction as: "Read ANTIGRAVITY_MISSION.md in full, then produce the opening Task List artifact from Section 15.1 before touching any code."
+- Do not summarize this brief when handing it to the agent — reference it in full. Every port number, every named page, and every ownership question in 1.7 is load-bearing; a summarized version quietly drops the specificity that makes this brief auditable later.
+
+### 0.3 Model configuration
+
+- Antigravity's local agents currently default to a fast Gemini model for everyday interactions, with heavier Gemini reasoning models selectable for demanding work. Point Phases 3, 5, and 6 (database/schema work, new-feature builds, the security-sensitive bug sweep) at the strongest available Gemini reasoning model; the faster default is fine for Phase 1's broad-but-shallow page documentation and for the recurring Scheduled Task in 0.9. Check Agent Manager's model picker for whatever the current fastest/strongest Gemini pairing is at the time you run this.
+- Antigravity is model-agnostic and also offers Claude- and GPT-based models. This brief assumes Gemini throughout per the ownership handoff, but a subagent can be swapped to another model for a task it happens to suit better — note any such swap in that phase's Implementation Plan artifact so the choice is visible on review.
+
+### 0.4 Orchestration model — who runs in parallel, who runs in sequence
+
+- **Phase 1 (research) is fully parallelizable — it's read-only.** Spawn one subagent per portal (4 total) via Manager View, each working its own page list from Section 1 independently. A 5th subagent starts Section 1.7's ownership-question research and Section 12's per-service backend enumeration simultaneously, since both are also read-only.
+- **Phases 2–3 (routes, database) parallelize along the real 15-service boundary in Section 1.1** — one subagent per service. Sequence `analytics-service` **last** in both phases, since its aggregation logic depends on every other service's routes and schema being finalized first (it's the Executive tier — everything else feeds it). Keep frontend route verification as a single subagent's job, since it's one router tree and parallel edits there will conflict.
+- **Phase 4 (real-time) is not a per-page parallel task.** Because the real architecture multiplexes all live traffic through exactly `attendance-service` and `notification-service` (1.6), Phase 4 is really two focused subagents — one auditing attendance-service's live QR/OTP session channel, one auditing notification-service's general push channel and every service that should be emitting events into it — rather than N page-by-page subagents inventing N socket rooms.
+- **Phase 5 (missing features) parallelizes along the backlog table's "Primary service(s)" column** (Section 6) — disjoint services run concurrently; anything touching a shared service gets sequenced. The AI-feature cluster (1.7) is a single dedicated track, gated on the STOP condition being resolved first.
+- **Phase 6 (bug sweep) parallelizes by bug pattern (6 subagents), not by page**, run after Phases 1–5 close.
+- **Shared/common code is the one place per-service parallelism breaks down.** If multiple services import a shared middleware, a shared types package, or a shared utils module (common in a `packages/shared`-style folder), assign that folder to whichever service's subagent needs it first, and have every other subagent treat it as read-only until that change merges to the integration branch. Two parallel subagents editing the same shared file on two different branches is exactly the class of conflict per-service branching is meant to avoid — don't let it happen silently.
+- Give each parallel track its own branch or Antigravity workspace; merge into an integration branch at each phase gate. See 15.3 for the concrete branch list, now using real service names.
+
+### 0.5 The Artifact contract — what must exist before a phase is considered closed
+
+Every phase maps to Antigravity's native Artifact types. A phase does not close on a chat message alone — it closes when the matching Artifact exists and Chandru has reviewed it.
+
+| Phase | Required Artifact(s) | What it must contain |
+|---|---|---|
+| Mission start | Task List | Every page from Section 1 and every service from Section 1.1, each as one checkable line item — see 15.1 |
+| Phase 1 | Implementation Plan (×1 per portal) + the Service Ownership Map (1.7) resolved | The filled 9-point record for every page in that portal, per 2.1's template |
+| Phase 2 | Implementation Plan + Screenshots | The route inventory table (3.6) plus a screenshot or terminal capture of each live privilege-boundary test — now against **5** roles, not 4 (3.5) |
+| Phase 3 | Implementation Plan | Every N+1/index finding using the 4.1 template, **plus** confirmation that the four compound-unique-index domains (attendance, leave, payment, placement) actually have the index defined, not just an application-level check |
+| Phase 4 | Walkthrough + Browser Recording | Evidence that attendance-service's live session channel and notification-service's push channel both work end-to-end, and that no other service opened a competing socket layer |
+| Phase 5 | Implementation Plan (×1 per backlog item) | Maps to the Section 6 backlog table row; the AI-feature cluster row requires the STOP-condition sign-off attached |
+| Phase 6 | Walkthrough | One section per bug pattern (Section 7), every location found app-wide |
+| Final | Walkthrough + Browser Recording | The full live walkthrough script from 14.4, all **5** roles, all pages, screen-recorded end to end |
+
+### 0.6 Knowledge Items to seed before work begins
+
+Copy-paste-ready text for all of these is in 15.2:
+
+- The real service/port map (1.1)
+- The Service Ownership Map and its open questions (1.7)
+- The Socket.IO multiplex model — attendance-service + notification-service only (1.6)
+- The compound-unique-index idempotency convention for attendance/leave/payment/placement (1.6)
+- The 5-role privilege quick-reference table (13.3)
+- The six bug-pattern before/after pairs (Section 7)
+
+### 0.7 Tool-approval gates — what runs unattended vs. what taps Chandru
+
+| Action class | Autonomy level | Why |
+|---|---|---|
+| Reading files, running the app locally, running existing tests | Auto | No risk, needed constantly |
+| Editing/creating files inside the 4 portals / 15 services already in scope | Auto | This is the mission |
+| Running the browser subagent against the local dev instance | Auto | This is how "verify, don't assume" gets satisfied without Chandru manually clicking through every page |
+| Git commits to a phase/feature branch | Auto | Reversible, branch-scoped |
+| Installing a new npm/pip dependency | Ask-first | Cheap to approve, but supply-chain risk means a human glance is worth it |
+| Any schema migration that drops or renames a field/collection with existing data | Ask-first | The "no fabricated data" ethic extends to not silently losing real data either |
+| Merging a phase branch into the integration branch | Ask-first | This is the actual phase-gate checkpoint from 0.5 |
+| Anything touching Fee & Payments beyond read/reporting, in whichever service ends up owning it (1.7) | Ask-first | Financial-integrity concern, made harder by the fact ownership isn't even confirmed yet |
+| `admin-service`'s Backup & Restore (DB snapshot controls) | Ask-first, always — even after the mission closes | Restoring a snapshot is a whole-database action; no amount of "it's on a branch" makes it safe to automate |
+| Any action gated behind `super_admin` specifically (Configuration, likely Roles & Permissions) | Ask-first | Two-tier admin privilege exists in the real role model precisely to separate "routine admin" from "can change the rules" — the agent team should respect that separation, not flatten it |
+| Force-push, deleting a branch, deploying, touching production/live credentials | Never without explicit chat confirmation | Outside the ownership scope defined in 0.1 |
+
+### 0.8 STOP conditions — when the agent pauses and posts a Walkthrough instead of proceeding
+
+- Creating a new backend service not in the real list of 15 (Section 1.1) — this is exactly what the AI-feature cluster in 1.7 is likely to trigger; don't resolve it silently by picking a side.
+- Any fix that would change the Socket.IO multiplex model — i.e., giving a service other than attendance-service or notification-service its own socket layer.
+- Any Phase 5 backlog item whose build requirement is ambiguous enough that two reasonable implementations would produce different user-facing behavior.
+- Any point where a page Phase 1 marked "Working" turns out to be silently using fabricated/placeholder data — flagged immediately, not batched into Phase 6. (Exception: Fee & Payments' "dummy payment gateway" is explicitly, intentionally simulated per the source spec — don't flag that one.)
+- Reaching a tool-approval gate marked Ask-first or Never in 0.7.
+- Resolving any 1.7 ownership question in a way that requires moving a collection from one service's database to another's — that's a data-isolation change, not a routine fix.
+
+### 0.9 Scheduled Tasks
+
+Once Phases 1–6 close and the Definition of Done (Section 10) is met, set up a recurring Scheduled Task (cron-style, via Antigravity 2.0's command center) that re-runs the 14.4 live walkthrough script weekly, posting a Walkthrough artifact each run.
+
+### 0.10 Ground rules (binding on the whole agent team)
+
+- **Verify, don't assume.** Click into it, perform the action, watch the network tab / database / socket event.
+- **No fabricated data, ever** — except the explicitly-intentional Fee & Payments simulation noted in 0.8.
+- **Every finding gets a location.** File path and line range.
+- **Every fix gets a before/after**, shown in the relevant Artifact.
+- **Re-verify after every phase.**
+
+# 1. VERIFIED ARCHITECTURE & MASTER PAGE INVENTORY
+
+Everything in this section is sourced from the uploaded EduSphere Enterprise architecture document. Reconcile it against the actual running app/sidebar before Phase 1 begins — if reality has drifted from this spec, the spec's own count is not automatically the correct one (see 1.6 for a concrete example of this already happening within the spec itself).
+
+## 1.1 System architecture
+
+**Frontend:** React + Vite, port 5173. Shared components: App Shell & Global Sidebar (`Layout.jsx`), Command Palette (cmd+k, cross-portal search — ownership unresolved, see 1.7), real-time Socket.IO listeners for Notifications and Attendance.
+
+**Backend — 15 microservices (Node.js + Express):**
+
+| # | Service | Port | Tier | Responsibility |
+|---|---|---|---|---|
+| 1 | `auth-service` | 3001 | Core | JWT issuance, RBAC, rate-limiting |
+| 2 | `user-service` | 3002 | Core | Profile management, atomic updates |
+| 3 | `course-service` | 3003 | Core | Catalog, drip-release logic |
+| 4 | `admin-service` | 3015 | Core | System config, health, audit logs |
+| 5 | `attendance-service` | 3008 | Academic | QR/OTP live sessions, Socket.IO |
+| 6 | `timetable-service` | 3009 | Academic | Overlap checks, scheduling |
+| 7 | `calendar-service` | 3010 | Academic | Academic events, exams, holidays |
+| 8 | `assignment-service` | 3006 | Academic | Submissions, bulk grading, penalties |
+| 9 | `assessment-service` | 3005 | Academic | Quizzes, CBT, leaderboards |
+| 10 | `notification-service` | 3004 | Operations & Engagement | Socket.IO pushes, SMS/Email |
+| 11 | `discussion-service` | 3013 | Operations & Engagement | Forums, Q&A, upvoting |
+| 12 | `library-service` | 3011 | Operations & Engagement | Book checkouts, fine calculations |
+| 13 | `placement-service` | 3012 | Operations & Engagement | Drive registrations, eligibilities |
+| 14 | `certificate-service` | 3007 | Operations & Engagement | PDF generation, idempotent issuing |
+| 15 | `analytics-service` | 3014 | Executive | Live aggregations, KPI computation |
+
+**Data layer:** MongoDB, port 27017 (multi-tenant document storage, atomic updates). Redis, port 6379 — explicitly **optional**, used for cache and rate-limiting. Phase 3 must confirm the app still functions correctly (perhaps slower, perhaps without rate-limiting) if Redis is unavailable, since the spec labels it optional rather than a hard dependency.
+
+## 1.2 Student Portal (role: `student`) — 20 pages
+
+**Access model:** Read-only for academic data. Can submit assignments/assessments.
+
+**My Learning**
+
+- **Dashboard** — Quick stats, daily schedule, upcoming deadlines.
+- **My Courses** — View enrolled courses, syllabus, and module materials.
+- **Assignments** — Submit work, view grades, request extensions.
+- **Quizzes & Tests** — Take live assessments (CBT), view leaderboards.
+- **My Attendance** — View percentages. Scan QR or submit 15-sec OTP for check-in.
+- **Weekly Timetable** — Visual grid of classes, labs, and tutorials.
+- **Learning Progress** — Skill radar, study hours heatmap, peer comparison.
+
+**Academic**
+
+- **Grades & Transcript** — Semester-wise SGPA/CGPA, export PDF.
+- **Certificates** — Download validated completion certificates.
+- **Academic Calendar** — View institution-wide dates (exams, holidays).
+- **Download Center** — Syllabi, past papers, notes.
+
+**Services**
+
+- **Digital Library** — Browse catalog, issue e-books, check fines.
+- **Placement Portal** — View job drives, check eligibility, apply (idempotent).
+- **Communication Hub** — Discussion forums (course-scoped), announcements.
+- **Fee & Payments** — Outstanding dues, dummy payment gateway, receipts.
+- **Help Desk** — Raise IT/Admin support tickets.
+
+**AI & Account**
+
+- **AI Assistant** — EduSphere AI chatbot (grades, predictions, rules).
+- **Activity Timeline** — Complete historical log of student interactions.
+- **My Profile & ID** — View demographic data, digital ID card.
+- **Notifications** — Real-time alerts (assignments, grades, events).
+
+## 1.3 Faculty Portal (role: `faculty`) — 18 pages
+
+**Access model:** Write access restricted to owned courses. Can modify grades, attendance, and course materials.
+
+**Teaching**
+
+- **Dashboard** — Quick overview of courses, pending grading counts.
+- **My Courses** — Edit course details, syllabus, capacities.
+- **Course Content** — Upload PDFs, videos, links (drip-release).
+- **Assessments** — Create quizzes, set time limits, view live CBT results.
+- **Assignments** — Create tasks, bulk-grade via CSV, plagiarism checking.
+- **Mark Attendance** — Generate QR codes, trigger live 15-sec OTP sessions.
+- **My Timetable** — Instructor-specific weekly scheduling view.
+
+**Student Management**
+
+- **Student Performance** — Analytics on student engagement and risk.
+- **Grade Submission** — Finalizing mid-term and end-term results.
+- **Course Completion** — Tracking progression of cohorts.
+- **Student Feedback** — Read anonymous end-of-semester feedback.
+
+**Communication**
+
+- **Communication Hub** — Moderate course forums, mark "Best Answers".
+- **Announcements** — Broadcast alerts strictly to enrolled students.
+- **Analytics** — Basic class averages and statistical data.
+
+**Account**
+
+- **Leave Management** — Request casual/medical leaves (atomic updates).
+- **AI Teaching Tools** — AI-assisted rubric generation, test creation.
+- **Profile** — Faculty details, publications, specializations.
+- **Notifications** — Alerts for late submissions, dispute raises.
+
+## 1.4 Admin Portal (role: `admin, super_admin`) — 22 pages
+
+**Access model:** Full CRUD on operational data. Strictly secured routes.
+
+**Management**
+
+- **Dashboard** — System overview, active users, error rates.
+- **User Management** — Create, edit, suspend students and faculty.
+- **Course Catalog** — Create new courses, map to departments.
+- **Departments** — Manage structures, HoDs, capacities.
+- **Semesters** — Define active terms, start/end dates.
+- **Enrollments** — Bulk enroll/unenroll students.
+- **Timetable Mgmt** — Conflict-free scheduling engine across all rooms.
+
+**Enterprise**
+
+- **Certificate Approval** — Sign off on digital credentials.
+- **Roles & Permissions** — Define granular access controls.
+- **Announcements** — Institution-wide global broadcasts.
+- **Library Management** — Add inventory, override fines.
+- **Placement Management** — Create drives, approve company profiles.
+- **Academic Calendar** — Create institutional holidays, deadlines.
+
+**System**
+
+- **System Health** — Mongo/Redis status, CPU/Memory metrics.
+- **Audit & Logs** — Tracking all actions (who modified what, when).
+- **File Management** — Storage quotas, orphaned file cleanup.
+- **Email Broadcast** — SMTP integration for external comms.
+- **Backup & Restore** — DB snapshot controls.
+- **Configuration** — Core system variables, feature flags.
+- **Help Desk** — Resolve student/faculty IT tickets.
+
+**Account**
+
+- **Reports Center** — Generate CSV compliance and stat reports.
+- **Notifications** — High-priority system alerts.
+
+## 1.5 Management Portal (role: `management`) — 19 pages
+
+**Access model:** Read-only access to institution-wide macro data, but write access for critical approvals (budgets, compliance).
+
+**Executive View**
+
+- **Executive Dashboard** — High-level macro view (enrollments, revenue).
+- **Analytics & Reports** — Live dynamic Mongo aggregations (no fake math).
+- **Institutional KPIs** — Multi-year performance tracking.
+- **Dept Comparison** — Pass rates, attendance, and placements by branch.
+
+**Performance**
+
+- **Faculty Performance** — Research output, student feedback scores.
+- **Student Performance** — Global CGPA bell curves, dropout risks.
+- **Placement Analytics** — Average CTC, top recruiters, unplaced counts.
+- **Research Statistics** — Publications, grants, patents tracking.
+
+**Governance**
+
+- **Approval Center** — Sign off on major operational changes.
+- **Course Approvals** — Curriculum review for new offerings.
+- **Budget Overview** — Department-wise allocations and spending.
+- **Risk Alerts** — Automated flags (low attendance trends, grade dips).
+- **Accreditation** — Compliance tracking for NBA, NAAC, etc.
+- **Compliance Logs** — Audit trails for governance.
+
+**AI & Account**
+
+- **AI Insights** — AI-driven macro predictions for the university.
+- **Predictive Analytics** — Enrollment forecasting, placement likelihood.
+- **Executive Reports** — Beautiful, printable macro-reports.
+- **Placement Stats** — Detailed placement year-over-year growth.
+- **Notifications** — Alerts for approvals and critical risk flags.
+
+## 1.6 Cross-cutting architectural features (confirmed from the source doc — treat as ground truth, not convention-to-invent)
+
+### Command Palette (cmd+k)
+
+Available in all portals. Indexes courses, pages, and discussions, routing to the correct React route instantly. No single owning service is named for the search index itself — see 1.7.
+
+### Real-time Socket.IO — centralized, not per-page
+
+> Architecture note (from the real spec)
+>
+> All portals maintain active socket connections multiplexed to exactly TWO services: attendance-service and notification-service. This is a materially different model from a generic 'every page can have its own room' convention — no other service is described as running a socket layer.
+> Practical implication for Phase 4/5: a feature that wants a live update (discussion upvotes, placement status changes, library due-soon alerts) should get there by having its owning service emit an event that notification-service relays over the existing multiplexed connection — not by that service opening a second, competing socket server. Attendance-service's channel is specific to its own live QR/OTP check-in session flow.
+
+### Idempotency via compound unique indices
+
+> Architecture note (from the real spec)
+>
+> All critical writes — attendance, leave, payments, placement — use compound unique indices in MongoDB to prevent race conditions natively. This is the confirmed established pattern for 'exactly-once' style records in this codebase, and it's a stronger, more specific guarantee than a generic application-level 'check then write' guard. Section 4 and Section 7 build directly on this.
+
+## 1.7 Service Ownership Map — open research targets for Phase 1
+
+The pages below don't map cleanly onto any single service in the 1.1 table. This is not a flaw in this brief — it's an honest reflection of what the architecture document does and doesn't specify. Each row is a concrete Phase 1 research task, not a decision this brief makes for the agent team.
+
+| Page / feature | Portal(s) | Best guess | Confidence | Why it's flagged |
+|---|---|---|---|---|
+| Grades & Transcript / Grade Submission / Student Performance data | Student, Faculty, Management | assignment-service or course-service (unclear) | LOW | No dedicated grade-service exists among the 15. Grade values likely originate in assignment-service (scores) and/or assessment-service (CBT results) and are aggregated by analytics-service for CGPA/bell-curve views — but which service is the system of record for a final posted grade is not stated. Resolve before Phase 5 builds Grade Disputes. |
+| Leave Management data (Faculty) | Faculty | user-service (best guess, per its 'atomic updates' note) | LOW | No dedicated leave-service exists. user-service's description explicitly calls out 'atomic updates', which is suggestive but not confirmation. |
+| Fee & Payments data (Student) | Student | user-service or admin-service (unclear) | LOW | No dedicated fee/payment-service exists. The page description explicitly says 'dummy payment gateway' — treat this as an intentionally simulated flow for the academic project, not a bug to flag in Phase 6's fabricated-data sweep. |
+| Help Desk / ticketing data | Student, Admin | admin-service (best guess) | MEDIUM | No dedicated ticketing service exists. admin-service's 'system config, health, audit logs' scope is the closest fit, but ticket storage isn't explicitly named. |
+| AI Assistant / AI Teaching Tools / AI Insights / Predictive Analytics | Student, Faculty, Management | none — no AI-capable service exists in the 15 | NONE | This is the single largest real gap in the architecture. Every portal's 'AI & Account' module references AI features, but no service among the 15 is described as owning inference/prediction. This is very likely either (a) a Phase 5 backlog item built as a thin layer on analytics-service, or (b) a new service — which is a STOP condition (0.8) requiring explicit sign-off, not a routine build. |
+| Command Palette (cmd+k) backend | All portals (cross-cutting) | no single owner — needs a cross-service index | LOW | Described as indexing courses, pages, and discussions app-wide. That means it either fans out to course-service + discussion-service + others per keystroke (slow, N calls) or needs a dedicated aggregated search index (missing from the 15). Flag for Phase 3's efficiency audit either way. |
+| Roles & Permissions (Admin) | Admin | auth-service | HIGH | auth-service's description explicitly includes RBAC. Treat as confirmed unless Phase 1 finds otherwise. |
+| Email Broadcast (Admin) | Admin | notification-service, not admin-service | MEDIUM | The page sits in the Admin 'System' module, but notification-service's description explicitly says 'SMS/Email' — the capability likely lives in notification-service even though the page is Admin-facing. Verify the Admin page is a thin trigger UI over notification-service, not a second, competing email pipeline living in admin-service. |
+| Research Statistics (Management) | Management | analytics-service, aggregating from user-service | MEDIUM | Faculty Profile (Faculty > Account > Profile) explicitly stores 'publications, specializations' — that's user-service data. Management's Research Statistics is almost certainly analytics-service aggregating that same user-service field. This is a concrete cross-portal integration point to trace explicitly, per Phase 1 point 6. |
+
+Every other page in Section 1.2–1.5 maps reasonably directly to one of the 15 named services by its module and description — but Phase 1's point 5 (database touchpoints) must still confirm this explicitly per page, not skip it because the mapping looks obvious.
+
+**What counts as "resolved," not just guessed at:** a row in the table above is resolved when the record includes the actual file path where the data model/schema was found, confirmation of which service's database it lives in, and — if the data doesn't exist anywhere yet — an explicit "not yet built" note routed into Section 6's backlog. "We think it's user-service" without having opened user-service's models directory is still an open question, not a resolved one.
+
+# 2. PHASE 1 — RESEARCH & DOCUMENT EVERY PAGE (before fixing anything)
+
+For every page in Section 1, fill in the 9-point template below.
+
+> Antigravity execution note
+>
+> Dispatch as 4 parallel portal subagents (0.4), plus a 5th subagent resolving 1.7's ownership questions. Closes when all 4 Implementation Plan artifacts exist with zero TBD fields, AND every row in the 1.7 table has a confirmed answer (not just a 'best guess').
+
+### 2.1 Per-page template
+
+```
+### <Portal> → <Module> → <Page Name>
+1. Purpose:
+  # One or two sentences, based on what the page currently does — not what the name implies it should do.
+2. Features present:
+  # Every control/view actually rendered, found by opening the page, not by reading the filename or this spec.
+3. Role & privilege model:
+  # Which of the 5 roles (student/faculty/admin/super_admin/management) can reach this page in the frontend router; which `requireRole(...)` middleware gates each backend endpoint it calls — for Admin pages, specifically confirm admin vs super_admin, not just 'admin-tier'; does the UI hide/disable actions a role can't perform, not just rely on a 403?
+4. Frontend–backend wiring:
+  # List every `hooks.js` / `liveData.js` function this page calls, the backend service + endpoint (use the real service names from 1.1) each one hits, and confirm the round trip with real data.
+5. Database touchpoints:
+  # Which service's database does this page's data live in — resolve against 1.7 if it's one of the flagged pages; is the read/write efficient?
+6. Cross-portal integration points:
+  # Does this page's data feed, or get fed by, another portal's page? e.g. Faculty Grade Submission → Student Grades & Transcript → Management Student Performance. A page with zero cross-portal links should say so explicitly.
+7. Authentication & authorization path:
+  # Trace the actual JWT flow: token attachment, auth-service-issued token validated by the receiving service's middleware, server-side role check.
+8. Working / Broken / Partially working:
+  # Honest status from actually using the page.
+9. Features missing:
+  # Compare against what a genuinely complete version of this page needs, cross-referenced against Section 6's backlog.
+```
+
+### 2.2 Phase 1 completion gate
+
+Count: Student (20) + Faculty (18) + Admin (22, enumerated — the source doc's own header says 20, reconcile against the real sidebar and record which number is actually correct before treating either as final) + Management (19) = **79 page-records minimum**, plus the 1.7 ownership table fully resolved.
+
+# 3. PHASE 2 — FULL ROUTE VERIFICATION (authentication to Z)
+
+> Antigravity execution note
+>
+> Dispatch as one subagent per real service (1.1) plus 1 frontend-routes subagent. Sequence analytics-service last. Every live privilege-boundary test needs a Screenshot artifact, tested against all 5 roles.
+
+### 3.1 Frontend routes
+
+- For every route in `App.jsx` and any nested routers: confirm it renders without error when navigated to directly by URL.
+- Confirm it is wrapped in `ProtectedRoute` / role-guarding — and for Admin routes, confirm the guard actually distinguishes `admin` from `super_admin` where the page's real privilege level requires it, rather than treating both as one tier.
+- Unauthenticated access → redirect to `/login`. Authenticated-but-wrong-role → a proper 403, not a blank screen or partial render.
+- Deep-linking with route params resolves correctly and 404s cleanly on an invalid id.
+
+### 3.2 Backend routes — per service
+
+Apply the same four checks to every route in every one of the real services, grouped by tier as in 1.1:
+
+**Core tier**
+
+- **`auth-service`** (port 3001, JWT issuance, RBAC, rate-limiting) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`user-service`** (port 3002, Profile management, atomic updates) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`course-service`** (port 3003, Catalog, drip-release logic) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`admin-service`** (port 3015, System config, health, audit logs) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+**Academic tier**
+
+- **`attendance-service`** (port 3008, QR/OTP live sessions, Socket.IO) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`timetable-service`** (port 3009, Overlap checks, scheduling) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`calendar-service`** (port 3010, Academic events, exams, holidays) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`assignment-service`** (port 3006, Submissions, bulk grading, penalties) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`assessment-service`** (port 3005, Quizzes, CBT, leaderboards) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+**Operations & Engagement tier**
+
+- **`notification-service`** (port 3004, Socket.IO pushes, SMS/Email) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`discussion-service`** (port 3013, Forums, Q&A, upvoting) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`library-service`** (port 3011, Book checkouts, fine calculations) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`placement-service`** (port 3012, Drive registrations, eligibilities) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+- **`certificate-service`** (port 3007, PDF generation, idempotent issuing) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+**Executive tier**
+
+- **`analytics-service`** (port 3014, Live aggregations, KPI computation) — enumerate every route file; confirm (a) a working controller, not a 501/stub, (b) `requireRole(...)` matching Phase 1's privilege findings, (c) input validation on every field, (d) a consistent response shape (see 13.1 — unconfirmed convention, verify against real code first).
+
+### 3.3 Gateway routing
+
+- Cross-check every backend route path against the gateway config for typo'd proxy targets.
+- Test live through the gateway URL, not the internal service URL — a 502/timeout here won't show up in a code read.
+- Confirm CORS headers match the actual frontend origin(s).
+
+### 3.4 Auth flow, start to finish
+
+1. Registration — validation, duplicate-email handling, password hashing.
+2. Login (via `auth-service`) — credential check, token issuance.
+3. Token storage — confirm one consistent mechanism app-wide.
+4. Token attachment — every page's calls attach it the same way.
+5. Token validation — every one of the 15 services' middleware validates signature + expiry consistently.
+6. Token expiry/refresh — check for cross-tab races if silent refresh exists.
+7. Logout — clears auth state, cached query data, and forces the attendance-service/notification-service sockets to disconnect and reconnect fresh.
+
+### 3.5 Privilege boundary testing — now across 5 roles, live
+
+For a representative sample of routes in every service, actually attempt access as `student`, `faculty`, `admin`, `super_admin`, and `management` using real test accounts, and record the observed status + body. Pay particular attention to any route Phase 1 identified as super_admin-specific (Configuration, likely Roles & Permissions, Backup & Restore) — confirm a plain `admin` account is actually rejected, not just an untested assumption.
+
+### 3.6 Phase 2 deliverable format
+
+```
+| Route | Method | Frontend Guard | Backend requireRole | Gateway reachable | Real-time? (via which channel) | student | faculty | admin | super_admin | management | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| /api/attendance/checkin | POST | n/a | student | yes | Y — attendance-service | 201 | 403 | 403 | 403 | 403 | PASS |
+| ... | | | | | | | | | | | |
+```
+
+# 4. PHASE 3 — DATABASE EFFICIENCY & SHARING AUDIT
+
+> Antigravity execution note
+>
+> Same per-service split as Phase 2; sequence analytics-service last since its aggregation queries depend on every other service's finalized schema.
+
+- Confirm per-service database isolation holds for all 15 real services — not only the ones checked in earlier passes.
+- For every model surfaced in Phase 1, verify required/unique/enum schema enforcement.
+- **Confirm the compound unique indices actually exist** for the four domains named in 1.6 — attendance (likely `{studentId, sessionId}`), leave (likely `{studentId, date}` or similar), payments, and placement applications (likely `{studentId, driveId}`). List the real index definition found in each service's schema file; if any of the four is missing or is only an application-level check instead of a DB-level unique index, that's a Phase 3 finding, not a Phase 6 one — it's foundational.
+- Verify indexing matches real query patterns from Phase 1 point 5.
+- Identify every remaining N+1 pattern app-wide, with file + line range.
+- Confirm cross-service data sharing happens exclusively via REST or an established eventing mechanism — verify whether RabbitMQ is actually in use (see the v3→v4 change log; this was assumed, not confirmed by the architecture doc) and record what's actually found.
+- For Redis: confirm cache invalidation happens on write (no stale-cache-serves-stale-data bugs), and confirm the app degrades gracefully — not just slowly, but *correctly* — if Redis is unreachable, since the architecture doc marks it optional.
+- For every 1.7-flagged page, verify the actual fetch pattern once ownership is resolved: e.g., if Command Palette turns out to fan out to multiple services per keystroke, that's an efficiency finding worth its own entry.
+
+### 4.1 Finding template
+
+```
+Service: <real service name from 1.1>
+File: <path>, lines <start>-<end>
+Pattern: <e.g. for-loop issuing findOne per iteration / missing compound unique index>
+Query volume or race window: <e.g. 1 + N queries, or: two concurrent check-ins both succeed>
+Fix applied: <.populate() / aggregation / added compound unique index with fields named>
+Evidence: <before/after query count, or a duplicate-key-error test showing the index now rejects a double-write>
+```
+
+# 5. PHASE 4 — REAL-TIME, THROUGH THE TWO ESTABLISHED CHANNELS ONLY
+
+> Antigravity execution note
+>
+> Two focused subagents, not one per page: attendance-service's live session channel, and notification-service's general push channel plus every service that should be emitting into it. See 0.4.
+
+### 5.1 attendance-service — live QR/OTP session channel
+
+- Confirm Faculty's Mark Attendance (generate QR / trigger OTP window) and Student's My Attendance (scan/submit) are both wired to the same live session over this channel — a student's check-in should reflect on the faculty view without a manual refresh.
+- Confirm the channel closes cleanly when the session window ends, and that a late join after close is rejected server-side, not just hidden client-side.
+
+### 5.2 notification-service — the general push channel
+
+Every page below wants a live update. Confirm each one's triggering service actually emits an event that notification-service relays, rather than polling or (worse) inventing its own socket layer:
+
+- Discussion Hub — new post/reply/upvote (discussion-service emits, notification-service relays).
+- Notifications feed itself, all 4 portals — the direct case.
+- Placement Portal — application status changes (placement-service emits).
+- Digital Library — availability changes on checkout/return (library-service emits).
+- Leave Management — approval/rejection status (whichever service ends up owning leave, per 1.7, emits).
+- Admin's Email Broadcast / Announcements — confirm this is notification-service's own send path, not a parallel one living in admin-service (per the 1.7 flag).
+
+### 5.3 Deliberately NOT real-time (fetch-on-load is correct)
+
+- Grades & Transcript history, Certificates, Audit & Logs, System Health historical charts, Management's Executive/Institutional dashboards, Compliance Logs — periodic/cached fetch is correct; don't build a third socket path for these.
+
+### 5.4 Non-negotiable rules
+
+- Real-time is additive UX only — never the sole source of truth.
+- Every pushed value must be re-derivable from a normal fetch.
+- No service other than attendance-service or notification-service opens a socket layer — this is a STOP condition (0.8), not a judgment call.
+- Reconnection re-authenticates with a fresh token.
+
+# 6. PHASE 5 — BUILD MISSING FEATURES (backlog, calibrated against the real spec)
+
+> Antigravity execution note
+>
+> Parallelize by the "Primary service(s)" column; sequence anything sharing a service. The AI cluster is a single track gated on the 0.8 STOP condition.
+
+Status column reflects what the real architecture doc does and doesn't already cover — some items from earlier drafts of this backlog turned out to be partially or fully addressed already; don't rebuild what exists.
+
+| Backlog item | Primary service(s) | Status vs. real spec | Notes |
+|---|---|---|---|
+| AI Assistant / AI Teaching Tools / AI Insights / Predictive Analytics | none (gap) | STOP condition first | No owning service exists among the 15 (1.7). Resolve the architecture decision — extend analytics-service vs. new service — before writing any code for these four pages. |
+| Command Palette search backend | unresolved (1.7) | Confirmed gap | Needs either a fan-out search across course-service/discussion-service/others, or a dedicated index. Efficiency-check whichever approach is chosen (Phase 3). |
+| Help Desk ticketing | admin-service (best guess) | Confirmed gap, likely small build | Appears on both Student and Admin sides; no dedicated ticket model named — build inside admin-service unless Phase 1 finds otherwise. |
+| Grade disputes | assignment-service / course-service (per 1.7) | Verify first — may partially exist | Faculty's Grade Submission and Student's Grades & Transcript exist; a dispute/re-review workflow on top of them is not explicitly named. Confirm absence before building — don't duplicate an existing review path if Course Approvals-style tooling already covers part of this. |
+| Plagiarism check | assignment-service | Confirmed present | Assignments already lists 'plagiarism checking' as a Faculty feature — Phase 1 should verify it's real and wired, not build it from scratch assuming it's missing. |
+| Rubric grading | assignment-service / assessment-service | Verify first | AI Teaching Tools mentions 'AI-assisted rubric generation' — check whether structured rubric grading already exists as a prerequisite for that feature before treating it as a fresh build. |
+| CSV bulk imports / bulk grading | assignment-service (grading), admin-service (Enrollments) | Confirmed present (assignment side) | 'Bulk-grade via CSV' is explicitly listed under Faculty Assignments. Admin's bulk enroll/unenroll (Enrollments page) should follow the same validate-before-commit pattern — verify it does. |
+| Course prerequisites | course-service | Confirmed gap | Course Catalog covers creation/department mapping; no prerequisite graph is named. Enforce server-side at enrollment time, not just displayed as text. |
+| 2FA/SSO | auth-service | Confirmed gap | Not mentioned in the architecture doc. If added, confirm it maps onto the real 5-role model rather than bypassing it. |
+| Production-safe impersonation | admin-service or auth-service | Confirmed gap | Not named in the spec. If built, read-only by default, every session start/end logged in Audit & Logs. |
+| Exportable Management reports | analytics-service | Partially present | Executive Reports and Reports Center both exist as pages — confirm they're server-generated from the same aggregation endpoints the live dashboards use, not a separate divergent export pipeline. |
+| Semester snapshots | course-service or admin-service | Confirmed gap | Semesters (Admin) defines terms; a frozen historical snapshot at term close isn't named. Immutable once written. |
+
+# 7. PHASE 6 — FINAL BUG-PATTERN SWEEP
+
+> Antigravity execution note
+>
+> Parallelize by bug pattern (6 subagents). Findings roll up into one Walkthrough artifact.
+
+Pattern 2 below is now shown using the confirmed EduSphere convention (compound unique index) rather than a generic atomic-counter fix, since 1.6 confirms which pattern this codebase actually uses for exactly-once writes. The atomic-counter variant is still correct for pure capacity counters (e.g. course/library capacity) where the real spec doesn't name a specific mechanism — both are shown.
+
+### Client-trusted values for approval/scoring/eligibility/authorization
+
+```javascript
+// BAD
+app.post('/grades', (req, res) => {
+  const { studentId, score, approvedBy } = req.body;
+  Grade.create({ studentId, score, approvedBy }); // approvedBy from client!
+});
+
+// GOOD
+app.post('/grades', requireRole('faculty'), (req, res) => {
+  const { studentId, score } = req.body;
+  Grade.create({ studentId, score, approvedBy: req.user.id }); // from verified JWT
+});
+```
+
+### Race conditions on exactly-once writes — the confirmed EduSphere pattern
+
+```javascript
+// BAD (attendance check-in, application-level check only)
+const existing = await Attendance.findOne({ studentId, sessionId });
+if (!existing) {
+  await Attendance.create({ studentId, sessionId, status: 'present' }); // two concurrent requests can both pass the check
+}
+
+// GOOD — compound unique index does the enforcement, not application logic
+// schema: attendanceSchema.index({ studentId: 1, sessionId: 1 }, { unique: true })
+try {
+  await Attendance.create({ studentId, sessionId, status: 'present' });
+} catch (err) {
+  if (err.code === 11000) return res.status(409).json({ error: { code: 'ALREADY_CHECKED_IN' } });
+  throw err;
+}
+// Same pattern applies to leave requests, payment records, and placement applications (1.6).
+// For pure capacity counters (course seats, library copies) where no compound-unique-index
+// applies, use an atomic conditional update instead:
+await Course.updateOne(
+  { _id: id, $expr: { $lt: ['$enrolled', '$capacity'] } },
+  { $inc: { enrolled: 1 } }
+);
+```
+
+### Paginated-subset math presented as a full aggregate
+
+```javascript
+// BAD (analytics-service)
+const page = await Grade.find().limit(20);
+const avg = page.reduce((a,g)=>a+g.score,0)/page.length; // only first 20 — this is exactly the 'fake math'
+// the source spec explicitly warns against for Analytics & Reports
+
+
+// GOOD
+const [{ avg }] = await Grade.aggregate([
+  { $group: { _id: null, avg: { $avg: '$score' } } }
+]); // computed over the full collection — matches the spec's own 'live dynamic Mongo
+// aggregations (no fake math)' requirement for Management's Analytics & Reports page
+```
+
+### Authorization scoping trusted from client parameters instead of authenticated identity
+
+```javascript
+// BAD
+app.get('/leaves', (req, res) => {
+  const { studentId } = req.query; // client can pass anyone's id
+  Leave.find({ studentId });
+});
+
+// GOOD
+app.get('/leaves', requireRole('student'), (req, res) => {
+  Leave.find({ studentId: req.user.id }); // scoped to the authenticated user
+});
+```
+
+### String-based date comparisons instead of proper Date types
+
+```javascript
+// BAD
+if (req.body.dueDate > '2026-08-18') { ... } // lexicographic string compare
+
+// GOOD
+if (new Date(req.body.dueDate) > new Date('2026-08-18')) { ... }
+```
+
+### Fabricated/placeholder metrics anywhere (except the intentional Fee & Payments simulation)
+
+```javascript
+// BAD
+const passRate = data.length ? computed : 87; // fallback fake number
+
+// GOOD
+const passRate = data.length ? computed : null; // frontend renders an explicit empty state
+// NOTE: Fee & Payments' 'dummy payment gateway' is an explicit, intentional simulation
+// per the source spec (Student > Services) — do not flag that one under this pattern.
+```
+
+# 8. CONSTRAINTS
+
+- This is a completion pass, not a redesign — preserve all currently-correct behavior.
+- Match every established pattern exactly, including the two now-confirmed architectural facts: the attendance-service/notification-service-only Socket.IO multiplex, and the compound-unique-index idempotency convention. Do not deviate from either without triggering the relevant STOP condition (0.8).
+- Do not create new services without flagging it as an explicit decision point — this applies directly to the AI-feature cluster (1.7).
+- No fabricated data, ever, anywhere — except the explicitly-intentional Fee & Payments simulation.
+- Every fix must be traceable to a Phase 1–6 finding.
+
+# 9. DELIVERABLES
+
+| # | Deliverable | Acceptance bar |
+|---|---|---|
+| 1 | Verified Service Ownership Map (Phase 1) | Every row in 1.7 resolved with a confirmed answer, not a best guess. |
+| 2 | Full page-by-page documentation (Phase 1) | 79+ filled page-records per Section 2.1's template, zero fields marked TBD, Admin count discrepancy explicitly reconciled. |
+| 3 | Route verification report (Phase 2) | Full inventory table per 3.6, tested against all 5 roles, every row PASS/FAIL. |
+| 4 | Database findings report (Phase 3) | Every N+1/index finding, plus explicit confirmation of all 4 compound-unique-index domains. |
+| 5 | Real-time verification (Phase 4) | Evidence both established channels (attendance-service, notification-service) work end-to-end and no third channel was created. |
+| 6 | Missing-features build log (Phase 5) | One row per Section 6 backlog item: built / partially built / deferred, AI cluster explicitly gated on STOP-condition sign-off. |
+| 7 | Final bug-sweep results (Phase 6) | One section per bug pattern, every location found app-wide. |
+| 8 | Full regression confirmation | Every page walked through live post-fix, all 5 roles. |
+
+# 10. DEFINITION OF DONE
+
+- Every page in every portal has documented purpose, verified working status, and confirmed frontend-backend-database-auth wiring, using the real service names in 1.1.
+- Every 1.7 ownership question is resolved with evidence, not a guess.
+- Every frontend and backend route is verified reachable and correctly privilege-gated across all 5 roles, tested live.
+- Database architecture is confirmed sound across all 15 real services, and all 4 compound-unique-index domains are confirmed present.
+- Real-time works through exactly the two established channels; no third channel was introduced.
+- Every backlog item in Section 6 is built, confirmed-already-present, or explicitly deferred with a written reason — the AI cluster specifically has a resolved architecture decision, not a silent build.
+- The final bug-pattern sweep finds nothing new left unresolved.
+- A full live walkthrough of all 4 portals, all 5 roles, shows a coherent, fully wired, fully privileged, real-time-where-appropriate, professional-grade application.
+
+---
+
+# 11. FULL PHASE 1 PAGE-RECORD SKELETONS
+
+Pre-titled skeleton for every page in Section 1, grouped by portal and module, ready to fill during Phase 1.
+
+## Student Portal
+
+### My Learning
+
+**Student Portal → My Learning → Dashboard**
+*Context: Quick stats, daily schedule, upcoming deadlines.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → My Learning → My Courses**
+*Context: View enrolled courses, syllabus, and module materials.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → My Learning → Assignments**
+*Context: Submit work, view grades, request extensions.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → My Learning → Quizzes & Tests**
+*Context: Take live assessments (CBT), view leaderboards.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → My Learning → My Attendance**
+*Context: View percentages. Scan QR or submit 15-sec OTP for check-in.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → My Learning → Weekly Timetable**
+*Context: Visual grid of classes, labs, and tutorials.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → My Learning → Learning Progress**
+*Context: Skill radar, study hours heatmap, peer comparison.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Academic
+
+**Student Portal → Academic → Grades & Transcript**
+*Context: Semester-wise SGPA/CGPA, export PDF.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → Academic → Certificates**
+*Context: Download validated completion certificates.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → Academic → Academic Calendar**
+*Context: View institution-wide dates (exams, holidays).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → Academic → Download Center**
+*Context: Syllabi, past papers, notes.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Services
+
+**Student Portal → Services → Digital Library**
+*Context: Browse catalog, issue e-books, check fines.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → Services → Placement Portal**
+*Context: View job drives, check eligibility, apply (idempotent).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → Services → Communication Hub**
+*Context: Discussion forums (course-scoped), announcements.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → Services → Fee & Payments**
+*Context: Outstanding dues, dummy payment gateway, receipts.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → Services → Help Desk**
+*Context: Raise IT/Admin support tickets.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### AI & Account
+
+**Student Portal → AI & Account → AI Assistant**
+*Context: EduSphere AI chatbot (grades, predictions, rules).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → AI & Account → Activity Timeline**
+*Context: Complete historical log of student interactions.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → AI & Account → My Profile & ID**
+*Context: View demographic data, digital ID card.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Student Portal → AI & Account → Notifications**
+*Context: Real-time alerts (assignments, grades, events).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+## Faculty Portal
+
+### Teaching
+
+**Faculty Portal → Teaching → Dashboard**
+*Context: Quick overview of courses, pending grading counts.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Teaching → My Courses**
+*Context: Edit course details, syllabus, capacities.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Teaching → Course Content**
+*Context: Upload PDFs, videos, links (drip-release).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Teaching → Assessments**
+*Context: Create quizzes, set time limits, view live CBT results.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Teaching → Assignments**
+*Context: Create tasks, bulk-grade via CSV, plagiarism checking.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Teaching → Mark Attendance**
+*Context: Generate QR codes, trigger live 15-sec OTP sessions.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Teaching → My Timetable**
+*Context: Instructor-specific weekly scheduling view.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Student Management
+
+**Faculty Portal → Student Management → Student Performance**
+*Context: Analytics on student engagement and risk.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Student Management → Grade Submission**
+*Context: Finalizing mid-term and end-term results.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Student Management → Course Completion**
+*Context: Tracking progression of cohorts.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Student Management → Student Feedback**
+*Context: Read anonymous end-of-semester feedback.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Communication
+
+**Faculty Portal → Communication → Communication Hub**
+*Context: Moderate course forums, mark "Best Answers".*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Communication → Announcements**
+*Context: Broadcast alerts strictly to enrolled students.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Communication → Analytics**
+*Context: Basic class averages and statistical data.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Account
+
+**Faculty Portal → Account → Leave Management**
+*Context: Request casual/medical leaves (atomic updates).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Account → AI Teaching Tools**
+*Context: AI-assisted rubric generation, test creation.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Account → Profile**
+*Context: Faculty details, publications, specializations.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Faculty Portal → Account → Notifications**
+*Context: Alerts for late submissions, dispute raises.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+## Admin Portal
+
+### Management
+
+**Admin Portal → Management → Dashboard**
+*Context: System overview, active users, error rates.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Management → User Management**
+*Context: Create, edit, suspend students and faculty.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Management → Course Catalog**
+*Context: Create new courses, map to departments.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Management → Departments**
+*Context: Manage structures, HoDs, capacities.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Management → Semesters**
+*Context: Define active terms, start/end dates.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Management → Enrollments**
+*Context: Bulk enroll/unenroll students.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Management → Timetable Mgmt**
+*Context: Conflict-free scheduling engine across all rooms.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Enterprise
+
+**Admin Portal → Enterprise → Certificate Approval**
+*Context: Sign off on digital credentials.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Enterprise → Roles & Permissions**
+*Context: Define granular access controls.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Enterprise → Announcements**
+*Context: Institution-wide global broadcasts.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Enterprise → Library Management**
+*Context: Add inventory, override fines.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Enterprise → Placement Management**
+*Context: Create drives, approve company profiles.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Enterprise → Academic Calendar**
+*Context: Create institutional holidays, deadlines.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### System
+
+**Admin Portal → System → System Health**
+*Context: Mongo/Redis status, CPU/Memory metrics.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → System → Audit & Logs**
+*Context: Tracking all actions (who modified what, when).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → System → File Management**
+*Context: Storage quotas, orphaned file cleanup.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → System → Email Broadcast**
+*Context: SMTP integration for external comms.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → System → Backup & Restore**
+*Context: DB snapshot controls.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → System → Configuration**
+*Context: Core system variables, feature flags.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → System → Help Desk**
+*Context: Resolve student/faculty IT tickets.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Account
+
+**Admin Portal → Account → Reports Center**
+*Context: Generate CSV compliance and stat reports.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Admin Portal → Account → Notifications**
+*Context: High-priority system alerts.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+## Management Portal
+
+### Executive View
+
+**Management Portal → Executive View → Executive Dashboard**
+*Context: High-level macro view (enrollments, revenue).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Executive View → Analytics & Reports**
+*Context: Live dynamic Mongo aggregations (no fake math).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Executive View → Institutional KPIs**
+*Context: Multi-year performance tracking.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Executive View → Dept Comparison**
+*Context: Pass rates, attendance, and placements by branch.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Performance
+
+**Management Portal → Performance → Faculty Performance**
+*Context: Research output, student feedback scores.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Performance → Student Performance**
+*Context: Global CGPA bell curves, dropout risks.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Performance → Placement Analytics**
+*Context: Average CTC, top recruiters, unplaced counts.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Performance → Research Statistics**
+*Context: Publications, grants, patents tracking.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### Governance
+
+**Management Portal → Governance → Approval Center**
+*Context: Sign off on major operational changes.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Governance → Course Approvals**
+*Context: Curriculum review for new offerings.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Governance → Budget Overview**
+*Context: Department-wise allocations and spending.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Governance → Risk Alerts**
+*Context: Automated flags (low attendance trends, grade dips).*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Governance → Accreditation**
+*Context: Compliance tracking for NBA, NAAC, etc.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → Governance → Compliance Logs**
+*Context: Audit trails for governance.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+### AI & Account
+
+**Management Portal → AI & Account → AI Insights**
+*Context: AI-driven macro predictions for the university.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → AI & Account → Predictive Analytics**
+*Context: Enrollment forecasting, placement likelihood.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → AI & Account → Executive Reports**
+*Context: Beautiful, printable macro-reports.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → AI & Account → Placement Stats**
+*Context: Detailed placement year-over-year growth.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+**Management Portal → AI & Account → Notifications**
+*Context: Alerts for approvals and critical risk flags.*
+
+```
+1. Purpose: 
+2. Features present: 
+3. Role & privilege model: 
+4. Frontend–backend wiring: 
+5. Database touchpoints: 
+6. Cross-portal integration points: 
+7. Authentication & authorization path: 
+8. Working / Broken / Partially working: 
+9. Features missing: 
+```
+
+---
+
+# 12. PER-SERVICE BACKEND ROUTE CHECKLIST DETAIL
+
+For each real service, walk every route file and answer these sub-questions.
+
+### `auth-service` (port 3001, Core tier)
+
+**Spec description:** JWT issuance, RBAC, rate-limiting
+
+**Focus area:** JWT issuance, RBAC, rate-limiting. Verify rate-limiting is actually applied to login/reset endpoints, not just present in the description. Confirm this is the actual owner of Roles & Permissions (1.7).
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `user-service` (port 3002, Core tier)
+
+**Spec description:** Profile management, atomic updates
+
+**Focus area:** Profile management, atomic updates. Best-guess owner of Leave Management and possibly Fee & Payments (1.7) — confirm or correct.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `course-service` (port 3003, Core tier)
+
+**Spec description:** Catalog, drip-release logic
+
+**Focus area:** Catalog, drip-release logic. Verify drip-release gating happens server-side (a locked module shouldn't be fetchable by a direct API call even if the UI hides it). Possible owner of Course Prerequisites once built.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `admin-service` (port 3015, Core tier)
+
+**Spec description:** System config, health, audit logs
+
+**Focus area:** System config, health, audit logs. Verify Backup & Restore is gated `super_admin`-only and never exposed to the auto-approval tool gate (0.7). Best-guess owner of Help Desk ticketing.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `attendance-service` (port 3008, Academic tier)
+
+**Spec description:** QR/OTP live sessions, Socket.IO
+
+**Focus area:** QR/OTP live sessions, Socket.IO. This is one of exactly two services allowed to run a socket layer (1.6) — verify no other service has quietly added one.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `timetable-service` (port 3009, Academic tier)
+
+**Spec description:** Overlap checks, scheduling
+
+**Focus area:** Overlap checks, scheduling. Verify the conflict-free scheduling engine (Admin Timetable Mgmt) actually rejects overlapping bookings server-side, not just flags them in the UI.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `calendar-service` (port 3010, Academic tier)
+
+**Spec description:** Academic events, exams, holidays
+
+**Focus area:** Academic events, exams, holidays. Verify Student's read-only Academic Calendar and Admin's create/edit Academic Calendar hit the same data, not two divergent copies.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `assignment-service` (port 3006, Academic tier)
+
+**Spec description:** Submissions, bulk grading, penalties
+
+**Focus area:** Submissions, bulk grading, penalties. Verify late-penalty calculation is server-computed, not trusted from a client-supplied 'days late' value. Confirm plagiarism-checking and CSV bulk-grading are real, not stubs.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `assessment-service` (port 3005, Academic tier)
+
+**Spec description:** Quizzes, CBT, leaderboards
+
+**Focus area:** Quizzes, CBT, leaderboards. Verify leaderboard ranking is computed server-side from real scores, not client-sorted from a payload that could be tampered with.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `notification-service` (port 3004, Operations & Engagement tier)
+
+**Spec description:** Socket.IO pushes, SMS/Email
+
+**Focus area:** Socket.IO pushes, SMS/Email. This is the other of the two socket-layer services (1.6). Verify Admin's Email Broadcast page actually routes through here (1.7) rather than a parallel path in admin-service.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `discussion-service` (port 3013, Operations & Engagement tier)
+
+**Spec description:** Forums, Q&A, upvoting
+
+**Focus area:** Forums, Q&A, upvoting. No socket layer of its own (1.6) — verify new posts/upvotes emit an event to notification-service rather than the frontend polling or discussion-service opening a competing connection.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `library-service` (port 3011, Operations & Engagement tier)
+
+**Spec description:** Book checkouts, fine calculations
+
+**Focus area:** Book checkouts, fine calculations. Verify checkout availability uses an atomic conditional update (Section 7) to prevent two students checking out the last copy simultaneously.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `placement-service` (port 3012, Operations & Engagement tier)
+
+**Spec description:** Drive registrations, eligibilities
+
+**Focus area:** Drive registrations, eligibilities. Verify application submission is idempotent via a compound unique index (studentId + driveId) per the confirmed 1.6 convention.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `certificate-service` (port 3007, Operations & Engagement tier)
+
+**Spec description:** PDF generation, idempotent issuing
+
+**Focus area:** PDF generation, idempotent issuing. Verify 'idempotent issuing' is real — re-requesting the same certificate should not generate a duplicate record or double-charge whatever workflow triggers it.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+### `analytics-service` (port 3014, Executive tier)
+
+**Spec description:** Live aggregations, KPI computation
+
+**Focus area:** Live aggregations, KPI computation. Sequence this service's Phase 2/3 work last (0.4) since it depends on every other service. Verify every number matches the spec's own 'no fake math' requirement — this is the service most at risk of the fabricated-metrics bug pattern (Section 7) if a real query is ever swapped for a placeholder during development and not swapped back.
+
+- Every route file enumerated; every route mapped to a controller function that is not a stub/501.
+- `requireRole(...)` on each route cross-checked against Phase 1's privilege findings — for admin-service routes specifically, confirm admin vs super_admin.
+- Input validation present on every body/param/query field.
+- Response shape consistent within this service (verify against real code — the `{ resource: [...], total }` convention in 13.1 is a recommendation, not confirmed by the architecture doc).
+- Reachable through the gateway with the correct proxy target — tested live.
+- Privilege boundary tested live with all 5 role accounts.
+
+---
+
+# 13. REFERENCE — CONVENTIONS (confirmed vs. recommended — don't conflate the two)
+
+### 13.1 REST response shape convention — RECOMMENDED, unconfirmed by the architecture doc
+
+Verify what the real code actually does before enforcing this. If the codebase already has a different consistent shape, adopt that and update this Knowledge Item instead.
+
+```javascript
+// List endpoints
+{ "resource": [ /* array of items */ ], "total": <number> }
+
+// Single-resource endpoints
+{ /* the resource object directly, no wrapper */ }
+
+// Error responses
+{ "error": { "code": "VALIDATION_ERROR", "message": "human readable", "details": [ /* optional */ ] } }
+```
+
+### 13.2 Socket.IO model — CONFIRMED by the architecture doc
+
+Exactly two services carry real-time traffic: `attendance-service` (live QR/OTP session flow) and `notification-service` (general push channel for everything else). This is fact, not a recommendation — see 1.6. Whatever internal room/event naming notification-service uses for its own event taxonomy is an implementation detail worth documenting once discovered, but the two-service boundary itself is not up for revision without triggering the 0.8 STOP condition.
+
+### 13.3 Role model quick reference — 5 roles, CONFIRMED by the architecture doc
+
+| Role | Portal | Can generally... | Cannot... |
+|---|---|---|---|
+| `student` | Student | view/submit own data, enroll, request leave, apply to placements | see other students' records, approve anything, modify grades |
+| `faculty` | Faculty | manage owned courses, submit grades, mark attendance, request own leave | manage users/roles, see unrelated faculty's courses, access Admin/Management pages |
+| `admin` | Admin | day-to-day operational CRUD — users, courses, departments, enrollments, library, placements | actions gated to super_admin specifically (see next row) |
+| `super_admin` | Admin | everything `admin` can, plus the highest-risk actions — likely Configuration and Backup & Restore, confirm exact set in Phase 1 | — |
+| `management` | Management | view aggregated analytics **and** write for governance approvals (Approval Center, Course Approvals, Budget Overview) | modify operational records outside the approval workflows — this role is not purely read-only, correct that assumption if it appears elsewhere |
+
+---
+
+# 14. SUPPLEMENTARY CHECKLISTS
+
+### 14.1 Security checklist
+
+- No secrets committed to the repo or exposed via any API response.
+- Password hashing uses bcrypt/argon2 with an appropriate cost factor.
+- Rate limiting on auth-service's login/reset/registration endpoints — explicitly named in its own spec description, so its absence is a direct spec violation, not just a best practice gap.
+- File upload endpoints (assignment-service submissions, course-service materials, certificate-service outputs) validate MIME type and size server-side.
+- CORS configured to real known origins.
+- All Mongoose queries use parameterized filters.
+- Every privileged action is captured in Admin's Audit & Logs page with actor, target, timestamp — and specifically test that `super_admin`-only actions (Backup & Restore, Configuration) are logged with that distinction visible, not merged into a generic 'admin action' entry.
+
+### 14.2 Performance checklist
+
+- Every list endpoint supports pagination.
+- Every N+1 finding has a corresponding fix with a verified reduced query count.
+- analytics-service's dashboards use cached/TTL'd aggregation, not live per-request recomputation of expensive queries — while still honoring 'no fake math' (the cache must hold a real computed value, not a placeholder).
+- Large exports (Certificates, Reports Center, Executive Reports) run as background jobs if they risk request timeout.
+- If the Command Palette (1.7) ends up fanning out across services per keystroke, confirm it's debounced and parallelized, not sequential.
+
+### 14.3 Accessibility & UX checklist
+
+- Every form has associated labels.
+- Every async action shows loading and distinct success/error states.
+- Empty states are explicit and honest — 'No grades posted yet' rather than a zeroed chart.
+- Color is never the sole indicator of status.
+
+### 14.4 Final live walkthrough script
+
+Execute as the literal last step before signing off Deliverable 8:
+
+- Log in as `student` → visit every page in Section 1.2 in module order → perform at least one meaningful action per page → log out.
+- Log in as `faculty` → visit every page in Section 1.3 → perform at least one meaningful action per page, including approving the leave request submitted above (once 1.7 confirms who owns approval) → log out.
+- Log in as `admin` → visit every page in Section 1.4 that doesn't require `super_admin` → confirm the super_admin-only pages correctly reject this account → log out.
+- Log in as `super_admin` → visit the remaining Section 1.4 pages, including Configuration and Backup & Restore (view only — do not actually execute a restore) → log out.
+- Log in as `management` → visit every page in Section 1.5, confirming the faculty grade submitted above surfaces correctly in Student Performance and the leave request surfaces nowhere it shouldn't → test at least one write path (e.g. Approval Center) to confirm Management's write access for approvals actually works, not just its read views → log out.
+- Record every step's outcome in Deliverable 8 using the 3.6 PASS/FAIL format.
+
+---
+
+# 15. ANTIGRAVITY OPERATING APPENDIX — COPY-PASTE-READY SEED MATERIAL
+
+### 15.1 Seed Task List
+
+```markdown
+## EduSphere Enterprise Completion Mission — Task List
+
+### Phase 0 — Setup
+- [ ] Load ANTIGRAVITY_MISSION.md as project context
+- [ ] Seed Knowledge Items (15.2)
+- [ ] Configure tool-approval gates (0.7)
+- [ ] Create branches: phase-1-research, phase-2-routes, phase-3-db, phase-4-realtime, phase-5-features, phase-6-bugsweep
+- [ ] Architecture Reconciliation artifact posted (0.0) — confirms which of the 15 services / 79 pages actually exist in the repo today, and flags anything in the repo not named in this brief
+
+### Phase 1 — Research (4 parallel portal subagents + 1 ownership-map subagent)
+- [ ] Student Portal — 20 pages documented (Section 1)
+- [ ] Faculty Portal — 18 pages documented (Section 1)
+- [ ] Admin Portal — 22 pages documented (Section 1)
+- [ ] Management Portal — 19 pages documented (Section 1)
+- [ ] Service Ownership Map (1.7) — all 9 open questions resolved
+- [ ] Admin page-count discrepancy (20 stated vs 22 enumerated) reconciled against the real sidebar
+
+### Phase 2 — Route verification (15 per-service subagents + 1 frontend subagent, analytics-service last)
+- [ ] auth-service (port 3001) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] user-service (port 3002) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] course-service (port 3003) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] admin-service (port 3015) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] attendance-service (port 3008) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] timetable-service (port 3009) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] calendar-service (port 3010) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] assignment-service (port 3006) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] assessment-service (port 3005) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] notification-service (port 3004) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] discussion-service (port 3013) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] library-service (port 3011) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] placement-service (port 3012) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] certificate-service (port 3007) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] analytics-service (port 3014) — routes enumerated, tested live across 5 roles, PASS/FAIL recorded
+- [ ] Frontend routes
+- [ ] Gateway cross-check
+- [ ] Auth flow end-to-end trace
+
+### Phase 3 — Database audit (same 15 services, analytics-service last)
+- [ ] auth-service — isolation, schema, indexing, N+1 check
+- [ ] user-service — isolation, schema, indexing, N+1 check
+- [ ] course-service — isolation, schema, indexing, N+1 check
+- [ ] admin-service — isolation, schema, indexing, N+1 check
+- [ ] attendance-service — isolation, schema, indexing, N+1 check
+- [ ] timetable-service — isolation, schema, indexing, N+1 check
+- [ ] calendar-service — isolation, schema, indexing, N+1 check
+- [ ] assignment-service — isolation, schema, indexing, N+1 check
+- [ ] assessment-service — isolation, schema, indexing, N+1 check
+- [ ] notification-service — isolation, schema, indexing, N+1 check
+- [ ] discussion-service — isolation, schema, indexing, N+1 check
+- [ ] library-service — isolation, schema, indexing, N+1 check
+- [ ] placement-service — isolation, schema, indexing, N+1 check
+- [ ] certificate-service — isolation, schema, indexing, N+1 check
+- [ ] Compound unique index confirmed: attendance
+- [ ] Compound unique index confirmed: leave
+- [ ] Compound unique index confirmed: payments
+- [ ] Compound unique index confirmed: placement
+- [ ] Redis-optional degradation confirmed
+- [ ] analytics-service — aggregation efficiency (after all above close)
+
+### Phase 4 — Real-time (2 focused subagents, not per-page)
+- [ ] attendance-service live session channel verified end-to-end
+- [ ] notification-service push channel verified for: discussion, placement, library, leave, email broadcast
+- [ ] Confirmed no third service opened its own socket layer
+
+### Phase 5 — Missing features
+- [ ] AI Assistant / AI Teaching Tools / AI Insights / Predictive Analytics (none (gap)) — STOP condition first
+- [ ] Command Palette search backend (unresolved (1.7)) — Confirmed gap
+- [ ] Help Desk ticketing (admin-service (best guess)) — Confirmed gap, likely small build
+- [ ] Grade disputes (assignment-service / course-service (per 1.7)) — Verify first — may partially exist
+- [ ] Plagiarism check (assignment-service) — Confirmed present
+- [ ] Rubric grading (assignment-service / assessment-service) — Verify first
+- [ ] CSV bulk imports / bulk grading (assignment-service (grading), admin-service (Enrollments)) — Confirmed present (assignment side)
+- [ ] Course prerequisites (course-service) — Confirmed gap
+- [ ] 2FA/SSO (auth-service) — Confirmed gap
+- [ ] Production-safe impersonation (admin-service or auth-service) — Confirmed gap
+- [ ] Exportable Management reports (analytics-service) — Partially present
+- [ ] Semester snapshots (course-service or admin-service) — Confirmed gap
+
+### Phase 6 — Bug sweep (6 parallel pattern subagents)
+- [ ] Client-trusted values for approval/scoring/eligibility/authorization
+- [ ] Race conditions on exactly-once writes — the confirmed EduSphere pattern
+- [ ] Paginated-subset math presented as a full aggregate
+- [ ] Authorization scoping trusted from client parameters instead of authenticated identity
+- [ ] String-based date comparisons instead of proper Date types
+- [ ] Fabricated/placeholder metrics anywhere (except the intentional Fee & Payments simulation)
+
+### Final
+- [ ] Full live walkthrough (14.4), all 5 roles, screen-recorded
+- [ ] Definition of Done (Section 10) self-certified (15.5)
+```
+
+### 15.2 Knowledge Item seed blocks
+
+```
+--- Knowledge Item: service-port-map ---
+auth-service : 3001 : Core : JWT issuance, RBAC, rate-limiting
+user-service : 3002 : Core : Profile management, atomic updates
+course-service : 3003 : Core : Catalog, drip-release logic
+admin-service : 3015 : Core : System config, health, audit logs
+attendance-service : 3008 : Academic : QR/OTP live sessions, Socket.IO
+timetable-service : 3009 : Academic : Overlap checks, scheduling
+calendar-service : 3010 : Academic : Academic events, exams, holidays
+assignment-service : 3006 : Academic : Submissions, bulk grading, penalties
+assessment-service : 3005 : Academic : Quizzes, CBT, leaderboards
+notification-service : 3004 : Operations & Engagement : Socket.IO pushes, SMS/Email
+discussion-service : 3013 : Operations & Engagement : Forums, Q&A, upvoting
+library-service : 3011 : Operations & Engagement : Book checkouts, fine calculations
+placement-service : 3012 : Operations & Engagement : Drive registrations, eligibilities
+certificate-service : 3007 : Operations & Engagement : PDF generation, idempotent issuing
+analytics-service : 3014 : Executive : Live aggregations, KPI computation
+
+--- Knowledge Item: socketio-model (CONFIRMED) ---
+Only attendance-service and notification-service run socket layers.
+attendance-service = live QR/OTP check-in session flow only.
+notification-service = general push channel; every other service emits INTO it, none opens its own.
+
+--- Knowledge Item: idempotency-pattern (CONFIRMED) ---
+Attendance, leave, payments, placement writes = compound unique index in MongoDB, not app-level check-then-write.
+Pure capacity counters (seats, library copies) = atomic conditional updateOne with $expr + $inc instead.
+
+--- Knowledge Item: role-model (CONFIRMED, 5 roles) ---
+student / faculty / admin / super_admin / management
+management is NOT read-only: it has write access for Approval Center, Course Approvals, Budget Overview.
+admin vs super_admin split is real; confirm which pages need which tier during Phase 1, don't assume.
+
+--- Knowledge Item: service-ownership-open-questions ---
+- Grades & Transcript / Grade Submission / Student Performance data (Student, Faculty, Management): best guess = assignment-service or course-service (unclear), confidence = LOW
+- Leave Management data (Faculty) (Faculty): best guess = user-service (best guess, per its 'atomic updates' note), confidence = LOW
+- Fee & Payments data (Student) (Student): best guess = user-service or admin-service (unclear), confidence = LOW
+- Help Desk / ticketing data (Student, Admin): best guess = admin-service (best guess), confidence = MEDIUM
+- AI Assistant / AI Teaching Tools / AI Insights / Predictive Analytics (Student, Faculty, Management): best guess = none — no AI-capable service exists in the 15, confidence = NONE
+- Command Palette (cmd+k) backend (All portals (cross-cutting)): best guess = no single owner — needs a cross-service index, confidence = LOW
+- Roles & Permissions (Admin) (Admin): best guess = auth-service, confidence = HIGH
+- Email Broadcast (Admin) (Admin): best guess = notification-service, not admin-service, confidence = MEDIUM
+- Research Statistics (Management) (Management): best guess = analytics-service, aggregating from user-service, confidence = MEDIUM
+
+--- Knowledge Item: known-bug-patterns ---
+- Client-trusted values for approval/scoring/eligibility/authorization
+- Race conditions on exactly-once writes — the confirmed EduSphere pattern
+- Paginated-subset math presented as a full aggregate
+- Authorization scoping trusted from client parameters instead of authenticated identity
+- String-based date comparisons instead of proper Date types
+- Fabricated/placeholder metrics anywhere (except the intentional Fee & Payments simulation)
+(full before/after code for each is in Section 7 of ANTIGRAVITY_MISSION.md)
+```
+
+### 15.3 Branch / workspace plan
+
+| Service | Branch name | Tier | Sequencing note |
+|---|---|---|---|
+| auth-service | svc/auth | Core | Parallel-safe with all other non-analytics services |
+| user-service | svc/user | Core | Parallel-safe with all other non-analytics services |
+| course-service | svc/course | Core | Parallel-safe with all other non-analytics services |
+| admin-service | svc/admin | Core | Parallel-safe with all other non-analytics services |
+| attendance-service | svc/attendance | Academic | Parallel-safe with all other non-analytics services |
+| timetable-service | svc/timetable | Academic | Parallel-safe with all other non-analytics services |
+| calendar-service | svc/calendar | Academic | Parallel-safe with all other non-analytics services |
+| assignment-service | svc/assignment | Academic | Parallel-safe with all other non-analytics services |
+| assessment-service | svc/assessment | Academic | Parallel-safe with all other non-analytics services |
+| notification-service | svc/notification | Operations & Engagement | Parallel-safe with all other non-analytics services |
+| discussion-service | svc/discussion | Operations & Engagement | Parallel-safe with all other non-analytics services |
+| library-service | svc/library | Operations & Engagement | Parallel-safe with all other non-analytics services |
+| placement-service | svc/placement | Operations & Engagement | Parallel-safe with all other non-analytics services |
+| certificate-service | svc/certificate | Operations & Engagement | Parallel-safe with all other non-analytics services |
+| analytics-service | svc/analytics | Executive | Run **last** — depends on every other service's finalized schema/routes |
+
+| Portal (Phase 1 research) | Branch/workspace |
+|---|---|
+| Student Portal | research/student |
+| Faculty Portal | research/faculty |
+| Admin Portal | research/admin |
+| Management Portal | research/management |
+
+### 15.4 Reporting cadence & Walkthrough quality bar
+
+- Post an Implementation Plan at minimum once per closed page/service/backlog item, not one dump at phase end.
+- Post a Walkthrough at every phase close and every STOP condition (0.8) — no exceptions.
+- A reviewable Walkthrough contains: what changed, why (which Section-numbered requirement it satisfies), and before/after evidence.
+- A Walkthrough that states a result without evidence gets sent back for redo.
+
+### 15.5 Final self-certification checklist
+
+- [ ] I ran the Architecture Reconciliation pass (0.0) before Phase 1 and posted its findings, including any service/page named in the spec but not yet built, and anything built but not named in the spec.
+- [ ] I have a filled Phase 1 record for all 79 pages with zero TBD fields, and the Admin count discrepancy is explicitly resolved.
+- [ ] All 9 rows in the Service Ownership Map (1.7) are resolved with evidence, not a guess.
+- [ ] I have a PASS/FAIL row for every route, tested against all 5 roles, with Screenshot evidence for each.
+- [ ] I have confirmed all 4 compound-unique-index domains (attendance, leave, payments, placement) actually exist at the schema level.
+- [ ] I have confirmed no service other than attendance-service and notification-service runs a socket layer.
+- [ ] I have an Implementation Plan for every Section 6 backlog item, and the AI-feature cluster has an explicit, human-approved architecture decision attached, not a silent build.
+- [ ] I have a Walkthrough for every Section 7 bug pattern, every location found app-wide.
+- [ ] I have re-run the Section 14.4 live walkthrough as one continuous pass, all 5 roles, screen-recorded.
+- [ ] No STOP condition (0.8) is currently open and unresolved.
+- [ ] The Section 0.9 Scheduled Task is configured, not just recommended.
+
+
+# EDUSPHERE ENTERPRISE — AUTONOMOUS COMPLETION & VERIFICATION MISSION
+
+You are the **lead autonomous software engineering team** responsible for completing, verifying, debugging, and production-quality finishing of the **EduSphere Enterprise LMS**.
+
+The uploaded `EduSphere Enterprise — Antigravity Mission Brief v4.0` is the authoritative project specification.
+
+## 1. FIRST: UNDERSTAND THE ENTIRE PROJECT
+
+Before changing, deleting, creating, or refactoring anything:
+
+1. Read the entire mission brief carefully.
+2. Read the entire existing repository.
+3. Understand the frontend architecture.
+4. Understand every backend microservice.
+5. Understand every database model/schema.
+6. Understand authentication and authorization.
+7. Understand API communication.
+8. Understand real-time communication.
+9. Understand routing and role protection.
+10. Understand how data flows between portals and services.
+11. Understand existing components, hooks, utilities, middleware, controllers, models, services, and shared code.
+12. Do not assume that filenames, route names, comments, or documentation accurately describe what the code actually does.
+13. Verify the actual implementation.
+
+**Do not start by blindly fixing code.**
+
+Your first responsibility is to understand what already exists.
+
+---
+
+# 2. CORE PRINCIPLE — VERIFY, DON'T ASSUME
+
+This is the most important rule of the entire mission.
+
+> **VERIFY, DON'T ASSUME.**
+
+If the specification says something exists, verify it in the code and running application.
+
+If the code says something works, verify it through the actual browser/API/database.
+
+If something appears missing, verify that it is genuinely missing before building it.
+
+If documentation conflicts with the implementation, investigate and record the discrepancy.
+
+Never invent functionality merely because a page name suggests that functionality should exist.
+
+Never report something as working because the code “looks correct.”
+
+A feature is considered working only after appropriate live verification.
+
+---
+
+# 3. FULL-SYSTEM OWNERSHIP
+
+You have autonomous ownership of the repository for this mission.
+
+You may:
+
+* inspect files
+* inspect the complete repository structure
+* run the application
+* run frontend and backend services
+* run tests
+* inspect API calls
+* inspect browser behavior
+* inspect network requests
+* inspect database interactions
+* inspect MongoDB schemas and indexes
+* inspect Socket.IO behavior
+* create files
+* modify files
+* remove obsolete files when justified
+* fix bugs
+* implement missing functionality
+* improve error handling
+* improve validation
+* improve authorization
+* improve database efficiency
+* add tests
+* create documentation
+* create evidence artifacts
+* commit work to appropriate branches
+
+Do not ask for permission for ordinary work within the defined project scope.
+
+However, respect every STOP condition and approval gate defined in the mission brief.
+
+---
+
+# 4. DO NOT REDESIGN THE PROJECT
+
+This is a **completion and verification mission, not a redesign mission**.
+
+Preserve existing correct functionality.
+
+Do not replace working architecture simply because you prefer another architecture.
+
+Do not introduce unnecessary frameworks.
+
+Do not create unnecessary microservices.
+
+Do not change established architectural conventions without evidence and justification.
+
+In particular:
+
+* Keep the existing 15-service architecture.
+* Do not create another backend service unless the mission's STOP condition is triggered and the architectural decision is explicitly approved.
+* Do not create additional Socket.IO servers.
+* Real-time communication must remain centralized through:
+
+  * `attendance-service`
+  * `notification-service`
+
+The specification explicitly identifies those as the two established real-time channels.
+
+---
+
+# 5. UNDERSTAND EVERY PAGE
+
+You must inspect **every page across every portal**.
+
+Do not only inspect the sidebar.
+
+Do not only inspect route files.
+
+Do not only inspect component files.
+
+For every page, actually open and test it.
+
+The current specification identifies:
+
+* Student Portal — 20 pages
+* Faculty Portal — 18 pages
+* Admin Portal — 22 pages, with the specification requiring reconciliation of its count against the real sidebar
+* Management Portal — 19 pages
+
+The target is therefore **79+ page records**, with the Admin discrepancy explicitly resolved.
+
+For EVERY page, document:
+
+### 1. Purpose
+
+What does the page actually do?
+
+### 2. Features Present
+
+List every:
+
+* button
+* form
+* input
+* table
+* chart
+* filter
+* dropdown
+* modal
+* navigation control
+* upload
+* download
+* action
+* API-driven element
+* real-time element
+
+Do not infer these from the page name.
+
+### 3. Role & Privileges
+
+Verify access for:
+
+* `student`
+* `faculty`
+* `admin`
+* `super_admin`
+* `management`
+
+For Admin functionality, specifically distinguish `admin` from `super_admin`.
+
+### 4. Frontend → Backend Wiring
+
+Trace:
+
+UI component
+→ hook/function
+→ API call
+→ gateway
+→ microservice
+→ controller
+→ middleware
+→ database/service
+→ response
+→ UI
+
+Every important data flow must be understood.
+
+### 5. Database Touchpoints
+
+Identify:
+
+* database
+* collection/model
+* read operations
+* write operations
+* indexes
+* query patterns
+* possible N+1 queries
+* ownership
+
+### 6. Cross-Portal Integration
+
+Determine whether the page:
+
+* receives data from another portal
+* sends data to another portal
+* feeds analytics
+* triggers notifications
+* affects another user's view
+
+### 7. Authentication & Authorization
+
+Trace:
+
+Login
+→ JWT issuance
+→ token storage
+→ token attachment
+→ backend token validation
+→ role validation
+→ endpoint authorization
+
+### 8. Actual Status
+
+Classify every page as:
+
+* WORKING
+* PARTIALLY WORKING
+* BROKEN
+* MISSING
+* BLOCKED
+
+Never use `WORKING` without actual evidence.
+
+### 9. Missing Features
+
+Identify functionality genuinely required but absent.
+
+Do not immediately implement it.
+
+First determine whether it already exists elsewhere.
+
+---
+
+# 6. INSPECT THE ENTIRE CODEBASE, NOT JUST FRONTEND
+
+Perform a complete repository audit.
+
+Inspect at minimum:
+
+## Frontend
+
+* routing
+* protected routes
+* role guards
+* layouts
+* sidebar
+* components
+* hooks
+* API clients
+* authentication
+* state management
+* forms
+* validation
+* error handling
+* loading states
+* empty states
+* charts
+* tables
+* pagination
+* uploads
+* downloads
+* notifications
+* Socket.IO listeners
+* command palette
+
+## Backend
+
+Inspect all 15 services:
+
+1. auth-service — 3001
+2. user-service — 3002
+3. course-service — 3003
+4. notification-service — 3004
+5. assessment-service — 3005
+6. assignment-service — 3006
+7. certificate-service — 3007
+8. attendance-service — 3008
+9. timetable-service — 3009
+10. calendar-service — 3010
+11. library-service — 3011
+12. placement-service — 3012
+13. discussion-service — 3013
+14. analytics-service — 3014
+15. admin-service — 3015
+
+These service names and responsibilities are part of the verified architecture and must not be replaced with invented services.
+
+For every service inspect:
+
+* routes
+* controllers
+* middleware
+* authentication
+* authorization
+* validation
+* models
+* schemas
+* indexes
+* database queries
+* error handling
+* service-to-service communication
+* event handling
+* tests
+* configuration
+* environment usage
+
+---
+
+# 7. DATABASE AUDIT
+
+Inspect MongoDB architecture across all services.
+
+Verify:
+
+* schema correctness
+* required fields
+* unique fields
+* enum constraints
+* indexes
+* query efficiency
+* pagination
+* N+1 queries
+* unnecessary database calls
+* duplicate queries
+* cross-service data access
+
+Most importantly, verify the four required compound-unique-index domains:
+
+1. Attendance
+2. Leave
+3. Payments
+4. Placement applications
+
+Do not replace these with simple application-level `findOne()` checks.
+
+The established architecture uses MongoDB compound unique indexes for exactly-once-style protection against race conditions.
+
+If an index is missing, identify:
+
+* service
+* model
+* file
+* line
+* required index
+* reason
+* fix
+* verification evidence
+
+---
+
+# 8. NO FAKE DATA
+
+This rule is absolute.
+
+Do not use:
+
+* hardcoded dashboard numbers
+* fake statistics
+* fake users
+* fake grades
+* fake attendance
+* fake placement data
+* fake analytics
+* fake API responses
+* placeholder metrics pretending to be real
+
+If real data does not exist, display an honest empty state.
+
+For example:
+
+`No grades posted yet`
+
+is acceptable.
+
+A fabricated value such as:
+
+`87% pass rate`
+
+is not acceptable unless it is genuinely calculated from real data.
+
+The only intentional simulation allowed by the specification is the Student Fee & Payments dummy payment gateway. Do not incorrectly classify that as fabricated data.
+
+---
+
+# 9. REAL-TIME VERIFICATION
+
+Verify the actual Socket.IO architecture.
+
+There must be exactly two established real-time channels:
+
+### attendance-service
+
+Used for:
+
+* Faculty Mark Attendance
+* QR sessions
+* 15-second OTP sessions
+* Student attendance check-in
+* live attendance updates
+
+### notification-service
+
+Used for general application notifications and events.
+
+Do NOT create:
+
+* page-specific socket servers
+* service-specific socket servers
+* extra Socket.IO infrastructure
+
+For example:
+
+Discussion updates should flow through the established notification architecture, not through a new discussion-service socket server.
+
+Verify that live updates actually occur without manual refresh where real-time behavior is required.
+
+---
+
+# 10. SECURITY AUDIT
+
+Perform a full security audit.
+
+Check for:
+
+* client-trusted authorization
+* client-trusted user IDs
+* client-trusted approval information
+* client-trusted scores
+* client-trusted eligibility
+* missing role checks
+* incorrect role checks
+* missing JWT validation
+* expired-token handling
+* insecure endpoints
+* missing input validation
+* unsafe MongoDB queries
+* exposed secrets
+* weak password handling
+* missing rate limiting
+* unsafe file uploads
+* incorrect CORS
+* missing audit logs
+
+Never trust values from the client when they can be derived from the authenticated JWT.
+
+For example:
+
+Bad:
+
+`approvedBy = req.body.approvedBy`
+
+Correct:
+
+`approvedBy = req.user.id`
+
+The mission brief specifically identifies client-trusted authorization/scoring/approval values as a bug pattern.
+
+---
+
+# 11. ROUTE VERIFICATION
+
+Test every frontend route.
+
+For every route verify:
+
+* direct URL navigation
+* protected route behavior
+* authentication
+* role protection
+* deep links
+* route parameters
+* invalid IDs
+* 404 behavior
+* loading state
+* error state
+
+Test backend routes through the actual gateway.
+
+Do not rely only on internal service URLs.
+
+For privilege verification, use all five roles:
+
+| Role        |
+| ----------- |
+| student     |
+| faculty     |
+| admin       |
+| super_admin |
+| management  |
+
+Record PASS/FAIL evidence for each relevant route.
+
+The required route verification format is explicitly defined in the brief.
+
+---
+
+# 12. AUTHENTICATION VERIFICATION
+
+Test the complete lifecycle:
+
+1. Registration
+2. Validation
+3. Duplicate-email handling
+4. Password hashing
+5. Login
+6. JWT issuance
+7. Token storage
+8. Token attachment
+9. Backend token validation
+10. Role validation
+11. Expiry
+12. Refresh if implemented
+13. Logout
+14. Cache cleanup
+15. Socket disconnect/reconnect behavior
+
+Test authentication as a real user, not merely by reading source code.
+
+---
+
+# 13. CROSS-PORTAL DATA VERIFICATION
+
+Verify important end-to-end data flows.
+
+Examples:
+
+Faculty Grade Submission
+→ Student Grades & Transcript
+→ Management Student Performance
+
+Faculty Attendance
+→ Student My Attendance
+→ Management analytics where applicable
+
+Student Leave Request
+→ Faculty/Management approval workflow
+
+Placement application
+→ placement status
+→ notification
+
+Library checkout
+→ availability
+→ notification
+
+Do not assume these integrations work because the components exist.
+
+Actually perform the workflow.
+
+---
+
+# 14. MISSING FEATURES
+
+After completing the audit, compare actual functionality with the mission brief.
+
+Only then implement genuinely missing functionality.
+
+Important areas include:
+
+* AI features
+* Command Palette backend
+* Help Desk
+* Grade disputes
+* Course prerequisites
+* 2FA/SSO
+* safe impersonation
+* reports
+* semester snapshots
+* other Section 6 backlog items
+
+The AI feature cluster is special.
+
+The architecture currently has no dedicated AI-capable service among the 15 services. Therefore:
+
+**DO NOT silently create an AI service.**
+
+If implementation requires a new backend service, STOP and report the architectural decision required, as specified in the mission brief.
+
+---
+
+# 15. UX & ACCESSIBILITY
+
+Do not only make the backend technically correct.
+
+Verify that every page provides:
+
+* proper labels
+* loading states
+* success states
+* error states
+* empty states
+* usable forms
+* disabled states
+* validation messages
+* keyboard accessibility
+* responsive layout
+* clear navigation
+* understandable feedback
+
+Never use color as the only indicator of status.
+
+Never show fake zero-valued charts when there is no data.
+
+The specification explicitly requires honest empty states and distinct async states.
+
+---
+
+# 16. BUG-PATTERN SWEEP
+
+After feature completion, perform a separate application-wide sweep for these patterns:
+
+1. Client-trusted values for authorization/scoring/approval/eligibility
+2. Race conditions on exactly-once writes
+3. Incorrect aggregate calculations using paginated subsets
+4. Authorization based on client-supplied IDs
+5. String-based date comparisons
+6. Fabricated/placeholder metrics
+
+Search the entire repository, not just known files.
+
+Every finding must include:
+
+* service
+* file
+* line
+* problem
+* impact
+* fix
+* before
+* after
+* verification
+
+---
+
+# 17. EVIDENCE REQUIREMENT
+
+Do not simply say:
+
+> "Fixed."
+
+That is not sufficient.
+
+For every important finding and fix, provide evidence.
+
+Evidence may include:
+
+* browser screenshot
+* browser test result
+* API response
+* database result
+* query count
+* duplicate-key test
+* route test
+* authorization test
+* console output
+* network request
+* Socket.IO event
+* before/after behavior
+* automated test result
+
+Every finding must have a precise location.
+
+Every fix must have before/after evidence.
+
+A result without evidence should be treated as unverified.
+
+---
+
+# 18. WORK IN PHASES
+
+Follow this order.
+
+## PHASE 0 — PROJECT UNDERSTANDING
+
+* Read the mission brief
+* Inspect repository
+* Map architecture
+* Identify services
+* Identify portals
+* Identify routes
+* Identify database models
+* Identify existing tests
+* Start the master task list
+
+Do not modify application behavior yet unless required to make the environment runnable.
+
+---
+
+## PHASE 1 — EVERY PAGE
+
+Inspect and document every page.
+
+Target:
+
+**79+ page records**
+
+Each page must have the complete 9-point record.
+
+Resolve all Service Ownership Map questions.
+
+No unresolved `TBD` entries.
+
+---
+
+## PHASE 2 — ROUTES
+
+Verify:
+
+* frontend routes
+* backend routes
+* gateway
+* authentication
+* authorization
+* all five roles
+
+Record PASS/FAIL.
+
+---
+
+## PHASE 3 — DATABASE
+
+Verify:
+
+* schemas
+* indexes
+* N+1 queries
+* service isolation
+* cross-service data sharing
+* Redis behavior
+* cache invalidation
+* compound unique indexes
+
+---
+
+## PHASE 4 — REAL-TIME
+
+Verify:
+
+* attendance live channel
+* notification channel
+* event propagation
+* reconnect behavior
+* authentication
+* no unauthorized third socket layer
+
+---
+
+## PHASE 5 — MISSING FEATURES
+
+Build only features confirmed to be missing.
+
+Do not duplicate existing functionality.
+
+Resolve architectural ambiguity before implementation.
+
+---
+
+## PHASE 6 — FINAL BUG SWEEP
+
+Search the complete repository for all six bug patterns.
+
+Fix all confirmed findings.
+
+Then perform complete regression testing.
+
+---
+
+# 19. FINAL LIVE WALKTHROUGH
+
+At the very end, perform a real browser walkthrough.
+
+### Student
+
+Log in as student.
+
+Visit every Student page.
+
+Perform at least one meaningful action on every page where an action exists.
+
+Log out.
+
+### Faculty
+
+Log in as faculty.
+
+Visit every Faculty page.
+
+Perform meaningful actions.
+
+Verify grade, assignment, attendance, leave, and communication workflows.
+
+Log out.
+
+### Admin
+
+Log in as admin.
+
+Visit every Admin page available to normal admin.
+
+Attempt super_admin-only functionality and confirm rejection.
+
+Log out.
+
+### Super Admin
+
+Log in as super_admin.
+
+Test the remaining privileged Admin pages.
+
+For Backup & Restore:
+
+**VIEW ONLY. DO NOT EXECUTE A RESTORE.**
+
+Log out.
+
+### Management
+
+Log in as management.
+
+Visit every Management page.
+
+Verify analytics.
+
+Verify approvals.
+
+Verify that Management's permitted write actions actually work.
+
+Log out.
+
+The final walkthrough must cover all four portals and all five roles.
+
+---
+
+# 20. DEFINITION OF DONE
+
+Do NOT declare the project complete until all of these are true:
+
+* Every page has been inspected.
+* Every page has documented functionality.
+* Every page has verified frontend/backend wiring.
+* Every page has verified database ownership.
+* Every page has verified authentication/authorization.
+* Every page has a real working-status classification.
+* All Service Ownership Map questions are resolved.
+* All frontend routes are verified.
+* All backend routes are verified.
+* All five roles have been tested.
+* Database architecture has been audited.
+* N+1 problems have been addressed.
+* Required compound unique indexes are verified.
+* Redis behavior has been verified.
+* Real-time works through exactly the two approved channels.
+* No fabricated data exists except the intentional Fee & Payments simulation.
+* Missing features have been implemented or explicitly deferred.
+* AI architecture has been explicitly resolved before implementation.
+* All six bug patterns have been searched application-wide.
+* Security issues have been addressed.
+* Accessibility and UX issues have been checked.
+* Full regression has passed.
+* Final browser walkthrough has passed.
+
+The official definition of done requires the final application to be coherent, fully wired, correctly privileged, real-time where appropriate, and professionally usable across all four portals and five roles.
+
+---
+
+# 21. IMPORTANT BEHAVIOR RULES
+
+### NEVER
+
+* Guess.
+* Pretend something works.
+* Create fake data.
+* Skip pages.
+* Skip backend verification.
+* Skip database verification.
+* Skip authorization testing.
+* Create unnecessary services.
+* Create extra Socket.IO servers.
+* Replace architecture without evidence.
+* Mark a feature complete without testing it.
+* Hide failures.
+* Ignore errors because they are unrelated to the current page.
+* Stop after fixing only the visible UI problem.
+
+### ALWAYS
+
+* Inspect.
+* Trace.
+* Test.
+* Verify.
+* Record.
+* Fix.
+* Re-test.
+* Provide evidence.
+* Check related systems after making changes.
+* Preserve correct existing behavior.
+
+---
+
+# 22. WHEN YOU FIND A BUG
+
+Do not immediately patch it.
+
+First determine:
+
+1. What is the actual problem?
+2. Where does it originate?
+3. Which page uses it?
+4. Which API is involved?
+5. Which service owns it?
+6. Which database/model is involved?
+7. Which roles are affected?
+8. Is the problem frontend, backend, database, authentication, authorization, real-time, or integration?
+9. Could fixing it break another portal?
+10. What is the smallest correct architectural fix?
+
+Then:
+
+**Reproduce → Diagnose → Fix → Test → Re-test → Record evidence.**
+
+---
+
+# 23. WHEN A FEATURE LOOKS COMPLETE
+
+Do not trust appearances.
+
+For example, if a dashboard displays a chart:
+
+Do not conclude it works because the chart renders.
+
+Verify:
+
+Database
+→ API
+→ response
+→ transformation
+→ chart
+→ actual values
+
+Confirm the values are real.
+
+Likewise, if a button exists:
+
+Do not conclude the feature works because the button is clickable.
+
+Verify the entire action through backend and database.
+
+---
+
+# 24. FINAL COMMAND
+
+Start now.
+
+Your first action must be:
+
+**Read and understand the complete mission brief and the entire repository before making substantial code changes.**
+
+Then create the initial master Task List and system map.
+
+After that, execute the mission phase-by-phase.
+
+Do not give me a superficial summary.
+
+I want **evidence-backed completion of the actual EduSphere Enterprise application**.
+
+The objective is not to make the project *look finished*.
+
+The objective is to prove that the project is **actually finished, correctly wired, secure, functional, tested, and consistent with the authoritative architecture specification.**
+
+**Inspect everything.
+Understand everything.
+Verify everything.
+Fix everything that is genuinely broken.
+Build what is genuinely missing.
+Prove what you changed.
+Then perform the complete final walkthrough.**

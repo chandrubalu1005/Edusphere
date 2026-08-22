@@ -12,6 +12,7 @@ import FacultyPortal from './portals/FacultyPortal.jsx';
 import AdminPortal from './portals/AdminPortal.jsx';
 import ManagementPortal from './portals/ManagementPortal.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import SplashScreen from './components/SplashScreen.jsx';
 
 // Default page per role
 const ROLE_DEFAULTS = {
@@ -90,13 +91,19 @@ function AppContent() {
 const queryClient = new QueryClient();
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <Notifications />
-          <AppContent />
-          <Toaster position="top-right" toastOptions={{ style: { background: 'var(--surface)', color: 'var(--text-1)', border: '1px solid var(--border)' } }} />
+          {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+          
+          <div style={{ visibility: showSplash ? 'hidden' : 'visible' }} className={!showSplash ? 'app-fade-in' : ''}>
+            <Notifications />
+            <AppContent />
+            <Toaster position="top-right" toastOptions={{ style: { background: 'var(--surface)', color: 'var(--text-1)', border: '1px solid var(--border)' } }} />
+          </div>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

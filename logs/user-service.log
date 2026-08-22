@@ -2,3 +2,30 @@
 > user-service@1.0.0 start
 > node server.js
 
+MinIO Error: AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1194:18)
+    at afterConnectMultiple (node:net:1784:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:9000
+        at createConnectionError (node:net:1747:14)
+        at afterConnectMultiple (node:net:1777:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 9000
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:9000
+        at createConnectionError (node:net:1747:14)
+        at afterConnectMultiple (node:net:1777:16) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 9000
+    }
+  ]
+}
+Connected to MongoDB successfully
+User Service listening on port 3002

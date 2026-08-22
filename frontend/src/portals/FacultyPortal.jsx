@@ -14,7 +14,7 @@ import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
   useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions
 } from '../api/liveData.js';
-import { useGradeSubmission, useBulkGradeAssignment, useCreateCourse, useUpdateCourse, useResolveDispute, useNotifications, useMarkNotificationRead } from '../api/hooks.js';
+import { useGradeSubmission, useBulkGradeAssignment, useCreateCourse, useUpdateCourse, useResolveDispute } from '../api/hooks.js';
 import * as F from './faculty/features.jsx';
 
 
@@ -873,7 +873,7 @@ function FacultyAnalytics({ user }) {
   const handleExport = async (courseId, courseCode) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3004/faculty/courses/${courseId}/export`, {
+      const res = await fetch(`http://localhost:3014/faculty/courses/${courseId}/export`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to export report');
@@ -1173,10 +1173,10 @@ export default function FacultyPortal({ page, onNavigate }) {
     content:     <F.ResourceUpload user={user} />,
     attendance:  <FacultyAttendance user={user} />,
     assignments: <FacultyAssignments user={user} />,
-    assessments:   <F.FacultyAssessments user={user} />,
-    analytics:     <FacultyAnalytics user={user} />,
-    profile:       <F.FacultyProfile user={user} />,
-    notifications: <F.FacultyNotifications user={user} />,
+    assessments: <FacultyDashboard user={user} onNavigate={onNavigate} />, // Placeholder uses dashboard
+    analytics:   <FacultyAnalytics user={user} />,
+    profile:     <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}><h1 className="page-title">Faculty Profile</h1><div className="card"><div className="card-body">Faculty details for {user.firstName} {user.lastName} will appear here.</div></div></div>,
+    notifications: <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}><h1 className="page-title">Notifications</h1><div className="card"><div className="card-body">You have no new notifications.</div></div></div>,
     // New Enterprise Pages
     timetable:    <F.FacultyTimetable user={user} />,
     performance:  <F.StudentPerformance user={user} />,
@@ -1185,8 +1185,9 @@ export default function FacultyPortal({ page, onNavigate }) {
     discussions:  <F.DiscussionModeration user={user} />,
     grades:       <F.GradeSubmission user={user} />,
     completion:   <F.CourseCompletionTracker user={user} />,
-    aiTools:      <F.AITools user={user} />,
+    'ai-tools':   <F.AITools user={user} />,
     feedback:     <F.StudentFeedback user={user} />,
+    'otp-attendance': <F.FacultyOtpAttendance user={user} />,
   };
 
   return pages[page] || pages.dashboard;

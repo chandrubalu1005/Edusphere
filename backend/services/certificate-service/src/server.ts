@@ -63,6 +63,7 @@ const CertificateSchema = new Schema<ICertificate>({
 });
 
 const Certificate = mongoose.model<ICertificate>('Certificate', CertificateSchema);
+CertificateSchema.index({ studentId: 1, courseId: 1 }, { unique: true });
 
 // ── App Setup ──────────────────────────────────────────────────────────────
 const app = express();
@@ -402,3 +403,7 @@ bootstrap().catch(err => {
   logger.error('Bootstrap failed', err);
   process.exit(1);
 });
+
+process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
+process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
+

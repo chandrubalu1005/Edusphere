@@ -8,6 +8,7 @@ router.post('/drives',                     authMiddleware, placementController.c
 router.get('/drives/:driveId/applicants',  authMiddleware, placementController.getDriveApplicants);
 router.get('/applications/:studentId',     authMiddleware, placementController.getApplications);
 router.post('/applications',               authMiddleware, placementController.applyToDrive);
+router.patch('/applications/:id/status',   authMiddleware, placementController.updateApplicationStatus);
 router.post('/resume',                     authMiddleware, placementController.buildResume);
 
 module.exports = router;

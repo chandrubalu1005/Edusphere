@@ -1,10 +1,5 @@
 [
   {
-    "type": "CONSOLE_ERROR",
-    "url": "http://localhost:5173/",
-    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
-  },
-  {
     "type": "NETWORK_ERROR",
     "url": "http://localhost:5173/favicon.ico",
     "status": 404,
@@ -16,38 +11,830 @@
     "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
   },
   {
-    "type": "CRAWLER_ERROR",
-    "role": "student",
-    "message": "Waiting for selector `.login-right button` failed"
+    "type": "RENDER_ERROR",
+    "url": "Dashboard",
+    "message": "Found NaN, undefined, or Invalid Date in HTML text"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "MOCK_SUBMISSIONS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "MOCK_SUBMISSIONS is not defined"
   },
   {
     "type": "CONSOLE_ERROR",
     "url": "http://localhost:5173/",
-    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
-  },
-  {
-    "type": "CRAWLER_ERROR",
-    "role": "faculty",
-    "message": "Waiting for selector `.login-right button` failed"
+    "message": "The above error occurred in the <StudentAssignments> component:\n\n    at StudentAssignments (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:1758:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
   },
   {
     "type": "CONSOLE_ERROR",
     "url": "http://localhost:5173/",
-    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
-  },
-  {
-    "type": "CRAWLER_ERROR",
-    "role": "admin",
-    "message": "Waiting for selector `.login-right button` failed"
+    "message": "ErrorBoundary caught an error: ReferenceError: MOCK_SUBMISSIONS is not defined [object Object]"
   },
   {
     "type": "CONSOLE_ERROR",
     "url": "http://localhost:5173/",
-    "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    "message": "Warning: Each child in a list should have a unique \"key\" prop.%s%s See https://reactjs.org/link/warning-keys for more information.%s \n\nCheck the render method of `TimetableGrid`.  \n    at TimetableGrid (http://localhost:5173/src/components/shared/index.jsx:824:3)\n    at div\n    at div\n    at StudentTimetable (http://localhost:5173/src/portals/student/features.jsx:25:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App"
   },
   {
-    "type": "CRAWLER_ERROR",
-    "role": "management",
-    "message": "Waiting for selector `.login-right button` failed"
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "ENROLLMENTS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "ENROLLMENTS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "The above error occurred in the <LearningProgress> component:\n\n    at LearningProgress (http://localhost:5173/src/portals/student/features.jsx:417:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "ErrorBoundary caught an error: ReferenceError: ENROLLMENTS is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "TRANSCRIPTS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "TRANSCRIPTS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "The above error occurred in the <TranscriptGrades> component:\n\n    at TranscriptGrades (http://localhost:5173/src/portals/student/features.jsx:1392:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "ErrorBoundary caught an error: ReferenceError: TRANSCRIPTS is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "DOWNLOADS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "DOWNLOADS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "The above error occurred in the <DownloadCenter> component:\n\n    at DownloadCenter (http://localhost:5173/src/portals/student/features.jsx:1967:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "ErrorBoundary caught an error: ReferenceError: DOWNLOADS is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "FEE_RECORDS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "FEE_RECORDS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "The above error occurred in the <FeePayment> component:\n\n    at FeePayment (http://localhost:5173/src/portals/student/features.jsx:1591:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "ErrorBoundary caught an error: ReferenceError: FEE_RECORDS is not defined [object Object]"
+  },
+  {
+    "type": "RENDER_ERROR",
+    "url": "AI Assistant",
+    "message": "Found NaN, undefined, or Invalid Date in HTML text"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "ACTIVITY_LOG is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "ACTIVITY_LOG is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "The above error occurred in the <ActivityTimeline> component:\n\n    at ActivityTimeline (http://localhost:5173/src/portals/student/features.jsx:2073:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "ErrorBoundary caught an error: ReferenceError: ACTIVITY_LOG is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "Cannot read properties of undefined (reading '0')"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "Cannot read properties of undefined (reading '0')"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "The above error occurred in the <StudentProfile> component:\n\n    at StudentProfile (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:2872:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "ErrorBoundary caught an error: TypeError: Cannot read properties of undefined (reading '0') [object Object]"
+  },
+  {
+    "type": "RENDER_ERROR",
+    "url": "My Profile & ID",
+    "message": "Found NaN, undefined, or Invalid Date in HTML text"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "NOTIFICATIONS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/",
+    "message": "NOTIFICATIONS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "The above error occurred in the <StudentNotifications> component:\n\n    at StudentNotifications (http://localhost:5173/src/portals/student/features.jsx:2361:3)\n    at StudentPortal (http://localhost:5173/src/portals/StudentPortal.jsx?t=1787110414792:4371:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787110414792:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "ErrorBoundary caught an error: ReferenceError: NOTIFICATIONS is not defined [object Object]"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/assignments",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/assessments",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/certificates",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/notifications",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/auth/login",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/students/f1/submissions",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/notifications",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/assignments",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/students/f1/submissions",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/notifications",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/assignments",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "COURSES is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "COURSES is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <ResourceUpload> component:\n\n    at ResourceUpload (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:1328:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: COURSES is not defined [object Object]"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/students/f1/submissions",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/assignments",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/students/f1/submissions",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/assignments",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "useResolveDispute is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "useResolveDispute is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <FacultyAssignments> component:\n\n    at FacultyAssignments (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:1362:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: useResolveDispute is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "useEffect is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "useEffect is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <FacultyAttendance> component:\n\n    at FacultyAttendance (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:895:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: useEffect is not defined [object Object]"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Warning: Each child in a list should have a unique \"key\" prop.%s%s See https://reactjs.org/link/warning-keys for more information.%s \n\nCheck the render method of `TimetableGrid`.  \n    at TimetableGrid (http://localhost:5173/src/components/shared/index.jsx:824:3)\n    at div\n    at div\n    at FacultyTimetable (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:25:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/timetable",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/timetable",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "USERS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "USERS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <StudentPerformance> component:\n\n    at StudentPerformance (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:69:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: USERS is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "GRADE_SUBMISSIONS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "GRADE_SUBMISSIONS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <GradeSubmission> component:\n\n    at GradeSubmission (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:894:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: GRADE_SUBMISSIONS is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "COURSES is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "COURSES is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <CourseCompletionTracker> component:\n\n    at CourseCompletionTracker (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:1242:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: COURSES is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "FEEDBACK_SURVEYS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "FEEDBACK_SURVEYS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <StudentFeedback> component:\n\n    at StudentFeedback (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:1686:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: FEEDBACK_SURVEYS is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "DISCUSSIONS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "DISCUSSIONS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <DiscussionModeration> component:\n\n    at DiscussionModeration (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:812:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: DISCUSSIONS is not defined [object Object]"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "ANNOUNCEMENTS is not defined"
+  },
+  {
+    "type": "UNHANDLED_EXCEPTION",
+    "url": "http://localhost:5173/login",
+    "message": "ANNOUNCEMENTS is not defined"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "The above error occurred in the <AnnouncementMgmt> component:\n\n    at AnnouncementMgmt (http://localhost:5173/src/portals/faculty/features.jsx?t=1787111467770:595:3)\n    at FacultyPortal (http://localhost:5173/src/portals/FacultyPortal.jsx?t=1787111467770:3325:3)\n    at ErrorBoundary (http://localhost:5173/src/components/ErrorBoundary.jsx:5:5)\n    at main\n    at div\n    at div\n    at Layout (http://localhost:5173/src/components/Layout.jsx:889:3)\n    at AppContent (http://localhost:5173/src/App.jsx?t=1787111467770:42:7)\n    at AuthProvider (http://localhost:5173/src/contexts/AuthContext.jsx:73:3)\n    at ThemeProvider (http://localhost:5173/src/contexts/ThemeContext.jsx:21:3)\n    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=c713becc:3265:3)\n    at App\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "ErrorBoundary caught an error: ReferenceError: ANNOUNCEMENTS is not defined [object Object]"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/leave/requests?role=student&userId=f1",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/leave/requests?role=faculty",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/leave/quota/f1",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/leave/requests?role=student&userId=f1",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/leave/requests?role=faculty",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/leave/quota/f1",
+    "status": 404,
+    "pageUrl": "http://localhost:5173/login"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/login",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/auth/login",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/notifications",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/admin/users",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/admin/departments",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/admin/semesters",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/auth/login",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/notifications",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/courses",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "NETWORK_ERROR",
+    "url": "http://localhost:5173/api/admin/users",
+    "status": 401,
+    "pageUrl": "http://localhost:5173/"
+  },
+  {
+    "type": "CONSOLE_ERROR",
+    "url": "http://localhost:5173/",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
   }
 ]

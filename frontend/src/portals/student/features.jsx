@@ -11,9 +11,8 @@ import {
   EmptyState, Modal, CommandPalette, WorkflowTimeline
 } from '../../components/shared/index.jsx';
 import {
-  TRANSCRIPTS as MOCK_TRANSCRIPTS, FEE_RECORDS as MOCK_FEE_RECORDS,
-  DOWNLOADS as MOCK_DOWNLOADS, ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
-  ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS
+  FEE_RECORDS as MOCK_FEE_RECORDS,
+  ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
 } from '../../mockData.js';
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
@@ -21,8 +20,13 @@ import {
   useLiveDiscussionThreads, useLiveThreadDetails,
   useLiveLeaveRecords, useLiveLeaveBalance, useLiveCourses
 } from '../../api/liveData.js';
-import { useCreateReply, useApplyForLeave, useWithdrawLeave } from '../../api/hooks.js';
+import {
+  useCreateReply, useApplyForLeave, useWithdrawLeave,
+  useStudentGrades, useAllCourseResources, useAnnouncements,
+  useCreateSupportTicket
+} from '../../api/hooks.js';
 import toast from 'react-hot-toast';
+
 
 // ── WEEKLY TIMETABLE ────────────────────────────────────────────────────────
 export function StudentTimetable({ user }) {
@@ -299,12 +303,17 @@ export function CommunicationHub({ user }) {
 
   const { data: threads = [] } = useLiveDiscussionThreads(courseFilter === 'all' ? undefined : courseFilter);
   const { data: threadDetails } = useLiveThreadDetails(selectedThread?._id || selectedThread?.id);
+  const { data: announcementsData } = useAnnouncements();
+  
   const replies = threadDetails?.replies || [];
   const createReply = useCreateReply();
 
+  const announcements = announcementsData?.announcements || [];
+  const displayAnnouncements = announcements.filter(a => a.targetRoles?.includes('student') || a.targetRoles?.length === 0);
+
   const tabs = [
     { id: 'forum', label: 'Discussion Forum', icon: '💬', badge: threads.length },
-    { id: 'announcements', label: 'Announcements', icon: '📢', badge: MOCK_ANNOUNCEMENTS.filter(a => a.target === 'all' || a.target === 'student').length },
+    { id: 'announcements', label: 'Announcements', icon: '📢', badge: displayAnnouncements.length },
     { id: 'queries', label: 'My Queries', icon: '❓' },
   ];
 
@@ -403,14 +412,14 @@ export function CommunicationHub({ user }) {
 
       {activeTab === 'announcements' && (
         <div style={{ marginTop: 16 }}>
-          {ANNOUNCEMENTS.filter(a => a.target === 'all' || a.target === 'student').map(ann => (
-            <div key={ann.id} className="card" style={{ padding: 20, marginBottom: 12 }}>
+          {displayAnnouncements.map(ann => (
+            <div key={ann._id || ann.id} className="card" style={{ padding: 20, marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <StatusBadge status={ann.priority} />
                   <h4 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginTop: 8 }}>{ann.title}</h4>
                 </div>
-                <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{ann.createdAt}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{new Date(ann.createdAt).toLocaleString()}</span>
               </div>
               <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, marginTop: 8 }}>{ann.content}</p>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>By {ann.author}</div>
@@ -430,8 +439,11 @@ export function CommunicationHub({ user }) {
 
 // ── TRANSCRIPT & GRADES ─────────────────────────────────────────────────────
 export function TranscriptGrades({ user }) {
-  const transcripts = TRANSCRIPTS.filter(t => t.studentId === user.id);
-  const cgpa = transcripts.filter(t => t.sgpa).reduce((sum, t) => sum + t.sgpa, 0) / (transcripts.filter(t => t.sgpa).length || 1);
+  const { data: gradesData, isLoading } = useStudentGrades(user.userId || user.id);
+  const transcripts = gradesData?.semesters || [];
+  const cgpa = gradesData?.cgpa || 0;
+
+  if (isLoading) return <div style={{ padding: 20 }}>Loading transcripts...</div>;
 
   return (
     <div>
@@ -444,8 +456,8 @@ export function TranscriptGrades({ user }) {
       {/* GPA Summary */}
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
         <StatCard label="CGPA" value={cgpa.toFixed(2)} trend="Cumulative" icon="🎓" />
-        <StatCard label="Latest SGPA" value={transcripts[transcripts.length - 2]?.sgpa || '—'} trend={transcripts[transcripts.length - 2]?.semester} icon="📊" />
-        <StatCard label="Credits Earned" value={transcripts.filter(t => t.sgpa).reduce((sum, t) => sum + t.courses.reduce((s, c) => s + c.credits, 0), 0)} trend="Total accumulated" icon="📚" />
+        <StatCard label="Latest SGPA" value={transcripts[transcripts.length - 1]?.sgpa || '—'} trend={transcripts[transcripts.length - 1]?.semester} icon="📊" />
+        <StatCard label="Credits Earned" value={transcripts.reduce((sum, t) => sum + t.courses.reduce((s, c) => s + c.credits, 0), 0)} trend="Total accumulated" icon="📚" />
         <StatCard label="Current Semester" value={transcripts[transcripts.length - 1]?.semester || 'S4'} trend="In Progress" icon="📅" />
       </div>
 
@@ -455,7 +467,7 @@ export function TranscriptGrades({ user }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--text-1)' }}>
-                {t.semester} ({t.year})
+                {t.semester}
               </h3>
             </div>
             {t.sgpa && <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>SGPA: {t.sgpa}</div>}
@@ -467,12 +479,12 @@ export function TranscriptGrades({ user }) {
               </thead>
               <tbody>
                 {t.courses.map(c => (
-                  <tr key={c.code}>
-                    <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{c.code}</span></td>
-                    <td>{c.title}</td>
+                  <tr key={c.courseCode || c.courseId}>
+                    <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{c.courseCode || c.courseId}</span></td>
+                    <td>{c.courseTitle}</td>
                     <td>{c.credits}</td>
-                    <td><span className={`badge ${c.grade === 'A+' || c.grade === 'A' ? 'badge-success' : c.grade === 'In Progress' ? 'badge-info' : 'badge-accent'}`}>{c.grade}</span></td>
-                    <td>{c.gradePoint ?? '—'}</td>
+                    <td><span className={`badge ${c.grade === 'A+' || c.grade === 'A' ? 'badge-success' : c.grade === 'In Progress' ? 'badge-info' : 'badge-accent'}`}>{c.grade || (c.passed ? 'P' : 'F')}</span></td>
+                    <td>{c.gradePoints ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -486,7 +498,7 @@ export function TranscriptGrades({ user }) {
 
 // ── FEE & PAYMENT ───────────────────────────────────────────────────────────
 export function FeePayment({ user }) {
-  const [fees, setFees] = useState(() => FEE_RECORDS.filter(f => f.studentId === user.id));
+  const [fees, setFees] = useState(() => MOCK_FEE_RECORDS.filter(f => f.studentId === user.id));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFee, setSelectedFee] = useState(null);
   const [cardNumber, setCardNumber] = useState('');
@@ -615,8 +627,12 @@ export function FeePayment({ user }) {
 // ── DOWNLOAD CENTER ─────────────────────────────────────────────────────────
 export function DownloadCenter({ user }) {
   const [category, setCategory] = useState('all');
-  const categories = ['all', ...new Set(DOWNLOADS.map(d => d.category))];
-  const filtered = category === 'all' ? DOWNLOADS : DOWNLOADS.filter(d => d.category === category);
+  const { data: resources = [], isLoading } = useAllCourseResources();
+  
+  const categories = ['all', ...new Set(resources.map(d => d.type || 'document'))];
+  const filtered = category === 'all' ? resources : resources.filter(d => (d.type || 'document') === category);
+
+  if (isLoading) return <div style={{ padding: 20 }}>Loading resources...</div>;
 
   return (
     <div>
@@ -637,14 +653,13 @@ export function DownloadCenter({ user }) {
           { key: 'title', label: 'Document', render: (v, row) => (
             <div>
               <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 14 }}>{v}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{row.course} • {row.category}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{row.courseCode} • {row.type}</div>
             </div>
           )},
-          { key: 'fileType', label: 'Type', width: 70, render: v => <span className="badge badge-neutral">{v}</span> },
-          { key: 'size', label: 'Size', width: 80 },
-          { key: 'uploadedBy', label: 'Uploaded By' },
-          { key: 'uploadedAt', label: 'Date', width: 100 },
-          { key: 'id', label: 'Action', width: 100, render: () => <button className="btn btn-outline btn-sm">⬇ Download</button>, sortable: false },
+          { key: 'type', label: 'Type', width: 70, render: v => <span className="badge badge-neutral">{v}</span> },
+          { key: 'courseTitle', label: 'Course' },
+          { key: 'addedAt', label: 'Date', width: 100, render: v => v ? new Date(v).toLocaleDateString() : 'N/A' },
+          { key: 'url', label: 'Action', width: 100, render: (v) => <a href={v} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">⬇ View</a>, sortable: false },
         ]}
         data={filtered}
         exportable
@@ -655,21 +670,20 @@ export function DownloadCenter({ user }) {
 
 // ── ACTIVITY TIMELINE ───────────────────────────────────────────────────────
 export function ActivityTimeline({ user }) {
-  const activities = ACTIVITY_LOG.filter(a => a.userId === user.id);
+  const { data: auditLogs, isLoading } = useLiveAuditLogs({ userId: user.id });
 
   return (
     <div>
-      <PageHeader title="Activity Timeline" subtitle="Your chronological activity feed"
+      <PageHeader title="Activity Timeline" subtitle="Your recent interactions across the platform"
         breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Activity Timeline' }]}
       />
-
       <div className="card" style={{ padding: 24 }}>
         <Timeline
-          items={activities.map(a => ({
-            id: a.id,
-            icon: a.icon,
-            title: a.description,
-            timestamp: a.timestamp,
+          items={(auditLogs || []).map(a => ({
+            id: a._id || a.id,
+            icon: a.icon || '📝',
+            title: a.details || a.description || a.action,
+            timestamp: a.createdAt || a.timestamp,
           }))}
         />
       </div>
@@ -746,7 +760,7 @@ export function AIAssistant({ user }) {
 
 // ── STUDENT NOTIFICATIONS (FULL PAGE) ───────────────────────────────────────
 export function StudentNotifications({ user }) {
-  const [notifications, setNotifications] = useState(NOTIFICATIONS.filter(n => n.userId === user.id));
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS.filter(n => n.userId === user.id));
 
   function markRead(id) {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));

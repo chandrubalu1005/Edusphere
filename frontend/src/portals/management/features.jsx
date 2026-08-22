@@ -26,7 +26,9 @@ import {
   APPROVAL_QUEUE as MOCK_APPROVAL_QUEUE, PREDICTIVE_DATA as MOCK_PREDICTIVE_DATA
 } from '../../mockData.js';
 import {
-  useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs
+  useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs,
+  useLiveDepartmentPerformance, useLiveFacultyPerformance, useLivePlacementStats,
+  useLivePlacementDrives, useLiveKPIForecast, useLiveBudgets, useLiveKPIs
 } from '../../api/liveData.js';
 
 // ── INSTITUTIONAL KPIS ──────────────────────────────────────────────────────
@@ -75,7 +77,7 @@ export function InstitutionalKPIs({ user }) {
 
 // ── FACULTY PERFORMANCE ─────────────────────────────────────────────────────
 export function FacultyPerformance({ user }) {
-  const facultyList = USERS.filter(u => u.role === 'faculty');
+  const { data: facultyList, isLoading } = useLiveFacultyPerformance();
 
   return (
     <div>
@@ -94,7 +96,7 @@ export function FacultyPerformance({ user }) {
           { key: 'publications', label: 'Publications', width: 110 },
           { key: 'experience', label: 'Experience', render: v => `${v} yrs` }
         ]}
-        data={facultyList}
+        data={facultyList || []}
       />
     </div>
   );
@@ -102,6 +104,7 @@ export function FacultyPerformance({ user }) {
 
 // ── STUDENT PERFORMANCE (INSTITUTIONAL) ─────────────────────────────────────
 export function MgmtStudentPerf({ user }) {
+  const { data: deptPerformance } = useLiveDepartmentPerformance();
   return (
     <div>
       <PageHeader
@@ -112,12 +115,12 @@ export function MgmtStudentPerf({ user }) {
 
       <DataTable
         columns={[
-          { key: 'dept', label: 'Department', render: v => <strong>{v}</strong> },
-          { key: 'attendance', label: 'Avg Attendance', render: v => `${v}%` },
+          { key: 'departmentName', label: 'Department', render: v => <strong>{v}</strong> },
+          { key: 'averageAttendance', label: 'Avg Attendance', render: v => `${v}%` },
           { key: 'passRate', label: 'Pass Rate', render: v => `${v}%` },
-          { key: 'satisfaction', label: 'Satisfaction Index', render: v => `★ ${v}` }
+          { key: 'satisfactionIndex', label: 'Satisfaction Index', render: v => `★ ${v}` }
         ]}
-        data={DEPT_PERFORMANCE}
+        data={deptPerformance || []}
         searchable={false}
       />
     </div>
@@ -126,6 +129,9 @@ export function MgmtStudentPerf({ user }) {
 
 // ── PLACEMENT ANALYTICS ─────────────────────────────────────────────────────
 export function PlacementAnalytics({ user }) {
+  const { data: drives } = useLivePlacementDrives();
+  const activeDrives = drives ? drives.filter(d => d.status === 'ongoing').length : 0;
+  
   return (
     <div>
       <PageHeader
@@ -136,7 +142,7 @@ export function PlacementAnalytics({ user }) {
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
         <StatCard label="Overall Placement" value={`${INSTITUTIONAL_KPIS.overall.placementRate}%`} icon="💼" />
-        <StatCard label="Active Drives" value={PLACEMENT_DRIVES.filter(d => d.status === 'ongoing').length} icon="🏢" />
+        <StatCard label="Active Drives" value={activeDrives} icon="🏢" />
         <StatCard label="Highest Package" value="₹45 LPA" icon="💵" />
       </div>
 
@@ -150,7 +156,7 @@ export function PlacementAnalytics({ user }) {
           { key: 'selected', label: 'Selected', width: 80 },
           { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> }
         ]}
-        data={PLACEMENT_DRIVES}
+        data={drives || []}
       />
     </div>
   );
@@ -192,7 +198,7 @@ export function ResearchStats({ user }) {
 
 // ── BUDGET OVERVIEW ─────────────────────────────────────────────────────────
 export function BudgetOverview({ user }) {
-  const [data, setData] = useState(BUDGET_DATA);
+  const [data, setData] = useState(MOCK_BUDGET_DATA);
   const [modalOpen, setModalOpen] = useState(false);
   const [fromSector, setFromSector] = useState('');
   const [toSector, setToSector] = useState('');
@@ -456,18 +462,27 @@ export function ExecutiveReports({ user }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const { data: budgets } = useLiveBudgets();
+  const { data: placementDrives } = useLivePlacementDrives();
+  const { data: kpis } = useLiveKPIs();
+  const { data: forecast } = useLiveKPIForecast();
+
   function handleCompile() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
       if (sector === 'financials') {
+        const totalAllocated = (budgets || []).reduce((s, c) => s + c.allocated, 0);
+        const totalSpent = (budgets || []).reduce((s, c) => s + c.spent, 0);
+        const utilization = totalAllocated > 0 ? ((totalSpent / totalAllocated) * 100).toFixed(1) : 0;
+        
         setReport({
           title: `Executive Financial Audit — ${quarter}`,
-          summary: `The university budget utilization stands at **72.1%**. Overall Research funding has expanded by 14% year-over-year, while infrastructure upkeep costs are 2% below budget due to utility optimizations.`,
+          summary: `The university budget utilization stands at **${utilization}%**. Overall Research funding has expanded by 14% year-over-year, while infrastructure upkeep costs are 2% below budget due to utility optimizations.`,
           kpis: [
-            { label: 'Total Allocated', val: '₹48.2 Cr' },
-            { label: 'Total Spent', val: '₹34.8 Cr' },
-            { label: 'Net Efficiency', val: '+4.2%' }
+            { label: 'Total Allocated', val: `₹${(totalAllocated / 100000).toFixed(1)} L` },
+            { label: 'Total Spent', val: `₹${(totalSpent / 100000).toFixed(1)} L` },
+            { label: 'Forecast', val: forecast ? forecast.message : '+4.2%' }
           ],
           risks: '⚠️ Tuition arrears from final year students (CS/EE) need immediate follow-up.'
         });
@@ -483,13 +498,17 @@ export function ExecutiveReports({ user }) {
           risks: '✓ All compliance reviews passed without exceptions.'
         });
       } else {
+        const totalApplied = (placementDrives || []).reduce((s, d) => s + d.appliedCount, 0);
+        const totalSelected = (placementDrives || []).reduce((s, d) => s + d.selectedCount, 0);
+        const placementRatio = kpis ? kpis.placementRatio : 'N/A';
+
         setReport({
           title: `Hiring & Placement Performance Report — ${quarter}`,
-          summary: `The seasonal placement rate has touched **82.3%** across all disciplines. Computer Science leads at 92%, with Civil Engineering showing a 12% rise in infrastructure consultant hiring.`,
+          summary: `The seasonal placement rate has touched **${placementRatio}** across all disciplines. Computer Science leads at 92%, with Civil Engineering showing a 12% rise in infrastructure consultant hiring.`,
           kpis: [
-            { label: 'Offers Released', val: '154 Offers' },
-            { label: 'Highest Package', val: '₹45.0 LPA' },
-            { label: 'Average Package', val: '₹8.4 LPA' }
+            { label: 'Offers Released', val: `${totalSelected} Offers` },
+            { label: 'Students Applied', val: `${totalApplied} Applied` },
+            { label: 'Attendance Rate', val: kpis ? kpis.attendanceRate : 'N/A' }
           ],
           risks: '⚠️ Gap in mock DSA interview counts for 15% of the student batch.'
         });

@@ -198,7 +198,16 @@ export default function DomainLogin({ domainId, onBack }) {
               <span>Secure login powered by EduSphere Identity System</span>
             </div>
             
-            <div style={{ marginTop: 40, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
+            <div style={{ marginTop: 24, padding: 16, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text-2)' }}>
+              <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--text-1)' }}>Demo Credentials ({domain.label}):</div>
+              {domain.id === 'student' && <div>Username: <b>john_doe</b> or <b>jane_smith</b></div>}
+              {domain.id === 'faculty' && <div>Username: <b>sarah_j</b> or <b>prof_kumar</b></div>}
+              {domain.id === 'admin' && <div>Username: <b>sys_admin</b></div>}
+              {domain.id === 'management' && <div>Username: <b>dean_academic</b></div>}
+              <div style={{ marginTop: 4 }}>Password for all: <b>demo123</b></div>
+            </div>
+
+            <div style={{ marginTop: 24, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
               Need help? <a href="#" style={{ color: domain.accent, fontWeight: 600, textDecoration: 'none' }}>Contact IT Support</a>
             </div>
 

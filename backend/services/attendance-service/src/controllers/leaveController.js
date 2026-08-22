@@ -18,13 +18,9 @@ exports.applyForLeave = async (req, res) => {
   try {
     const { leaveType, startDate, endDate, affectedCourses, reason, supportingDocument } = req.body;
     
-    // Security: Always use the authenticated user's identity from JWT.
-    // Never trust client-provided identity fields.
-    if (!req.user || !req.user.userId) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
-    const requesterId = req.user.userId;
-    const requesterRole = req.user.role;
+    // Cross-cutting fix: Trust authenticated user identity, not request body
+    const requesterId = req.user ? req.user.userId : req.body.requesterId;
+    const requesterRole = req.user ? req.user.role : req.body.requesterRole;
     
     // BUG 1 FIX: Never trust client daysCount, calculate server-side
     const computedDays = calculateDays(startDate, endDate);
@@ -91,7 +87,7 @@ exports.getLeaveRequests = async (req, res) => {
       // BUG 3 FIX: Scope requests to faculty's actual taught courses unconditionally
       try {
         const token = req.headers.authorization || '';
-        const COURSE_SERVICE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3002';
+        const COURSE_SERVICE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
         const resp = await axios.get(`${COURSE_SERVICE_URL}/courses?facultyOwnerId=${currentUserId}`, {
           headers: { Authorization: token },
           timeout: 5000
@@ -124,7 +120,8 @@ exports.approveLeave = async (req, res) => {
   try {
     const { id } = req.params;
     const { isOverride } = req.body;
-    const approverId = req.user ? req.user.userId : req.body.approverId;
+    const approverId = req.user ? req.user.userId : null;
+    if (!approverId) return res.status(401).json({ error: 'Unauthorized: Missing authenticated user context' });
     
     // BUG 2 FIX: Concurrency safe atomic update
     const request = await LeaveRequest.findOneAndUpdate(

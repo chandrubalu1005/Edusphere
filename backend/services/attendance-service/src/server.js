@@ -5,10 +5,20 @@ const connectDB = require('./config/db');
 const { connectRabbitMQ } = require('./config/rabbitmq');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
+const otpAttendanceRoutes = require('./routes/otpAttendanceRoutes');
 const attendanceController = require('./controllers/attendanceController');
+const otpAttendanceController = require('./controllers/otpAttendanceController');
+const OtpAttendanceSession = require('./models/OtpAttendanceSession');
+const http = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: process.env.CORS_ORIGIN || 'http://localhost:5173', methods: ['GET', 'POST'] }
+});
+
 app.use(express.json());
 app.use(cors());
 
@@ -20,6 +30,14 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'attendance-service' }));
 app.use('/', attendanceRoutes);
 app.use('/leave', leaveRoutes);
+app.use('/otp-attendance', otpAttendanceRoutes);
+
+// Socket.io for live OTP sessions
+io.on('connection', (socket) => {
+  socket.on('join_otp_session', (sessionId) => {
+    socket.join(`otp_session_${sessionId}`);
+  });
+});
 
 // Swagger Docs
 const swaggerDocument = {
@@ -79,11 +97,33 @@ async function startServer() {
     await redisClient.connect();
     console.log('Connected to Redis');
     attendanceController.setRedisClient(redisClient);
+    otpAttendanceController.setRedisClient(redisClient);
   } catch (err) {
     console.error('Failed to connect to Redis:', err.message);
   }
 
-  app.listen(PORT, () => console.log(`Attendance Service listening on port ${PORT}`));
+  otpAttendanceController.setIoInstance(io);
+
+  // Cleanup Cron for expired OTP sessions
+  setInterval(async () => {
+    try {
+      const result = await OtpAttendanceSession.updateMany(
+        { status: 'active', endTime: { $lt: new Date() } },
+        { status: 'closed' }
+      );
+      if (result.modifiedCount > 0) {
+        console.log(`Auto-closed ${result.modifiedCount} expired OTP sessions`);
+      }
+    } catch (error) {
+      console.error('Error auto-closing OTP sessions:', error.message);
+    }
+  }, 60000); // Check every minute
+
+  server.listen(PORT, () => console.log(`Attendance Service listening on port ${PORT}`));
 }
 
 startServer();
+
+process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
+process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
+

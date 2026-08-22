@@ -2,7 +2,7 @@
 // EduSphere Enterprise — Faculty Portal Feature Modules
 // New enterprise features split into separate file for maintainability
 // ══════════════════════════════════════════════════════════════════════════════
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Icon, ICONS } from '../../components/Layout.jsx';
 import toast from 'react-hot-toast';
 import {
@@ -27,14 +27,20 @@ import {
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveCourses,
   useLiveAssignments, useLiveAssessments, useLiveAttendance,
-  useLiveLeaveRecords, useLiveLeaveBalance, useLiveNotifications
+  useLiveLeaveRecords, useLiveLeaveBalance, useLiveUsers
 } from '../../api/liveData.js';
-import { useApplyForLeave, useApproveLeave, useRejectLeave, useWithdrawLeave } from '../../api/hooks.js';
+import {
+  useApplyForLeave, useApproveLeave, useRejectLeave, useWithdrawLeave,
+  useAnnouncements, useCreateAnnouncement
+} from '../../api/hooks.js';
 
 // ── FACULTY TIMETABLE ───────────────────────────────────────────────────────
 export function FacultyTimetable({ user }) {
   const { data: TIMETABLE } = useLiveTimetable();
-  const facultySlots = TIMETABLE.filter(s => s.faculty === `Dr. Sarah Jenkins` || s.faculty.includes(user.lastName || '') || s.faculty.includes(user.username || ''));
+  const facultySlots = TIMETABLE.filter(s => {
+    const instructor = s.instructor || s.faculty || '';
+    return instructor === user.id || instructor === user.userId || instructor === user.username || instructor.includes(user.lastName || '') || instructor.includes(user.firstName || '');
+  });
 
   return (
     <div>
@@ -52,7 +58,8 @@ export function FacultyTimetable({ user }) {
 
 // ── STUDENT PERFORMANCE ANALYTICS ───────────────────────────────────────────
 export function StudentPerformance({ user }) {
-  const students = MOCK_USERS.filter(u => u.role === 'student');
+  const { data: COURSES } = useLiveCourses();
+  const { data: filteredUsers = [] } = useLiveUsers('student');
 
   return (
     <div>
@@ -63,7 +70,7 @@ export function StudentPerformance({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Total Students Guided" value={students.length} icon="👥" />
+        <StatCard label="Total Students Guided" value={filteredUsers.length} icon="👥" />
         <StatCard label="Average GPA of Batches" value="8.79" trend="✓ On Track" trendType="up" icon="📊" />
         <StatCard label="At Risk Cohort" value="2" trend="Requires Intervention" trendType="down" icon="⚠️" />
       </div>
@@ -79,7 +86,7 @@ export function StudentPerformance({ user }) {
             { key: 'gpa', label: 'CGPA', render: v => <strong>{v}</strong> },
             { key: 'status', label: 'Status', render: (v, row) => row.gpa < 8.0 ? <span className="badge badge-danger">At Risk</span> : <span className="badge badge-success">Good</span> }
           ]}
-          data={students}
+          data={filteredUsers}
         />
       </div>
     </div>
@@ -88,7 +95,7 @@ export function StudentPerformance({ user }) {
 
 // ── LEAVE MANAGEMENT ────────────────────────────────────────────────────────
 export function LeaveManagement({ user }) {
-  const { data: myRecords } = useLiveLeaveRecords({ role: 'student', userId: user.id }); // Using student role for faculty's own leaves to filter by requesterId easily
+  const { data: myRecords } = useLiveLeaveRecords({ role: 'student', userId: user.id });
   const { data: studentRequests } = useLiveLeaveRecords({ role: 'faculty' });
   const { data: balanceData } = useLiveLeaveBalance(user.id);
   
@@ -115,7 +122,7 @@ export function LeaveManagement({ user }) {
       leaveType: type,
       startDate: from,
       endDate: to,
-      daysCount: 1, // simplified
+      daysCount: 1,
       affectedCourses: [],
       reason
     });
@@ -251,27 +258,30 @@ export function LeaveManagement({ user }) {
 
 // ── ANNOUNCEMENT MANAGEMENT ─────────────────────────────────────────────────
 export function AnnouncementMgmt({ user }) {
-  const [announcements, setAnnouncements] = useState(MOCK_ANNOUNCEMENTS.filter(a => a.authorId === user.id || a.author.includes(user.lastName)));
+  const [showForm, setShowForm] = useState(false);
+  const [filter, setFilter] = useState('all');
+  
+  const { data: announcementsData } = useAnnouncements();
+  const createAnnouncement = useCreateAnnouncement();
+  const announcements = announcementsData?.announcements || [];
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [target, setTarget] = useState('all');
-  const [priority, setPriority] = useState('medium');
+  const [target, setTarget] = useState('student');
+  const [priority, setPriority] = useState('normal');
 
   function handleSubmit(e) {
     e.preventDefault();
-    const newAnn = {
-      id: `ann${announcements.length + 1}`,
+    createAnnouncement.mutate({
       title,
       content,
-      author: `Dr. ${user.lastName}`,
-      authorId: user.id,
-      target,
-      priority,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    setAnnouncements([newAnn, ...announcements]);
+      targetRoles: target === 'all' ? ['student', 'faculty', 'admin', 'management'] : [target],
+      priority
+    });
     setModalOpen(false);
+    setTitle('');
+    setContent('');
   }
 
   return (
@@ -286,10 +296,10 @@ export function AnnouncementMgmt({ user }) {
 
       <DataTable
         columns={[
-          { key: 'createdAt', label: 'Date', width: 100 },
+          { key: 'createdAt', label: 'Date', width: 100, render: v => v ? new Date(v).toLocaleDateString() : 'N/A' },
           { key: 'title', label: 'Title' },
           { key: 'content', label: 'Content', render: v => <div style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</div> },
-          { key: 'target', label: 'Target Audience', render: v => <span className="badge badge-neutral">{v}</span> },
+          { key: 'targetRoles', label: 'Target Audience', render: (v) => <span className="badge badge-neutral">{(v && v.length) ? v.join(', ') : 'all'}</span> },
           { key: 'priority', label: 'Priority', render: v => <StatusBadge status={v} /> }
         ]}
         data={announcements}
@@ -333,7 +343,10 @@ export function AnnouncementMgmt({ user }) {
 
 // ── DISCUSSION MODERATION ───────────────────────────────────────────────────
 export function DiscussionModeration({ user }) {
-  const discussions = MOCK_DISCUSSIONS.filter(d => d.courseId === 'c1'); // Simulating faculty course
+  const { data: threads } = useLiveDiscussionThreads('all');
+  const [filter, setFilter] = useState('all');
+
+  const discussions = threads?.length ? threads : [];
   return (
     <div>
       <PageHeader
@@ -365,9 +378,12 @@ export function DiscussionModeration({ user }) {
 
 // ── GRADE SUBMISSION ────────────────────────────────────────────────────────
 export function GradeSubmission({ user }) {
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const { data: COURSES } = useLiveCourses();
+  const myCourses = COURSES.filter(c => c.instructorId === user.id);
+  const [selectedCourse, setSelectedCourse] = useState(myCourses[0]?.id || null);
   const [gradesData, setGradesData] = useState([]);
   const [saving, setSaving] = useState(false);
+  const records = MOCK_GRADE_SUBMISSIONS.filter(g => g.courseId === selectedCourse);
 
   const initialStudents = [
     { id: 'st1', name: 'Alice Vance', attendance: '92%', a1: 18, a2: 19, exam: 45 },
@@ -377,8 +393,8 @@ export function GradeSubmission({ user }) {
     { id: 'st5', name: 'Evan Wright', attendance: '81%', a1: 14, a2: 16, exam: 35 },
   ];
 
-  function handleSelectCourse(course) {
-    setSelectedCourse(course);
+  function handleSelectCourse(courseId) {
+    setSelectedCourse(courseId);
     setGradesData(initialStudents);
   }
 
@@ -408,12 +424,12 @@ export function GradeSubmission({ user }) {
     return (
       <div>
         <PageHeader
-          title={`Gradebook: ${selectedCourse.courseCode}`}
-          subtitle={`Enter grades for ${selectedCourse.courseName}`}
+          title={`Gradebook: ${selectedCourse}`}
+          subtitle={`Enter grades for course ${selectedCourse}`}
           breadcrumbs={[
             { label: 'Dashboard', onClick: () => setSelectedCourse(null) },
             { label: 'Grade Submission', onClick: () => setSelectedCourse(null) },
-            { label: selectedCourse.courseCode }
+            { label: selectedCourse }
           ]}
         >
           <div style={{ display: 'flex', gap: 8 }}>
@@ -505,12 +521,12 @@ export function GradeSubmission({ user }) {
           { key: 'deadline', label: 'Deadline', width: 100 },
           { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
           { key: 'courseId', label: 'Action', render: (_, row) => (
-            <button className="btn btn-primary btn-sm" disabled={row.status === 'submitted'} onClick={() => handleSelectCourse(row)}>
+            <button className="btn btn-primary btn-sm" disabled={row.status === 'submitted'} onClick={() => handleSelectCourse(row.courseId)}>
               {row.status === 'submitted' ? 'Submitted' : 'Enter Grades'}
             </button>
           ), sortable: false }
         ]}
-        data={GRADE_SUBMISSIONS}
+        data={MOCK_GRADE_SUBMISSIONS}
       />
     </div>
   );
@@ -518,7 +534,8 @@ export function GradeSubmission({ user }) {
 
 // ── COURSE COMPLETION TRACKER ───────────────────────────────────────────────
 export function CourseCompletionTracker({ user }) {
-  const myCourses = COURSES.filter(c => c.facultyId === user.id);
+  const { data: COURSES } = useLiveCourses();
+  const myCourses = COURSES.filter(c => c.instructorId === user.id);
 
   return (
     <div>
@@ -546,7 +563,8 @@ export function CourseCompletionTracker({ user }) {
 
 // ── RESOURCE UPLOAD CENTER ──────────────────────────────────────────────────
 export function ResourceUpload({ user }) {
-  const myCourses = COURSES.filter(c => c.facultyId === user.id);
+  const { data: COURSES } = useLiveCourses();
+  const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.coInstructors?.includes(user.id) || c.facultyId === user.id);
   return (
     <div>
       <PageHeader
@@ -690,7 +708,7 @@ export function AITools({ user }) {
 
 // ── STUDENT FEEDBACK ────────────────────────────────────────────────────────
 export function StudentFeedback({ user }) {
-  const feedbacks = FEEDBACK_SURVEYS.filter(f => f.facultyId === user.id || f.facultyName.includes(user.lastName));
+  const mySurveys = MOCK_FEEDBACK_SURVEYS.filter(s => s.instructorId === user.id);
 
   return (
     <div>
@@ -701,7 +719,7 @@ export function StudentFeedback({ user }) {
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-        {feedbacks.map(f => (
+        {mySurveys.map(f => (
           <div key={f.id} className="card" style={{ padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div>
@@ -724,326 +742,175 @@ export function StudentFeedback({ user }) {
     </div>
   );
 }
-// ── FACULTY PROFILE ────────────────────────────────────────────────────────
-export function FacultyProfile({ user }) {
-  const [form, setForm] = useState({
-    firstName: user.firstName || '',
-    lastName: user.lastName || '',
-    email: user.email || '',
-    phone: user.phone || '',
-    department: user.department || '',
-    designation: user.designation || 'Assistant Professor',
-    bio: user.bio || '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [pwMode, setPwMode] = useState(false);
-  const [pw, setPw] = useState({ current: '', newPw: '', confirm: '' });
 
-  async function handleSave(e) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await fetch(`/api/users/${user.id || user.userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
-        body: JSON.stringify(form)
-      });
-      toast.success('Profile updated successfully!');
-    } catch {
-      toast.error('Failed to update profile. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
+// ── OTP ATTENDANCE MANAGEMENT ───────────────────────────────────────────────
+import axios from 'axios';
+import { io } from 'socket.io-client';
 
-  async function handlePasswordChange(e) {
-    e.preventDefault();
-    if (pw.newPw !== pw.confirm) { toast.error('Passwords do not match.'); return; }
-    if (pw.newPw.length < 8) { toast.error('Password must be at least 8 characters.'); return; }
-    setSaving(true);
-    try {
-      await fetch(`/api/auth/change-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
-        body: JSON.stringify({ currentPassword: pw.current, newPassword: pw.newPw })
-      });
-      toast.success('Password changed successfully!');
-      setPwMode(false);
-      setPw({ current: '', newPw: '', confirm: '' });
-    } catch {
-      toast.error('Failed to change password. Check your current password.');
-    } finally {
-      setSaving(false);
-    }
-  }
+const ATTENDANCE_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
 
-  const fieldStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 };
-
-  return (
-    <div>
-      <PageHeader
-        title="My Profile"
-        subtitle="Manage your personal information and account settings"
-        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Profile' }]}
-      />
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24, alignItems: 'start' }}>
-        {/* Avatar Card */}
-        <div className="card" style={{ padding: 24, textAlign: 'center' }}>
-          <div style={{
-            width: 100, height: 100, borderRadius: '50%', margin: '0 auto 16px',
-            background: 'linear-gradient(135deg, var(--accent), var(--secondary))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 40, fontWeight: 700, color: 'white'
-          }}>
-            {(user.firstName || 'F')[0]}
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-1)' }}>
-            {user.firstName} {user.lastName}
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>{form.designation}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{form.department}</div>
-          <div style={{ marginTop: 16 }}>
-            <span className="badge badge-success">Faculty</span>
-          </div>
-          <div style={{ marginTop: 20 }}>
-            <button className="btn btn-outline btn-sm" style={{ width: '100%' }} onClick={() => setPwMode(!pwMode)}>
-              {pwMode ? '✕ Cancel' : '🔒 Change Password'}
-            </button>
-          </div>
-        </div>
-
-        {/* Form Card */}
-        <div className="card" style={{ padding: 24 }}>
-          {!pwMode ? (
-            <form onSubmit={handleSave}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 20, color: 'var(--text-1)' }}>Personal Information</h3>
-              <div style={fieldStyle}>
-                <div className="form-group">
-                  <label className="form-label">First Name</label>
-                  <input className="form-input" value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Last Name</label>
-                  <input className="form-input" value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input className="form-input" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Phone</label>
-                  <input className="form-input" type="tel" value={form.phone} placeholder="+91-xxxxx" onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <input className="form-input" value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Designation</label>
-                  <select className="form-input" value={form.designation} onChange={e => setForm(p => ({ ...p, designation: e.target.value }))}>
-                    <option>Assistant Professor</option>
-                    <option>Associate Professor</option>
-                    <option>Professor</option>
-                    <option>Lecturer</option>
-                    <option>HOD</option>
-                  </select>
-                </div>
-              </div>
-              <div className="form-group" style={{ marginTop: 8 }}>
-                <label className="form-label">Bio</label>
-                <textarea className="form-textarea" rows={3} value={form.bio} placeholder="A short bio about you..." onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : '💾 Save Changes'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handlePasswordChange}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 20, color: 'var(--text-1)' }}>Change Password</h3>
-              <div className="form-group">
-                <label className="form-label">Current Password</label>
-                <input className="form-input" type="password" required value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">New Password</label>
-                <input className="form-input" type="password" required minLength={8} value={pw.newPw} onChange={e => setPw(p => ({ ...p, newPw: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
-                <input className="form-input" type="password" required value={pw.confirm} onChange={e => setPw(p => ({ ...p, confirm: e.target.value }))} />
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setPwMode(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Updating...' : 'Update Password'}</button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── FACULTY ASSESSMENTS ─────────────────────────────────────────────────────
-export function FacultyAssessments({ user }) {
+export function FacultyOtpAttendance({ user }) {
   const { data: COURSES } = useLiveCourses();
-  const { data: ASSESSMENTS } = useLiveAssessments();
-  const myCourses = COURSES.filter(c => c.facultyOwnerId === (user.id || user.userId));
-  const myAssessments = ASSESSMENTS.filter(a => myCourses.find(c => c._id === a.courseId || c.id === a.courseId));
-
-  const [showCreate, setShowCreate] = useState(false);
-  const [title, setTitle] = useState('');
+  const myCourses = COURSES.filter(c => c.instructorId === user.id || c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.instructorId === user.userId);
+  
+  const [activeSession, setActiveSession] = useState(null);
   const [courseId, setCourseId] = useState('');
   const [duration, setDuration] = useState(60);
-  const [totalMarks, setTotalMarks] = useState(100);
-  const [type, setType] = useState('quiz');
-  const [scheduledAt, setScheduledAt] = useState('');
-
-  async function handleCreate(e) {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/assessments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
-        body: JSON.stringify({ title, courseId, duration: Number(duration), totalMarks: Number(totalMarks), type, scheduledAt })
+  
+  const [currentOtp, setCurrentOtp] = useState('------');
+  const [timeRemaining, setTimeRemaining] = useState(15);
+  const [submissions, setSubmissions] = useState([]);
+  
+  useEffect(() => {
+    let socket;
+    let interval;
+    if (activeSession) {
+      socket = io(ATTENDANCE_URL);
+      socket.emit('join_otp_session', activeSession.sessionId);
+      
+      socket.on('otp_submission', (data) => {
+        setSubmissions(prev => [data, ...prev]);
+        toast.success(`${data.studentName} marked present`);
       });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success('Assessment created successfully!');
-      setShowCreate(false);
-    } catch (err) {
-      toast.error('Failed to create assessment: ' + err.message);
+
+      const fetchOtp = async () => {
+        try {
+          const res = await axios.get(`${ATTENDANCE_URL}/otp-attendance/sessions/${activeSession.sessionId}/current-otp`, {
+            headers: { Authorization: `Bearer ${user.token}` }
+          });
+          setCurrentOtp(res.data.currentOtp);
+          setTimeRemaining(res.data.timeRemaining);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      
+      fetchOtp();
+      interval = setInterval(fetchOtp, 1000);
     }
-  }
+    
+    return () => {
+      if (socket) socket.disconnect();
+      if (interval) clearInterval(interval);
+    };
+  }, [activeSession, user.token]);
+
+  const startSession = async () => {
+    if (!courseId) return toast.error('Select a course');
+    try {
+      const res = await axios.post(`${ATTENDANCE_URL}/otp-attendance/sessions`, { courseId, durationMins: duration }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      setActiveSession(res.data);
+      setSubmissions([]);
+      toast.success('OTP Session Started');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to start session');
+    }
+  };
+
+  const endSession = async () => {
+    try {
+      await axios.patch(`${ATTENDANCE_URL}/otp-attendance/sessions/${activeSession.sessionId}/end`, {}, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      setActiveSession(null);
+      toast.success('Session Ended');
+    } catch (err) {
+      toast.error('Failed to end session');
+    }
+  };
 
   return (
     <div>
       <PageHeader
-        title="Assessments"
-        subtitle="Create and manage quizzes, exams, and tests for your courses"
-        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Assessments' }]}
-      >
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(!showCreate)}>
-          {showCreate ? '✕ Cancel' : '+ Create Assessment'}
-        </button>
-      </PageHeader>
+        title="Live OTP Attendance"
+        subtitle="Generate rotating 15-second OTPs for secure classroom check-ins"
+        breadcrumbs={[{ label: 'Dashboard' }, { label: 'OTP Attendance' }]}
+      />
 
-      {showCreate && (
-        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, marginBottom: 16 }}>New Assessment</h3>
-          <form onSubmit={handleCreate}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div className="form-group">
-                <label className="form-label">Title</label>
-                <input className="form-input" required value={title} onChange={e => setTitle(e.target.value)} placeholder="Mid-term Quiz 1" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Course</label>
-                <select className="form-input" required value={courseId} onChange={e => setCourseId(e.target.value)}>
-                  <option value="">Select Course</option>
-                  {myCourses.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.title} ({c.code})</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Type</label>
-                <select className="form-input" value={type} onChange={e => setType(e.target.value)}>
-                  <option value="quiz">Quiz</option>
-                  <option value="exam">Exam</option>
-                  <option value="assignment">Practical</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Duration (minutes)</label>
-                <input className="form-input" type="number" min={10} max={300} value={duration} onChange={e => setDuration(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Total Marks</label>
-                <input className="form-input" type="number" min={1} value={totalMarks} onChange={e => setTotalMarks(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Scheduled At</label>
-                <input className="form-input" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+      {!activeSession ? (
+        <div className="card" style={{ padding: 24, maxWidth: 500 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Start New Session</h3>
+          <div className="form-group">
+            <label className="form-label">Course</label>
+            <select className="form-select" value={courseId} onChange={e => setCourseId(e.target.value)}>
+              <option value="">Select Course...</option>
+              {myCourses.map(c => <option key={c.id || c.code} value={c.id || c.code}>{c.code} - {c.title}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Duration (Minutes)</label>
+            <input type="number" className="form-input" value={duration} onChange={e => setDuration(e.target.value)} min="5" max="180" />
+          </div>
+          <button className="btn btn-primary w-full mt-4" onClick={startSession}>Start Session</button>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          {/* Active Display */}
+          <div className="card" style={{ padding: 40, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>
+              Live Code • {activeSession.courseId}
+            </div>
+            
+            <div style={{ position: 'relative', width: 240, height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+              {/* Countdown Ring */}
+              <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                <circle cx="120" cy="120" r="110" fill="none" stroke="var(--border)" strokeWidth="12" />
+                <circle 
+                  cx="120" cy="120" r="110" fill="none" 
+                  stroke="var(--accent)" strokeWidth="12" 
+                  strokeDasharray={2 * Math.PI * 110} 
+                  strokeDashoffset={2 * Math.PI * 110 * (1 - timeRemaining / 15)} 
+                  style={{ transition: 'stroke-dashoffset 1s linear' }}
+                />
+              </svg>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 56, fontWeight: 800, color: 'var(--text-1)', letterSpacing: '0.1em', zIndex: 10 }}>
+                {currentOtp}
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-              <button type="submit" className="btn btn-primary">Create Assessment</button>
+            
+            <div style={{ fontSize: 18, color: timeRemaining <= 3 ? 'var(--danger)' : 'var(--text-2)', fontWeight: 600, marginBottom: 24 }}>
+              Rotates in {timeRemaining}s
             </div>
-          </form>
+
+            <button className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={endSession}>
+              End Session Early
+            </button>
+          </div>
+
+          {/* Live Submissions */}
+          <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Live Submissions</span>
+              <span className="badge badge-primary">{submissions.length} Students</span>
+            </h3>
+            
+            <div style={{ flex: 1, overflowY: 'auto', maxHeight: 400, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {submissions.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: 40 }}>
+                  Waiting for students to check in...
+                </div>
+              ) : submissions.map((sub, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, background: 'var(--surface-2)', borderRadius: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{sub.studentName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                      {new Date(sub.submittedAt).toLocaleTimeString()}
+                    </div>
+                  </div>
+                  {sub.flaggedSuspicious && (
+                    <span className="badge badge-danger">Suspicious Device</span>
+                  )}
+                  {!sub.flaggedSuspicious && (
+                    <span className="badge badge-success">✓ Verified</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
-
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {myAssessments.length === 0 ? (
-          <div className="empty-state" style={{ padding: 60 }}>
-            <div className="empty-state-icon">📝</div>
-            <div className="empty-state-title">No assessments yet</div>
-            <div className="empty-state-desc">Create your first assessment using the button above.</div>
-          </div>
-        ) : (
-          <DataTable
-            columns={[
-              { key: 'title', label: 'Title' },
-              { key: 'courseId', label: 'Course', render: (v) => myCourses.find(c => (c._id || c.id) === v)?.title || v },
-              { key: 'type', label: 'Type', render: v => <span className={`badge badge-${v === 'exam' ? 'danger' : 'info'}`}>{v}</span> },
-              { key: 'duration', label: 'Duration', render: v => `${v} min` },
-              { key: 'totalMarks', label: 'Marks' },
-              { key: 'status', label: 'Status', render: v => <span className={`badge badge-${v === 'published' || v === 'active' ? 'success' : 'neutral'}`}>{v || 'draft'}</span> },
-              { key: 'scheduledAt', label: 'Scheduled', render: v => v ? new Date(v).toLocaleDateString() : '—' },
-            ]}
-            data={myAssessments}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── FACULTY NOTIFICATIONS ───────────────────────────────────────────────────
-export function FacultyNotifications({ user }) {
-  const { data, isLoading } = useLiveNotifications();
-  const notifications = data.filter(n => !n.role || n.role === 'faculty' || n.role === 'all');
-  const [filter, setFilter] = useState('all');
-  const typeIcon = { assignment: '📝', attendance: '📅', leave: '🏖️', grade: '🎓', system: '⚙️', announcement: '📢' };
-
-  const filtered = filter === 'all' ? notifications
-    : filter === 'unread' ? notifications.filter(n => !n.read)
-    : notifications.filter(n => n.type === filter);
-
-  return (
-    <div>
-      <PageHeader title="Notifications" subtitle="Stay updated with department and course alerts" />
-
-      <div className="tabs" style={{ marginBottom: 16 }}>
-        {['all', 'unread', 'assignment', 'leave', 'announcement', 'system'].map(t => (
-          <div key={t} className={`tab ${filter === t ? 'active' : ''}`} onClick={() => setFilter(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-            {t === 'unread' && <span className="nav-badge" style={{ position: 'static', marginLeft: 4 }}>{notifications.filter(n => !n.read).length}</span>}
-          </div>
-        ))}
-      </div>
-
-      <div className="card" style={{ overflow: 'hidden' }}>
-        {isLoading ? (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Loading notifications…</div>
-        ) : filtered.length === 0 ? (
-          <div className="empty-state" style={{ padding: 60 }}>
-            <div className="empty-state-icon">🔔</div>
-            <div className="empty-state-title">All caught up!</div>
-          </div>
-        ) : filtered.map(n => (
-          <div key={n.id || n._id} className={`notif-item ${!n.read ? 'unread' : ''}`} style={{ cursor: 'default', padding: '14px 18px' }}>
-            <div style={{ fontSize: 22, flexShrink: 0 }}>{typeIcon[n.type] || '🔔'}</div>
-            <div className="notif-content" style={{ flex: 1 }}>
-              <div className="notif-title" style={{ fontSize: 14 }}>{n.title}</div>
-              <div className="notif-desc" style={{ fontSize: 13 }}>{n.description || n.message}</div>
-              <div className="notif-time" style={{ marginTop: 5 }}>{n.createdAt}</div>
-            </div>
-            {!n.read && <span className="badge badge-accent">New</span>}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

@@ -19,17 +19,12 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Security: Only allow student/faculty self-registration.
-    // admin and management roles must be assigned by an existing admin.
-    const ALLOWED_SELF_REGISTER_ROLES = ['student', 'faculty'];
-    const assignedRole = ALLOWED_SELF_REGISTER_ROLES.includes(role) ? role : 'student';
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
-      role: assignedRole
+      role: role || 'student'
     });
 
     await newUser.save();

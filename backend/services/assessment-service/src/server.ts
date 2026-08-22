@@ -500,3 +500,7 @@ bootstrap().catch(err => {
   logger.error('Bootstrap failed', err);
   process.exit(1);
 });
+
+process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
+process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
+

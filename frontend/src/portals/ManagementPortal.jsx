@@ -7,6 +7,7 @@ import {
 import {
   useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs
 } from '../api/liveData.js';
+import { useSystemHealth } from '../api/hooks.js';
 import * as F from './management/features.jsx';
 
 
@@ -26,6 +27,7 @@ function PageHeader({ title, subtitle, children }) {
 function ExecutiveDashboard({ user, onNavigate }) {
   const { data: USERS } = useLiveAdminUsers();
   const { data: COURSES } = useLiveCourses();
+  const { data: healthData } = useSystemHealth();
 
   const totalStudents = USERS.filter(u => u.role === 'student').length;
   const totalFaculty = USERS.filter(u => u.role === 'faculty').length;
@@ -174,20 +176,16 @@ function ExecutiveDashboard({ user, onNavigate }) {
           <div className="card">
             <div className="card-header"><div className="card-title">System Health</div></div>
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { service: 'API Gateway', status: 'Operational', ok: true },
-                { service: 'Auth Service', status: 'Operational', ok: true },
-                { service: 'MongoDB', status: 'Operational', ok: true },
-                { service: 'Redis Cache', status: 'Operational', ok: true },
-                { service: 'Meilisearch', status: 'Degraded', ok: false },
-              ].map(s => (
-                <div key={s.service} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13 }}>{s.service}</span>
-                  <span className={`badge ${s.ok ? 'badge-success' : 'badge-warning'}`}>
-                    {s.ok ? '● ' : '⚠ '}{s.status}
+              {healthData?.services ? healthData.services.slice(0, 5).map(s => (
+                <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, textTransform: 'capitalize' }}>{s.name.replace('-service', '')}</span>
+                  <span className={`badge ${s.status === 'UP' ? 'badge-success' : 'badge-warning'}`}>
+                    {s.status === 'UP' ? '● ' : '⚠ '} {s.status === 'UP' ? 'Operational' : 'Degraded'}
                   </span>
                 </div>
-              ))}
+              )) : (
+                <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Loading health data...</div>
+              )}
             </div>
           </div>
         </div>

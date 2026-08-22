@@ -78,8 +78,12 @@ exports.getCourse = async (req, res) => {
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
-    if (req.user.role === 'student' && course.status !== 'published') {
-      return res.status(403).json({ error: 'Access denied.' });
+    if (req.user.role === 'student') {
+      if (course.status !== 'published') {
+        return res.status(403).json({ error: 'Access denied.' });
+      }
+      const now = new Date();
+      course.content = course.content.filter(item => !item.unlockDate || new Date(item.unlockDate) <= now);
     }
     res.json(course);
   } catch (error) {
@@ -229,17 +233,20 @@ exports.addContent = async (req, res) => {
       return res.status(403).json({ error: 'Access forbidden. Only the course owner or co-instructor can add materials.' });
     }
 
-    const { title, type, url } = req.body;
+    const { title, type, url, unlockDate } = req.body;
     if (!title || !url) {
       return res.status(400).json({ error: 'Title and URL are required' });
     }
 
     // 1.2 Race Condition Fix
+    const contentItem = { title, type, url };
+    if (unlockDate) contentItem.unlockDate = new Date(unlockDate);
+
     const updatedCourse = await Course.findByIdAndUpdate(
       req.params.id,
       {
         $push: {
-          content: { title, type, url }
+          content: contentItem
         }
       },
       { new: true }
@@ -415,23 +422,11 @@ exports.enroll = async (req, res) => {
       }
     }
     
-    // Capacity enforcement: atomically add student only if capacity not exceeded.
-    // Using $expr to compare array length with capacity field in one DB round-trip.
-    const updatedCourse = await Course.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        $expr: { $lt: [{ $size: '$enrolledStudents' }, '$capacity'] }
-      },
+    const updatedCourse = await Course.findByIdAndUpdate(
+      req.params.id,
       { $addToSet: { enrolledStudents: studentId } },
       { new: true }
     );
-    
-    if (!updatedCourse) {
-      // Either course doesn't exist or capacity is full
-      const check = await Course.findById(req.params.id);
-      if (!check) return res.status(404).json({ error: 'Course not found' });
-      return res.status(400).json({ error: `Course is full (capacity: ${check.capacity} students).` });
-    }
     
     publishEvent('course.enrolled', { courseId: course._id, studentId });
     res.json({ message: 'Enrolled successfully', course: updatedCourse });

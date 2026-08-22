@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const leaveController = require('../controllers/leaveController');
-const authMiddleware = require('../middleware/authMiddleware');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 router.post('/requests', authMiddleware, leaveController.applyForLeave);
 router.get('/requests', authMiddleware, leaveController.getLeaveRequests);

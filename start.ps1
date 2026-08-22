@@ -50,9 +50,17 @@ Write-Step "📦" "Checking frontend dependencies..."
 if (-not (Test-Path ".\frontend\node_modules")) {
     Write-Step "⬇" "Installing frontend packages (first time)..."
     Push-Location ".\frontend"
-    & "npm.cmd" install
+    $npmProc = Start-Process -FilePath "npm.cmd" -ArgumentList "install" -Wait -PassThru -NoNewWindow
+    if ($npmProc.ExitCode -ne 0) {
+        Write-ErrorMsg "Frontend npm install failed with exit code $($npmProc.ExitCode). Halting."
+        Pop-Location
+        exit 1
+    }
     Pop-Location
 }
+
+# ── 3.5 Infrastructure Pre-flight Check ────────────────────────────────
+Write-Step "🔍" "Skipping local MongoDB check (using .env configuration)..."
 
 # Array to keep track of started processes
 $runningServices = @()
@@ -115,7 +123,13 @@ foreach ($svc in $backendServices) {
     if (Test-Path "$($svc.Path)\package.json") {
         if (-not (Test-Path "$($svc.Path)\node_modules")) {
             Push-Location $svc.Path
-            & "npm.cmd" install --silent 2>$null
+            Write-Host "  Installing dependencies for $($svc.Name)..." -ForegroundColor DarkGray
+            $npmProc = Start-Process -FilePath "npm.cmd" -ArgumentList "install" -Wait -PassThru -NoNewWindow
+            if ($npmProc.ExitCode -ne 0) {
+                Write-ErrorMsg "Backend npm install failed for $($svc.Name) with exit code $($npmProc.ExitCode). Halting."
+                Pop-Location
+                exit 1
+            }
             Pop-Location
         }
         Start-ServiceProcess -Name $svc.Name -Path $svc.Path -CommandArgs $svc.Script -Port $svc.Port -HealthPath "http://127.0.0.1:$($svc.Port)/health"

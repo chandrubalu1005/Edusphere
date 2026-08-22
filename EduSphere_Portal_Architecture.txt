@@ -1,0 +1,219 @@
+================================================================================
+EDUSPHERE ENTERPRISE — PROJECT ARCHITECTURE & PORTAL SPECIFICATION
+================================================================================
+
+This document provides a comprehensive structural view of the EduSphere Enterprise 
+platform. It maps out the microservices architecture and delivers an exhaustive 
+tree-diagram breakdown of all 4 front-end portals, including pages, privileges, 
+functions, and features.
+
+================================================================================
+1. HIGH-LEVEL SYSTEM ARCHITECTURE (TREE DIAGRAM)
+================================================================================
+
+EduSphere Enterprise (Root)
+│
+├── Frontend (React + Vite, Port 5173)
+│   ├── Portals (Role-Based Access)
+│   │   ├── Student Portal (Role: student)
+│   │   ├── Faculty Portal (Role: faculty)
+│   │   ├── Admin Portal (Role: admin, super_admin)
+│   │   └── Management Portal (Role: management)
+│   │
+│   └── Shared Components
+│       ├── App Shell & Global Sidebar (Layout.jsx)
+│       ├── Command Palette (cmd+k search across modules)
+│       └── Real-time Socket.IO Listeners (Notifications, Attendance)
+│
+├── Backend Microservices (Node.js + Express)
+│   ├── Core Services
+│   │   ├── 1. auth-service (Port: 3001) - JWT Issuance, RBAC, Rate-Limiting
+│   │   ├── 2. user-service (Port: 3002) - Profile mgmt, atomic updates
+│   │   ├── 3. course-service (Port: 3003) - Catalog, Drip-Release logic
+│   │   └── 4. admin-service (Port: 3015) - System config, health, audit logs
+│   │
+│   ├── Academic Services
+│   │   ├── 5. attendance-service (Port: 3008) - QR/OTP live sessions, Socket.IO
+│   │   ├── 6. timetable-service (Port: 3009) - Overlap checks, scheduling
+│   │   ├── 7. calendar-service (Port: 3010) - Academic events, exams, holidays
+│   │   ├── 8. assignment-service (Port: 3006) - Submissions, bulk grading, penalties
+│   │   └── 9. assessment-service (Port: 3005) - Quizzes, CBT, leaderboards
+│   │
+│   ├── Operations & Engagement Services
+│   │   ├── 10. notification-service (Port: 3004) - Socket.IO pushes, SMS/Email
+│   │   ├── 11. discussion-service (Port: 3013) - Forums, Q&A, upvoting
+│   │   ├── 12. library-service (Port: 3011) - Book checkouts, fine calculations
+│   │   ├── 13. placement-service (Port: 3012) - Drive registrations, eligibilities
+│   │   └── 14. certificate-service (Port: 3007) - PDF generation, idempotent issuing
+│   │
+│   └── Executive Services
+│       └── 15. analytics-service (Port: 3014) - Live aggregations, KPI computation
+│
+└── Data Layer
+    ├── MongoDB (Port 27017) - Multi-tenant Document Storage (Atomic updates)
+    └── Redis (Port 6379) - Optional cache & rate limiting backend
+
+
+================================================================================
+2. PORTAL SPECIFICATIONS (PAGES, PRIVILEGES, & FEATURES)
+================================================================================
+
+--------------------------------------------------------------------------------
+A. STUDENT PORTAL (Privilege: 'student')
+--------------------------------------------------------------------------------
+Total Pages: 20 Pages grouped into 4 functional modules.
+Access Restrictions: Read-only for academic data. Can submit assignments/assessments.
+
+Student Portal
+│
+├── 1. My Learning
+│   ├── Dashboard: Quick stats, daily schedule, upcoming deadlines.
+│   ├── My Courses: View enrolled courses, syllabus, and module materials.
+│   ├── Assignments: Submit work, view grades, request extensions.
+│   ├── Quizzes & Tests: Take live assessments (CBT), view leaderboards.
+│   ├── My Attendance: View percentages. Scan QR or submit 15-sec OTP for check-in.
+│   ├── Weekly Timetable: Visual grid of classes, labs, and tutorials.
+│   └── Learning Progress: Skill radar, study hours heatmap, peer comparison.
+│
+├── 2. Academic
+│   ├── Grades & Transcript: Semester-wise SGPA/CGPA, export PDF.
+│   ├── Certificates: Download validated completion certificates.
+│   ├── Academic Calendar: View institution-wide dates (exams, holidays).
+│   └── Download Center: Syllabi, past papers, notes.
+│
+├── 3. Services
+│   ├── Digital Library: Browse catalog, issue e-books, check fines.
+│   ├── Placement Portal: View job drives, check eligibility, apply (idempotent).
+│   ├── Communication Hub: Discussion forums (course-scoped), announcements.
+│   ├── Fee & Payments: Outstanding dues, dummy payment gateway, receipts.
+│   └── Help Desk: Raise IT/Admin support tickets.
+│
+└── 4. AI & Account
+    ├── AI Assistant: EduSphere AI chatbot (Grades, predictions, rules).
+    ├── Activity Timeline: Complete historical log of student interactions.
+    ├── My Profile & ID: View demographic data, digital ID card.
+    └── Notifications: Real-time alerts (assignments, grades, events).
+
+
+--------------------------------------------------------------------------------
+B. FACULTY PORTAL (Privilege: 'faculty')
+--------------------------------------------------------------------------------
+Total Pages: 18 Pages grouped into 4 functional modules.
+Access Restrictions: Write access restricted to owned courses. Can modify grades, 
+                     attendance, and course materials.
+
+Faculty Portal
+│
+├── 1. Teaching
+│   ├── Dashboard: Quick overview of courses, pending grading counts.
+│   ├── My Courses: Edit course details, syllabus, capacities.
+│   ├── Course Content: Upload PDFs, videos, links (Drip-release capabilities).
+│   ├── Assessments: Create quizzes, set time limits, view live CBT results.
+│   ├── Assignments: Create tasks, bulk-grade via CSV, plagiarism checking.
+│   ├── Mark Attendance: Generate QR codes, trigger live 15-sec OTP sessions.
+│   └── My Timetable: Instructor-specific weekly scheduling view.
+│
+├── 2. Student Management
+│   ├── Student Performance: Analytics on student engagement and risk.
+│   ├── Grade Submission: Finalizing mid-term and end-term results.
+│   ├── Course Completion: Tracking progression of cohorts.
+│   └── Student Feedback: Read anonymous end-of-semester feedback.
+│
+├── 3. Communication
+│   ├── Communication Hub: Moderate course forums, mark "Best Answers".
+│   ├── Announcements: Broadcast alerts strictly to enrolled students.
+│   └── Analytics: Basic class averages and statistical data.
+│
+└── 4. Account
+    ├── Leave Management: Request casual/medical leaves (atomic updates).
+    ├── AI Teaching Tools: AI-assisted rubric generation, test creation.
+    ├── Profile: Faculty details, publications, specializations.
+    └── Notifications: Alerts for late submissions, dispute raises.
+
+
+--------------------------------------------------------------------------------
+C. ADMIN PORTAL (Privilege: 'admin', 'super_admin')
+--------------------------------------------------------------------------------
+Total Pages: 20 Pages grouped into 4 functional modules.
+Access Restrictions: Full CRUD on operational data. Strictly secured routes.
+
+Admin Portal
+│
+├── 1. Management
+│   ├── Dashboard: System overview, active users, error rates.
+│   ├── User Management: Create, edit, suspend students and faculty.
+│   ├── Course Catalog: Create new courses, map to departments.
+│   ├── Departments: Manage structures, HoDs, capacities.
+│   ├── Semesters: Define active terms, start/end dates.
+│   ├── Enrollments: Bulk enroll/unenroll students.
+│   └── Timetable Mgmt: Conflict-free scheduling engine across all rooms.
+│
+├── 2. Enterprise
+│   ├── Certificate Approval: Sign off on digital credentials.
+│   ├── Roles & Permissions: Define granular access controls.
+│   ├── Announcements: Institution-wide global broadcasts.
+│   ├── Library Management: Add inventory, override fines.
+│   ├── Placement Management: Create drives, approve company profiles.
+│   └── Academic Calendar: Create institutional holidays, deadlines.
+│
+├── 3. System
+│   ├── System Health: Mongo/Redis status, CPU/Memory metrics.
+│   ├── Audit & Logs: Tracking all actions (who modified what, when).
+│   ├── File Management: Storage quotas, orphaned file cleanup.
+│   ├── Email Broadcast: SMTP integration for external comms.
+│   ├── Backup & Restore: DB snapshot controls.
+│   ├── Configuration: Core system variables, feature flags.
+│   └── Help Desk: Resolve student/faculty IT tickets.
+│
+└── 4. Account
+    ├── Reports Center: Generate CSV compliance and stat reports.
+    └── Notifications: High-priority system alerts.
+
+
+--------------------------------------------------------------------------------
+D. MANAGEMENT PORTAL (Privilege: 'management')
+--------------------------------------------------------------------------------
+Total Pages: 19 Pages grouped into 4 functional modules.
+Access Restrictions: Read-only access to institution-wide macro data, but write 
+                     access for critical approvals (budgets, compliance).
+
+Management Portal
+│
+├── 1. Executive View
+│   ├── Executive Dashboard: High-level macro view (Enrollments, Revenue).
+│   ├── Analytics & Reports: Live dynamic Mongo aggregations (no fake math).
+│   ├── Institutional KPIs: Multi-year performance tracking.
+│   └── Dept Comparison: Pass rates, attendance, and placements by branch.
+│
+├── 2. Performance
+│   ├── Faculty Performance: Research output, student feedback scores.
+│   ├── Student Performance: Global CGPA bells curves, dropout risks.
+│   ├── Placement Analytics: Average CTC, top recruiters, unplaced counts.
+│   └── Research Statistics: Publications, grants, patents tracking.
+│
+├── 3. Governance
+│   ├── Approval Center: Sign off on major operational changes.
+│   ├── Course Approvals: Curriculum review for new offerings.
+│   ├── Budget Overview: Department-wise allocations and spending.
+│   ├── Risk Alerts: Automated flags (low attendance trends, grade dips).
+│   ├── Accreditation: Compliance tracking for NBA, NAAC, etc.
+│   └── Compliance Logs: Audit trails for governance.
+│
+└── 4. AI & Account
+    ├── AI Insights: AI-driven macro predictions for the university.
+    ├── Predictive Analytics: Enrollment forecasting, placement likelihood.
+    ├── Executive Reports: Beautiful, printable macro-reports.
+    ├── Placement Stats: Detailed placement year-over-year growth.
+    └── Notifications: Alerts for approvals and critical risk flags.
+
+
+================================================================================
+3. CROSS-CUTTING ARCHITECTURAL FEATURES
+================================================================================
+1. Command Palette (cmd+k): Available in all portals. Universally indexes courses, 
+   pages, and discussions, routing users instantly to correct React routes.
+2. Real-Time Socket.IO: All portals maintain active socket connections multiplexed 
+   to `attendance-service` and `notification-service`.
+3. Idempotency: All critical writes (attendance, leaves, payments, placement) use 
+   compound unique indices in MongoDB to prevent race conditions natively.
+================================================================================

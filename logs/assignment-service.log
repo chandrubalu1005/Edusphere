@@ -1,0 +1,8 @@
+
+> assignment-service@1.0.0 dev
+> ts-node-dev --respawn --transpile-only src/server.ts
+
+[INFO] 11:30:58 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+[11:31:02] [32minfo[39m: MongoDB connected
+[11:31:05] [31merror[39m: Failed to connect to RabbitMQ connect ECONNREFUSED 34.225.181.11:5671
+[11:31:05] [32minfo[39m: 📝 Assignment Service running on :3006

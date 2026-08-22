@@ -18,9 +18,10 @@ const LeaveRequestSchema = new mongoose.Schema({
   overriddenBy: { type: String, default: null },
 }, { timestamps: true });
 
-// Indexes for quota calculation and queue queries
-LeaveRequestSchema.index({ requesterId: 1, status: 1 });
-LeaveRequestSchema.index({ requesterId: 1, leaveType: 1, status: 1 });
-LeaveRequestSchema.index({ status: 1, createdAt: -1 }); // For admin queue view
+// ── Compound unique index — prevents duplicate leave requests ─────────────
+// A person cannot have two leave requests of the same type starting on the same date.
+// This is the DB-level idempotency guard per master.txt Section 1.6.
+LeaveRequestSchema.index({ requesterId: 1, startDate: 1, leaveType: 1 }, { unique: true });
 
 module.exports = mongoose.model('LeaveRequest', LeaveRequestSchema);
+
