@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import {
@@ -6,11 +6,24 @@ import {
 } from '../mockData.js';
 import {
   useLiveAdminUsers, useLiveCourses, useLiveDepartments,
-  useLiveSemesters, useLiveEnrollments, useLiveAuditLogs
+  useLiveSemesters, useLiveEnrollments, useLiveAuditLogs, useLiveProfile
 } from '../api/liveData.js';
 import * as F from './admin/features.jsx';
-import { useBulkUpdateUsers, useApproveCourse, useRejectCourse, useCreateCourse } from '../api/hooks.js';
+import { useBulkUpdateUsers, useApproveCourse, useRejectCourse, useCreateCourse, useUpdateProfile } from '../api/hooks.js';
 import toast from 'react-hot-toast';
+
+import ProfilePage from '../components/profile/ProfilePage.jsx';
+import UserManagement from '../components/users/UserManagement.jsx';
+import { profileThemes } from '../components/profile/profileTheme.js';
+import AcademicManagement from './management/AcademicManagement.jsx';
+import CurriculumBuilder from './management/CurriculumBuilder.jsx';
+import CourseCatalog from './management/CourseCatalog.jsx';
+import { 
+  Building2, GraduationCap, LayoutDashboard, Settings, Users, 
+  ShieldCheck, ShieldAlert, Fingerprint, Activity, Shield, Server,
+  Building, BookOpen, Calendar, ClipboardCheck, Ticket, HeartPulse 
+} from 'lucide-react';
+
 function PageHeader({ title, subtitle, children }) {
   return (
     <div className="page-header">
@@ -51,13 +64,13 @@ function AdminDashboard({ onNavigate }) {
 
       <div className="stat-grid">
         {[
-          { label: 'Total Users', value: totalUsers, sub: `${activeUsers} active`, icon: '👥', page: 'users' },
-          { label: 'Total Courses', value: totalCourses, sub: `${COURSES.filter(c => c.status === 'published').length} published`, icon: '📚', page: 'courses' },
-          { label: 'Departments', value: DEPARTMENTS.length, sub: 'Active departments', icon: '🏢', page: 'departments' },
-          { label: 'Active Semester', value: SEMESTERS.filter(s => s.status === 'active').length, sub: 'Running semesters', icon: '📅', page: 'semesters' },
-          { label: 'Enrollments', value: ENROLLMENTS.length, sub: 'This semester', icon: '📋', page: 'enrollments' },
-          { label: 'Open Tickets', value: SUPPORT_TICKETS.filter(t => t.status === 'open').length, sub: 'Awaiting response', icon: '🎫', page: 'helpdesk' },
-          { label: 'System Health', value: 'Operational', sub: 'Metrics Dashboard', icon: '💚', page: 'system-health' },
+          { label: 'Total Users', value: totalUsers, sub: `${activeUsers} active`, icon: <Users size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'users' },
+          { label: 'Total Courses', value: totalCourses, sub: `${COURSES.filter(c => c.status === 'published').length} published`, icon: <BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'courses' },
+          { label: 'Departments', value: DEPARTMENTS.length, sub: 'Active departments', icon: <Building size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'departments' },
+          { label: 'Active Semester', value: SEMESTERS.filter(s => s.status === 'active').length, sub: 'Running semesters', icon: <Calendar size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'semesters' },
+          { label: 'Enrollments', value: ENROLLMENTS.length, sub: 'This semester', icon: <ClipboardCheck size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'enrollments' },
+          { label: 'Open Tickets', value: SUPPORT_TICKETS.filter(t => t.status === 'open').length, sub: 'Awaiting response', icon: <Ticket size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'helpdesk' },
+          { label: 'System Health', value: 'Operational', sub: 'Metrics Dashboard', icon: <HeartPulse size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'system-health' },
         ].map(s => (
           <div className="stat-card" key={s.label} onClick={() => onNavigate(s.page)} style={{ cursor: 'pointer' }}>
             <div className="stat-label">{s.label}</div>
@@ -119,237 +132,6 @@ function AdminDashboard({ onNavigate }) {
   );
 }
 
-// ── USER MANAGEMENT ────────────────────────────────────────────────────────
-function UserManagement() {
-  const { data: USERS } = useLiveAdminUsers();
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [selectedUserIds, setSelectedUserIds] = useState([]);
-  const [importingCsv, setImportingCsv] = useState(false);
-
-  const bulkUpdate = useBulkUpdateUsers();
-
-  const filtered = USERS.filter(u => {
-    if (filter !== 'all' && u.role !== filter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      const first = (u.firstName || u.username || '').toLowerCase();
-      const last  = (u.lastName || '').toLowerCase();
-      const email = (u.email || '').toLowerCase();
-      return first.includes(q) || last.includes(q) || email.includes(q);
-    }
-    return true;
-  });
-
-  const roleColor = { student: 'badge-info', faculty: 'badge-success', admin: 'badge-danger', management: 'badge-accent' };
-
-  function handleSelectAll(checked) {
-    if (checked) {
-      setSelectedUserIds(filtered.map(u => u.id || u._id));
-    } else {
-      setSelectedUserIds([]);
-    }
-  }
-
-  function handleToggleSelect(id) {
-    setSelectedUserIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  }
-
-  function handleBulkStatus(active) {
-    if (selectedUserIds.length === 0) return;
-    bulkUpdate.mutate({ userIds: selectedUserIds, active }, {
-      onSuccess: () => setSelectedUserIds([])
-    });
-  }
-
-  return (
-    <div>
-      <PageHeader title="User Management" subtitle="Manage all university accounts across all roles.">
-        <div style={{ display: 'flex', gap: 8 }}>
-          <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
-            <Icon d={ICONS.download} size={15} /> Bulk Import
-            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={e => {
-              if (e.target.files.length) {
-                setImportingCsv(true);
-                setTimeout(() => {
-                  toast.success(`Successfully imported users from ${e.target.files[0].name}`);
-                  setImportingCsv(false);
-                }, 1500);
-              }
-            }} disabled={importingCsv} />
-          </label>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-            <Icon d={ICONS.plus} size={15} /> Add User
-          </button>
-        </div>
-      </PageHeader>
-
-      {selectedUserIds.length > 0 && (
-        <div style={{
-          padding: '12px 16px', background: 'var(--primary)', color: 'white',
-          borderRadius: 'var(--r-md)', marginBottom: 16, display: 'flex',
-          alignItems: 'center', justifyContent: 'space-between'
-        }}>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedUserIds.length} users selected</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-sm btn-accent" onClick={() => handleBulkStatus(true)}>Bulk Activate</button>
-            <button className="btn btn-sm btn-ghost" style={{ color: 'white', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => handleBulkStatus(false)}>Bulk Deactivate</button>
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="topbar-search" style={{ maxWidth: 300, flex: 1, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <Icon d={ICONS.search} size={14} />
-          <input placeholder="Search users…" value={search} onChange={e => setSearch(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--text-1)', width: '100%' }} />
-        </div>
-        <div className="tabs" style={{ margin: 0, borderBottom: 'none', gap: 4 }}>
-          {['all', 'student', 'faculty', 'admin', 'management'].map(r => (
-            <div
-              key={r}
-              onClick={() => setFilter(r)}
-              style={{
-                padding: '6px 14px', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 13,
-                fontWeight: 600, background: filter === r ? 'var(--primary)' : 'var(--surface)',
-                color: filter === r ? 'white' : 'var(--text-2)',
-                border: '1px solid var(--border)', transition: 'all 0.2s',
-              }}
-            >
-              {r.charAt(0).toUpperCase() + r.slice(1)} ({USERS.filter(u => r === 'all' || u.role === r).length})
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: 40 }}>
-                <input
-                  type="checkbox"
-                  checked={filtered.length > 0 && selectedUserIds.length === filtered.length}
-                  onChange={e => handleSelectAll(e.target.checked)}
-                />
-              </th>
-              <th>User</th>
-              <th>Role</th>
-              <th>Department</th>
-              <th>Status</th>
-              <th>Last Login</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(u => {
-              const uId = u.id || u._id;
-              const displayName = u.firstName ? `${u.firstName} ${u.lastName || ''}` : (u.username || u.email || 'User');
-              const initials = displayName.slice(0, 2).toUpperCase();
-              const isChecked = selectedUserIds.includes(uId);
-              return (
-                <tr key={uId} style={{ background: isChecked ? 'var(--surface-2)' : 'transparent' }}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => handleToggleSelect(uId)}
-                    />
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 13, borderRadius: 8, border: 'none' }}>
-                        {initials}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>{displayName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{u.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td><span className={`badge ${roleColor[u.role] || 'badge-neutral'}`}>{u.role}</span></td>
-                <td style={{ color: 'var(--text-2)' }}>{u.department}</td>
-                <td>
-                  <span className={`badge ${u.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
-                    {u.status === 'active' ? '● Active' : '○ Inactive'}
-                  </span>
-                </td>
-                <td style={{ fontSize: 12, color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>{u.lastLogin}</td>
-                <td>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button className="btn btn-ghost btn-icon-sm" onClick={() => setSelected(u)} title="Edit">
-                      <Icon d={ICONS.edit} size={13} />
-                    </button>
-                    <button className="btn btn-ghost btn-icon-sm" title="View">
-                      <Icon d={ICONS.eye} size={13} />
-                    </button>
-                    <button className="btn btn-ghost btn-icon-sm" style={{ color: 'var(--danger)' }} title="Deactivate">
-                      <Icon d={ICONS.trash} size={13} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ); })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Add User Modal */}
-      {showAdd && (
-        <div className="modal-overlay" onClick={() => setShowAdd(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Add New User</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setShowAdd(false)}><Icon d={ICONS.x} size={18} /></button>
-            </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">First Name <span className="required">*</span></label>
-                  <input className="form-input" placeholder="First name" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Last Name <span className="required">*</span></label>
-                  <input className="form-input" placeholder="Last name" />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Email <span className="required">*</span></label>
-                <input className="form-input" type="email" placeholder="user@edusphere.edu" />
-              </div>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Role</label>
-                  <select className="form-input">
-                    <option>student</option><option>faculty</option><option>admin</option><option>management</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <select className="form-input">
-                    {DEPARTMENTS.map(d => <option key={d.id}>{d.code}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Temporary Password</label>
-                <input className="form-input" type="password" placeholder="Min. 8 characters" />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setShowAdd(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => setShowAdd(false)}>Create User</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── DEPARTMENTS ─────────────────────────────────────────────────────────────
 function DepartmentManagement() {
   const [showAdd, setShowAdd] = useState(false);
@@ -382,7 +164,7 @@ function DepartmentManagement() {
                 </div>
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>👤 Head:</span>
+                <span><Users size={14} /> Head:</span>
                 <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{dept.head}</span>
               </div>
             </div>
@@ -587,8 +369,8 @@ function SemesterManagement() {
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>AY {s.year}</span>
                   </div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--text-1)' }}>{s.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>
-                    📅 {new Date(s.start).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} —{' '}
+                  <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Calendar size={14} /> {new Date(s.start).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} —{' '}
                     {new Date(s.end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   </div>
                 </div>
@@ -668,7 +450,7 @@ function SystemSettings() {
 
   return (
     <div>
-      <PageHeader title="System Settings" subtitle="Configure the EduSphere platform." />
+      <PageHeader title="System Settings" subtitle="Configure the CampusSphere platform." />
 
       <div className="tabs">
         {['general', 'email', 'security', 'integrations'].map(t => (
@@ -685,7 +467,7 @@ function SystemSettings() {
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">Institution Name</label>
-                  <input className="form-input" defaultValue="EduSphere University" />
+                  <input className="form-input" defaultValue="CampusSphere University" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Institution Code</label>
@@ -884,8 +666,75 @@ function AdminHelpDesk() {
   );
 }
 
+
+// ── ADMIN PROFILE ────────────────────────────────────────────────────────────
+function AdminProfile({ user }) {
+  const { data: profile, isLoading } = useLiveProfile(user.id || user._id);
+  const { data: auditLogs } = useLiveAuditLogs();
+  const updateProfile = useUpdateProfile();
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading profile...</div>;
+
+  const displayFirstName = profile?.firstName || user.firstName || 'System';
+  const displayLastName = profile?.lastName || user.lastName || 'Administrator';
+  const fullName = `${displayFirstName} ${displayLastName}`.trim();
+
+  const formattedProfile = {
+    userId: user.id || user._id,
+    name: fullName,
+    firstName: profile?.firstName,
+    lastName: profile?.lastName,
+    designation: 'System Administrator',
+    department: 'IT Operations',
+    id: (user.id || user._id).toUpperCase(),
+    idLabel: 'Admin ID',
+    status: 'System Active',
+    avatar: 'N/A',
+    email: user.email,
+    phone: profile?.phone,
+    dob: profile?.dob,
+    gender: profile?.gender,
+    address: profile?.address,
+    bio: profile?.bio,
+    professionalTitle: 'Administrative Information',
+    professional: [
+      ['Department', 'IT Operations'],
+      ['Role', 'Super Administrator'],
+      ['Experience', 'N/A'],
+      ['Date of Joining', 'N/A']
+    ],
+    statsTitle: 'Account Overview',
+    stats: [
+      { icon: ShieldCheck, label: 'Status', value: 'Active', helper: 'System checks passed' },
+      { icon: ShieldAlert, label: 'Security Logs', value: auditLogs?.length || 0, helper: 'Recorded actions' },
+      { icon: Fingerprint, label: 'MFA Status', value: 'Enabled', helper: '2FA Active' },
+      { icon: Activity, label: 'Last Login', value: 'Just now', helper: 'Current session' }
+    ],
+    activities: auditLogs?.slice(0, 3).map(log => ({
+      title: log.action,
+      description: `Target: ${log.targetId}`,
+      time: new Date(log.timestamp).toLocaleString(),
+      icon: Settings
+    })) || [],
+    metadata: [
+      { icon: Shield, label: 'Role', value: 'Super Admin' },
+      { icon: Server, label: 'Access Level', value: 'Global' }
+    ]
+  };
+
+  return (
+    <ProfilePage
+      profile={formattedProfile}
+      accent={profileThemes.admin}
+      updateProfileHook={updateProfile}
+    >
+    </ProfilePage>
+  );
+}
+
 // ── ADMIN PORTAL ROUTER ────────────────────────────────────────────────────
 export default function AdminPortal({ page, onNavigate }) {
+  const { user } = useAuth();
   const pages = {
     dashboard:   <AdminDashboard onNavigate={onNavigate} />,
     users:       <UserManagement />,
@@ -897,6 +746,7 @@ export default function AdminPortal({ page, onNavigate }) {
     settings:    <F.ConfigurationCenter />,
     helpdesk:    <AdminHelpDesk />,
     notifications: <div style={{ padding: 20 }}><h1 className="page-title">Notifications</h1></div>,
+    profile:     <AdminProfile user={user} />,
     // New Enterprise Pages
     'timetable-mgmt': <F.TimetableMgmt />,
     'cert-approval':  <F.CertificateApproval />,
@@ -907,7 +757,12 @@ export default function AdminPortal({ page, onNavigate }) {
     'placement-mgmt': <F.PlacementManagement />,
     email:            <F.EmailBroadcast />,
     'file-mgmt':      <F.FileManager />,
+    // Academic Core Enterprise Overhaul
+    'academic-core':  <AcademicManagement />,
+    curriculum:       <CurriculumBuilder />,
+    catalog:          <CourseCatalog />
   };
 
   return pages[page] || pages.dashboard;
 }
+

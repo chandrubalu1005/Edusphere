@@ -8,7 +8,7 @@ const rateLimit = require('express-rate-limit');
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per windowMs
+  max: 100, // Limit each IP to 100 requests per windowMs
   message: { error: 'Too many login attempts, please try again after 15 minutes' }
 });
 
@@ -20,6 +20,9 @@ router.get('/me', authMiddleware, authController.me);
 router.post('/setup-2fa', authMiddleware, authController.setup2FA);
 router.post('/verify-2fa', authMiddleware, authController.verify2FA);
 router.post('/login-2fa', authController.login2FA);
+
+// Admin Routes
+router.post('/users/:id/password-reset', authMiddleware, authController.resetPassword);
 
 // Google OAuth Routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

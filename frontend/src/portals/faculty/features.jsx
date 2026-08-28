@@ -11,6 +11,9 @@ import {
   ProgressRing, MiniSparkline, AIChatInterface, NotificationCenter,
   EmptyState, Modal, CommandPalette, WorkflowTimeline
 } from '../../components/shared/index.jsx';
+import { 
+  Users, UsersRound, Calendar, BookOpen, Star, AlertTriangle, AlertCircle, TrendingUp, CheckCircle2, Megaphone, Target, Settings, Zap, Award, Inbox, Clock, MapPin, Briefcase, Building, FileText, Download, MessageSquare, Pin, HelpCircle, GraduationCap, Copy, Share2, Printer, Activity, ClipboardCheck, MessageCircle, BarChart2, ListOrdered, CheckSquare, BrainCircuit, NotebookPen, PenTool, LayoutTemplate, MessageSquareMore, UploadCloud
+} from 'lucide-react';
 import {
   TIMETABLE as MOCK_TIMETABLE, CALENDAR_EVENTS as MOCK_CALENDAR_EVENTS,
   DISCUSSIONS as MOCK_DISCUSSIONS, DISCUSSION_REPLIES as MOCK_DISCUSSION_REPLIES,
@@ -70,9 +73,9 @@ export function StudentPerformance({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Total Students Guided" value={filteredUsers.length} icon="👥" />
-        <StatCard label="Average GPA of Batches" value="8.79" trend="✓ On Track" trendType="up" icon="📊" />
-        <StatCard label="At Risk Cohort" value="2" trend="Requires Intervention" trendType="down" icon="⚠️" />
+        <StatCard label="Total Students Guided" value={filteredUsers.length} icon={<UsersRound size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Average GPA of Batches" value="8.79" trend="On Track" trendType="up" icon={<BarChart size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="At Risk Cohort" value="2" trend="Requires Intervention" trendType="down" icon={<AlertTriangle size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <div className="card" style={{ padding: 20 }}>
@@ -150,8 +153,8 @@ export function LeaveManagement({ user }) {
       </PageHeader>
 
       <Tabs tabs={[
-        { id: 'queue', label: 'Student Approvals', icon: '📋', badge: studentRequests.filter(r => r.status === 'pending').length },
-        { id: 'myleaves', label: 'My Leaves', icon: '📅' }
+        { id: 'queue', label: 'Student Approvals', icon: <CheckSquare size={16} />, badge: studentRequests.filter(r => r.status === 'pending').length },
+        { id: 'myleaves', label: 'My Leaves', icon: <Calendar size={16} /> }
       ]} active={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'queue' && (
@@ -185,10 +188,10 @@ export function LeaveManagement({ user }) {
         <div style={{ marginTop: 20 }}>
           <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
             {balanceData.map(b => (
-              <StatCard key={b.type} label={`${b.type} Balance`} value={`${b.remaining} / ${b.total}`} icon="📅" trend={`${b.used} used`} trendType="neutral" />
+              <StatCard key={b.type} label={`${b.type} Balance`} value={`${b.remaining} / ${b.total}`} icon={<Calendar size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} trend={`${b.used} used`} trendType="neutral" />
             ))}
             {balanceData.length === 0 && (
-               <StatCard label="Leave Policy" value="Loading..." icon="📅" />
+               <StatCard label="Leave Policy" value="Loading..." icon={<FileText size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
             )}
           </div>
           <div className="card" style={{ padding: 20 }}>
@@ -583,7 +586,7 @@ export function ResourceUpload({ user }) {
           <input className="form-input" placeholder="Title/Topic Name..." />
         </div>
         <div style={{ border: '2px dashed var(--border)', borderRadius: 'var(--r-md)', padding: '32px 16px', textAlignment: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <span style={{ fontSize: 32 }}>📤</span>
+          <UploadCloud size={48} color="var(--text-3)" strokeWidth={1} />
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>Drag & Drop or Click to browse files</div>
           <div style={{ fontSize: 11, color: 'var(--text-3)' }}>PDF, PPTX, MP4, ZIP (Max 50MB)</div>
         </div>
@@ -630,10 +633,10 @@ export function AITools({ user }) {
         {/* Sidebar */}
         <div className="card" style={{ padding: 12, height: 'fit-content' }}>
           {[
-            { id: 'paper', label: 'Question Paper Gen', icon: '📝' },
-            { id: 'rubric', label: 'Rubric Generator', icon: '📊' },
-            { id: 'evaluator', label: 'AI Essay Evaluator', icon: '🎓' },
-            { id: 'summary', label: 'Batch Summary & Insights', icon: '📈' }
+            { id: 'paper', label: 'Question Paper Gen', icon: <NotebookPen size={18} /> },
+            { id: 'rubric', label: 'Rubric Generator', icon: <LayoutTemplate size={18} /> },
+            { id: 'evaluator', label: 'AI Essay Evaluator', icon: <PenTool size={18} /> },
+            { id: 'summary', label: 'Batch Summary & Insights', icon: <BarChart size={18} /> }
           ].map(tool => (
             <div
               key={tool.id}
@@ -692,7 +695,7 @@ export function AITools({ user }) {
           </div>
 
           <button className="btn btn-primary" onClick={handleGenerate} disabled={loading || (activeTool === 'evaluator' ? !essayContent.trim() : !prompt.trim() && activeTool !== 'summary')}>
-            {loading ? 'Analyzing & Generating...' : '⚡ Generate Output'}
+            {loading ? 'Analyzing & Generating...' : <><Zap size={14} style={{ marginRight: 4 }} /> Generate Output</>}
           </button>
 
           {output && (
@@ -731,8 +734,9 @@ export function StudentFeedback({ user }) {
             <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>Responses: {f.responses} students</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {f.comments.map((comment, i) => (
-                <div key={i} style={{ padding: '6px 10px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)', fontSize: 12, width: '100%' }}>
-                  💡 "{comment}"
+                <div key={i} style={{ padding: '6px 10px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)', fontSize: 12, width: '100%', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <MessageSquareMore size={14} color="var(--brand, #C43D3D)" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span>"{comment}"</span>
                 </div>
               ))}
             </div>
@@ -753,40 +757,102 @@ export function FacultyOtpAttendance({ user }) {
   const { data: COURSES } = useLiveCourses();
   const myCourses = COURSES.filter(c => c.instructorId === user.id || c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.instructorId === user.userId);
   
-  const [activeSession, setActiveSession] = useState(null);
   const [courseId, setCourseId] = useState('');
-  const [duration, setDuration] = useState(60);
+  const [classSessions, setClassSessions] = useState([]);
+  const [selectedClassSessionId, setSelectedClassSessionId] = useState('');
   
+  const [activeSession, setActiveSession] = useState(null); // Full attendanceSession object
   const [currentOtp, setCurrentOtp] = useState('------');
-  const [timeRemaining, setTimeRemaining] = useState(15);
+  const [timeRemaining, setTimeRemaining] = useState(25);
+  const [purpose, setPurpose] = useState('JOIN');
   const [submissions, setSubmissions] = useState([]);
   
+  // 1. Resolve today's classes
+  const handleResolveClasses = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await axios.post(`${ATTENDANCE_URL}/class-sessions/resolve`, { dateStr: today }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const res = await axios.get(`${ATTENDANCE_URL}/class-sessions?dateStr=${today}&facultyId=${user.id}`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      setClassSessions(res.data);
+      toast.success('Classes resolved for today');
+    } catch (err) {
+      toast.error('Failed to resolve classes');
+    }
+  };
+
+  // 2. Start Session
+  const startSession = async () => {
+    if (!selectedClassSessionId) return toast.error('Select a class session');
+    try {
+      const res = await axios.post(`${ATTENDANCE_URL}/otp-attendance/sessions/start`, { classSessionId: selectedClassSessionId }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      toast.success('Session Created (READY)');
+      setActiveSession({ id: res.data.sessionId, status: 'READY', courseId: classSessions.find(c => c._id === selectedClassSessionId)?.courseId });
+      setSubmissions([]);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to start session');
+    }
+  };
+
+  const changeStatus = async (newStatus) => {
+    try {
+      await axios.patch(`${ATTENDANCE_URL}/otp-attendance/sessions/${activeSession.id}/status`, { newStatus }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      setActiveSession(prev => ({ ...prev, status: newStatus }));
+      toast.success(`Session moved to ${newStatus}`);
+      if (newStatus === 'COMPLETED' || newStatus === 'CANCELLED') {
+        setActiveSession(null);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to change status');
+    }
+  };
+
+  // 3. Socket & OTP Polling
   useEffect(() => {
     let socket;
     let interval;
-    if (activeSession) {
+    if (activeSession && (activeSession.status === 'CHECK_IN_OPEN' || activeSession.status === 'ENDING' || activeSession.status === 'LIVE' || activeSession.status === 'CHECK_IN_CLOSED')) {
       socket = io(ATTENDANCE_URL);
-      socket.emit('join_otp_session', activeSession.sessionId);
       
-      socket.on('otp_submission', (data) => {
+      socket.on('participant_joined', (data) => {
         setSubmissions(prev => [data, ...prev]);
-        toast.success(`${data.studentName} marked present`);
+        toast.success(`${data.studentName} joined`);
+      });
+
+      socket.on('participant_checkout', (data) => {
+        setSubmissions(prev => prev.map(p => p.studentId === data.studentId ? { ...p, checkOutAt: data.checkOutAt } : p));
+        toast.success(`Student checked out`);
+      });
+
+      socket.on('status_changed', (data) => {
+         setActiveSession(prev => ({ ...prev, status: data.status }));
       });
 
       const fetchOtp = async () => {
         try {
-          const res = await axios.get(`${ATTENDANCE_URL}/otp-attendance/sessions/${activeSession.sessionId}/current-otp`, {
-            headers: { Authorization: `Bearer ${user.token}` }
-          });
-          setCurrentOtp(res.data.currentOtp);
-          setTimeRemaining(res.data.timeRemaining);
+          if (activeSession.status === 'CHECK_IN_OPEN' || activeSession.status === 'ENDING') {
+            const mode = activeSession.status === 'ENDING' ? 'END' : 'JOIN';
+            const res = await axios.get(`${ATTENDANCE_URL}/otp-attendance/sessions/${activeSession.id}/current-otp?purpose=${mode}`, {
+              headers: { Authorization: `Bearer ${user.token}` }
+            });
+            setCurrentOtp(res.data.currentOtp);
+            setTimeRemaining(res.data.timeRemaining);
+            setPurpose(res.data.purpose);
+          }
         } catch (err) {
           console.error(err);
         }
       };
       
       fetchOtp();
-      interval = setInterval(fetchOtp, 1000);
+      interval = setInterval(fetchOtp, 1000); // 1-second sync
     }
     
     return () => {
@@ -795,115 +861,139 @@ export function FacultyOtpAttendance({ user }) {
     };
   }, [activeSession, user.token]);
 
-  const startSession = async () => {
-    if (!courseId) return toast.error('Select a course');
-    try {
-      const res = await axios.post(`${ATTENDANCE_URL}/otp-attendance/sessions`, { courseId, durationMins: duration }, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      setActiveSession(res.data);
-      setSubmissions([]);
-      toast.success('OTP Session Started');
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to start session');
-    }
-  };
-
-  const endSession = async () => {
-    try {
-      await axios.patch(`${ATTENDANCE_URL}/otp-attendance/sessions/${activeSession.sessionId}/end`, {}, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      setActiveSession(null);
-      toast.success('Session Ended');
-    } catch (err) {
-      toast.error('Failed to end session');
-    }
-  };
 
   return (
     <div>
       <PageHeader
-        title="Live OTP Attendance"
-        subtitle="Generate rotating 15-second OTPs for secure classroom check-ins"
-        breadcrumbs={[{ label: 'Dashboard' }, { label: 'OTP Attendance' }]}
+        title="Attendance Center"
+        subtitle="Enterprise session management and cryptographic OTP generation"
+        breadcrumbs={[{ label: 'Dashboard' }, { label: 'Attendance Center' }]}
       />
 
       {!activeSession ? (
-        <div className="card" style={{ padding: 24, maxWidth: 500 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Start New Session</h3>
-          <div className="form-group">
-            <label className="form-label">Course</label>
-            <select className="form-select" value={courseId} onChange={e => setCourseId(e.target.value)}>
-              <option value="">Select Course...</option>
-              {myCourses.map(c => <option key={c.id || c.code} value={c.id || c.code}>{c.code} - {c.title}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Duration (Minutes)</label>
-            <input type="number" className="form-input" value={duration} onChange={e => setDuration(e.target.value)} min="5" max="180" />
-          </div>
-          <button className="btn btn-primary w-full mt-4" onClick={startSession}>Start Session</button>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {/* Active Display */}
-          <div className="card" style={{ padding: 40, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>
-              Live Code • {activeSession.courseId}
-            </div>
-            
-            <div style={{ position: 'relative', width: 240, height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-              {/* Countdown Ring */}
-              <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                <circle cx="120" cy="120" r="110" fill="none" stroke="var(--border)" strokeWidth="12" />
-                <circle 
-                  cx="120" cy="120" r="110" fill="none" 
-                  stroke="var(--accent)" strokeWidth="12" 
-                  strokeDasharray={2 * Math.PI * 110} 
-                  strokeDashoffset={2 * Math.PI * 110 * (1 - timeRemaining / 15)} 
-                  style={{ transition: 'stroke-dashoffset 1s linear' }}
-                />
-              </svg>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 56, fontWeight: 800, color: 'var(--text-1)', letterSpacing: '0.1em', zIndex: 10 }}>
-                {currentOtp}
-              </div>
-            </div>
-            
-            <div style={{ fontSize: 18, color: timeRemaining <= 3 ? 'var(--danger)' : 'var(--text-2)', fontWeight: 600, marginBottom: 24 }}>
-              Rotates in {timeRemaining}s
-            </div>
-
-            <button className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={endSession}>
-              End Session Early
+        <div className="card" style={{ padding: 24, maxWidth: 600 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Initialize Class Session</h3>
+          
+          <div style={{ marginBottom: 20 }}>
+            <button className="btn btn-outline w-full" onClick={handleResolveClasses}>
+              1. Resolve Today's Timetable Slots
             </button>
           </div>
 
-          {/* Live Submissions */}
+          {classSessions.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">Select Class to Open</label>
+              <select className="form-select" value={selectedClassSessionId} onChange={e => setSelectedClassSessionId(e.target.value)}>
+                <option value="">Select...</option>
+                {classSessions.map(c => <option key={c._id} value={c._id}>{c.courseId} - Room {c.room} ({c.status})</option>)}
+              </select>
+              <button className="btn btn-primary w-full mt-4" onClick={startSession} disabled={!selectedClassSessionId}>
+                2. Start Attendance Session
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr 350px', gap: 24 }}>
+          
+          {/* Column 1: Control Panel */}
+          <div className="card" style={{ padding: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>State Machine Controls</h3>
+            <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 20 }}>
+              Current State: <StatusBadge status={activeSession.status} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button className="btn btn-outline" disabled={activeSession.status !== 'READY' && activeSession.status !== 'CHECK_IN_CLOSED'} onClick={() => changeStatus('LIVE')}>
+                Make Session LIVE
+              </button>
+              <button className="btn btn-outline" disabled={activeSession.status !== 'LIVE' && activeSession.status !== 'CHECK_IN_CLOSED'} onClick={() => changeStatus('CHECK_IN_OPEN')}>
+                Open Check-In (JOIN OTP)
+              </button>
+              <button className="btn btn-outline" disabled={activeSession.status !== 'CHECK_IN_OPEN'} onClick={() => changeStatus('CHECK_IN_CLOSED')}>
+                Close Check-In
+              </button>
+              <button className="btn btn-outline" disabled={activeSession.status !== 'CHECK_IN_CLOSED' && activeSession.status !== 'LIVE'} onClick={() => changeStatus('ENDING')}>
+                Open Check-Out (END OTP)
+              </button>
+              <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={activeSession.status === 'COMPLETED'} onClick={() => changeStatus('COMPLETED')}>
+                Complete & Lock Session
+              </button>
+            </div>
+          </div>
+
+          {/* Column 2: Active Display */}
+          <div className="card" style={{ padding: 40, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ fontSize: 16, color: 'var(--text-1)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>
+              {activeSession.status === 'CHECK_IN_OPEN' ? 'JOIN CLASS NOW' : activeSession.status === 'ENDING' ? 'CHECK-OUT NOW' : 'WAITING FOR PROFESSOR'}
+            </div>
+            
+            {(activeSession.status === 'CHECK_IN_OPEN' || activeSession.status === 'ENDING') ? (
+              <>
+                <div style={{ position: 'relative', width: 280, height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '32px 0' }}>
+                  {/* 25-Second Countdown Ring */}
+                  <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                    <circle cx="140" cy="140" r="130" fill="none" stroke="var(--border)" strokeWidth="16" />
+                    <circle 
+                      cx="140" cy="140" r="130" fill="none" 
+                      stroke={purpose === 'END' ? 'var(--warning)' : 'var(--accent)'} strokeWidth="16" 
+                      strokeDasharray={2 * Math.PI * 130} 
+                      strokeDashoffset={2 * Math.PI * 130 * (1 - timeRemaining / 25)} 
+                      style={{ transition: 'stroke-dashoffset 1s linear' }}
+                    />
+                  </svg>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ fontSize: 14, color: 'var(--text-3)', fontWeight: 600, letterSpacing: 2 }}>
+                      {purpose} CODE
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 64, fontWeight: 800, color: 'var(--text-1)', letterSpacing: '0.1em', zIndex: 10, lineHeight: 1 }}>
+                      {currentOtp}
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{ fontSize: 20, color: timeRemaining <= 5 ? 'var(--danger)' : 'var(--text-2)', fontWeight: 600 }}>
+                  Rotates in {timeRemaining}s
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 8 }}>
+                  Strict 25-second bucket. No grace period.
+                </div>
+              </>
+            ) : (
+              <div style={{ opacity: 0.5, padding: 60 }}>
+                 <span style={{ fontSize: 48 }}>⏸️</span>
+                 <p style={{ marginTop: 16, fontSize: 18 }}>OTP Generation Paused</p>
+              </div>
+            )}
+          </div>
+
+          {/* Column 3: Live Submissions */}
           <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-              <span>Live Submissions</span>
-              <span className="badge badge-primary">{submissions.length} Students</span>
+              <span>Live Registry</span>
+              <span className="badge badge-primary">{submissions.length} Joined</span>
             </h3>
             
-            <div style={{ flex: 1, overflowY: 'auto', maxHeight: 400, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ flex: 1, overflowY: 'auto', maxHeight: 500, display: 'flex', flexDirection: 'column', gap: 12 }}>
               {submissions.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: 40 }}>
-                  Waiting for students to check in...
+                  Waiting for students...
                 </div>
               ) : submissions.map((sub, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, background: 'var(--surface-2)', borderRadius: 8 }}>
                   <div>
                     <div style={{ fontWeight: 600 }}>{sub.studentName}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                      {new Date(sub.submittedAt).toLocaleTimeString()}
+                    <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
+                      In: {new Date(sub.checkInAt).toLocaleTimeString()}
+                      {sub.checkOutAt && ` | Out: ${new Date(sub.checkOutAt).toLocaleTimeString()}`}
                     </div>
                   </div>
-                  {sub.flaggedSuspicious && (
-                    <span className="badge badge-danger">Suspicious Device</span>
-                  )}
-                  {!sub.flaggedSuspicious && (
-                    <span className="badge badge-success">✓ Verified</span>
+                  {sub.suspicious ? (
+                    <span className="badge badge-danger">Suspicious</span>
+                  ) : sub.checkOutAt ? (
+                     <span className="badge badge-success">Completed</span>
+                  ) : (
+                    <span className="badge badge-warning">Active</span>
                   )}
                 </div>
               ))}

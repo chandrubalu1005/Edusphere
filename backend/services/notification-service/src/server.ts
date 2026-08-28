@@ -159,7 +159,7 @@ app.get('/notifications', authMiddleware, async (req, res) => {
       .find(filter)
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit), 1000));
     const total = await Notification.countDocuments(filter);
     const unread = await Notification.countDocuments({ userId, read: false });
     res.json({ notifications: notifs, total, unread, page: Number(page), limit: Number(limit) });
@@ -356,7 +356,7 @@ app.get('/notifications/announcements', authMiddleware, async (req, res) => {
     const announcements = await Announcement.find(filter)
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit), 1000));
     const total = await Announcement.countDocuments({ targetRoles: user.role });
     res.json({ announcements, total, page: Number(page) });
   } catch (err) {
@@ -441,8 +441,7 @@ async function consumeEvents() {
         ch.nack(msg, false, false); // dead letter
       }
     });
-
-    // ── Relay custom domain events to Socket.IO ──────────────────────────────
+    // ── Relay custom domain events to Socket.IO ──────────────────────────────
     const RELAY_QUEUE = 'socket_relay_events';
     await ch.assertQueue(RELAY_QUEUE, { durable: true, exclusive: false });
     await ch.assertExchange('domain_events', 'topic', { durable: true });
@@ -451,7 +450,8 @@ async function consumeEvents() {
     await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'leave.requested');
     await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'leave.statusChanged');
     await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'assessment.graded');
-    await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'submission.received');
+    await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'submission.submitted');
+    await ch.bindQueue(RELAY_QUEUE, 'domain_events', 'assignment.published');
 
     ch.consume(RELAY_QUEUE, async (msg) => {
       if (!msg) return;
@@ -460,24 +460,25 @@ async function consumeEvents() {
         const eventData = JSON.parse(msg.content.toString());
 
         if (routingKey === 'leave.requested') {
-          // Emit to faculty owner room
           if (eventData.facultyOwnerId) {
             io.to(`user:${eventData.facultyOwnerId}`).emit('leave.newRequest', eventData);
           }
         } else if (routingKey === 'leave.statusChanged') {
-          // Emit to requester
           if (eventData.requesterId) {
             io.to(`user:${eventData.requesterId}`).emit('leave.statusChanged', eventData);
           }
         } else if (routingKey === 'assessment.graded') {
-          // Emit to student
           if (eventData.studentId) {
             io.to(`user:${eventData.studentId}`).emit('grade.updated', eventData);
           }
-        } else if (routingKey === 'submission.received') {
-          // Emit to course faculty
-          if (eventData.facultyOwnerId) {
-            io.to(`user:${eventData.facultyOwnerId}`).emit('submission.received', eventData);
+        } else if (routingKey === 'submission.submitted') {
+          if (eventData.courseId) {
+            // Emitting to course room if possible, or broad broadcast
+            io.emit('submission.submitted', eventData);
+          }
+        } else if (routingKey === 'assignment.published') {
+          if (eventData.courseId) {
+            io.emit('assignment.published', eventData);
           }
         }
         ch.ack(msg);
@@ -486,7 +487,6 @@ async function consumeEvents() {
         ch.nack(msg, false, false);
       }
     });
-
   } catch (err) {
     logger.error('RabbitMQ consumer failed, retrying in 10s…', err);
     setTimeout(consumeEvents, 10_000);
@@ -550,4 +550,5 @@ bootstrap().catch(err => {
 
 process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
 process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
+
 

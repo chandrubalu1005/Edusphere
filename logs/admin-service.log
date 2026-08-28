@@ -1,6 +1,0 @@
-
-> admin-service@1.0.0 start
-> node server.js
-
-Connected to MongoDB successfully
-Admin Service listening on port 3015

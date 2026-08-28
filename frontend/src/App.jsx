@@ -36,13 +36,14 @@ function AppContent() {
       }}>
         <div style={{
           width: 52, height: 52,
-          background: 'linear-gradient(135deg, var(--accent), #A0722A)',
+          background: 'var(--brand)',
           borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700,
-          color: 'var(--primary)',
+          fontFamily: 'var(--font-body)', fontSize: 26, fontWeight: 800,
+          color: '#FFFFFF',
+          boxShadow: '0 8px 24px rgba(196,61,61,0.25)',
           animation: 'pulse 1.2s ease-in-out infinite',
-        }}>E</div>
-        <div style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>Loading EduSphere…</div>
+        }}>C</div>
+        <div style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>Loading CampusSphere…</div>
       </div>
     );
   }

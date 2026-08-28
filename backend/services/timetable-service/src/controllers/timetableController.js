@@ -1,4 +1,5 @@
 const Timetable = require('../models/Timetable');
+const TimeSlot = require('../models/TimeSlot');
 
 function checkOverlap(t1Start, t1End, t2Start, t2End) {
   // Assuming HH:MM format
@@ -39,6 +40,22 @@ exports.createSlot = async (req, res) => {
     }
     
     const slot = new Timetable(req.body);
+    await slot.save();
+    res.status(201).json(slot);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+exports.getTimeSlots = async (req, res) => {
+  try {
+    const slots = await TimeSlot.find({ institutionId: 'default_institution' }).sort({ displayOrder: 1 });
+    res.json(slots);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+exports.createTimeSlot = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admins only' });
+    const slot = new TimeSlot(req.body);
     await slot.save();
     res.status(201).json(slot);
   } catch (error) { res.status(500).json({ error: error.message }); }

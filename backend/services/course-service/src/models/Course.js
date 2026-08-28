@@ -27,6 +27,6 @@ const CourseSchema = new mongoose.Schema({
   prerequisites: [{ type: String }], // Array of course codes
   enrolledStudents: [{ type: String }],
   createdAt: { type: Date, default: Date.now }
-});
+}, { strict: false });
 
 module.exports = mongoose.model('Course', CourseSchema);

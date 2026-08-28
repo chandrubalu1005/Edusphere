@@ -14,6 +14,88 @@ export const useUsers = (role) => {
   });
 };
 
+// ── Academic Core (Enterprise) ───────────────────────────────────────────
+export const useAcademicProgrammes = () => {
+  return useQuery({
+    queryKey: ['academic', 'programmes'],
+    queryFn: async () => {
+      const res = await api.get('/academic/programmes');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useAcademicCurricula = () => {
+  return useQuery({
+    queryKey: ['academic', 'curricula'],
+    queryFn: async () => {
+      const res = await api.get('/academic/curricula');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useAcademicCourseMaster = () => {
+  return useQuery({
+    queryKey: ['academic', 'courses'],
+    queryFn: async () => {
+      const res = await api.get('/academic/courses');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useAcademicOfferings = () => {
+  return useQuery({
+    queryKey: ['academic', 'offerings'],
+    queryFn: async () => {
+      const res = await api.get('/academic/offerings');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useAcademicSections = () => {
+  return useQuery({
+    queryKey: ['academic', 'sections'],
+    queryFn: async () => {
+      const res = await api.get('/academic/sections');
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useRegisterEnrollment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/academic/enrollments', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Registration submitted successfully');
+      queryClient.invalidateQueries(['academic', 'sections']);
+    },
+  });
+};
+
+export const useProfile = (userId) => {
+  return useQuery({
+    queryKey: ['profile', userId],
+    queryFn: async () => {
+      const res = await api.get(`/users/${userId}`);
+      return res.data;
+    },
+    enabled: !!userId,
+    retry: 1,
+  });
+};
+
 export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -476,6 +558,104 @@ export const useReturnBook = () => {
       queryClient.invalidateQueries(['libraryBooks']);
       queryClient.invalidateQueries(['libraryIssues']);
     },
+  });
+};
+
+// ── Enterprise Library Circulation Hooks ─────────────────────────────────
+export const useLibraryLoans = (memberId, status) => {
+  return useQuery({
+    queryKey: ['libraryLoans', memberId, status],
+    queryFn: async () => {
+      const params = {};
+      if (memberId) params.memberId = memberId;
+      if (status) params.status = status;
+      const res = await api.get(`/library/circulation/loans`, { params });
+      return res.data;
+    },
+    enabled: true,
+  });
+};
+
+export const useIssueLoan = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ memberId, copyId }) => {
+      const res = await api.post('/library/circulation/issue', { memberId, copyId });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Book issued successfully!');
+      queryClient.invalidateQueries(['libraryLoans']);
+      queryClient.invalidateQueries(['libraryBooks']);
+    },
+  });
+};
+
+export const useReturnLoan = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ loanId, conditionAtReturn }) => {
+      const res = await api.patch(`/library/circulation/loans/${loanId}/return`, { conditionAtReturn });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Book returned successfully!');
+      queryClient.invalidateQueries(['libraryLoans']);
+      queryClient.invalidateQueries(['libraryBooks']);
+    },
+  });
+};
+
+export const useRenewLoan = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (loanId) => {
+      const res = await api.patch(`/library/circulation/loans/${loanId}/renew`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Loan renewed successfully!');
+      queryClient.invalidateQueries(['libraryLoans']);
+    },
+  });
+};
+
+export const useSearchCatalog = (query, filters = {}) => {
+  return useQuery({
+    queryKey: ['libraryCatalog', query, filters],
+    queryFn: async () => {
+      const params = { q: query, ...filters };
+      const res = await api.get('/library/catalog/search', { params });
+      return res.data;
+    },
+    enabled: true,
+  });
+};
+
+export const useDigitalResources = (titleId) => {
+  return useQuery({
+    queryKey: ['digitalResources', titleId],
+    queryFn: async () => {
+      const params = {};
+      if (titleId) params.titleId = titleId;
+      const res = await api.get('/library/digital-resources', { params });
+      return res.data;
+    },
+    enabled: true,
+  });
+};
+
+export const useAccessResource = () => {
+  return useMutation({
+    mutationFn: async ({ resourceId, memberId, action }) => {
+      const res = await api.post(`/library/digital-resources/${resourceId}/access`, { memberId, action });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      if (data.data?.url) {
+        window.open(data.data.url, '_blank');
+      }
+    }
   });
 };
 

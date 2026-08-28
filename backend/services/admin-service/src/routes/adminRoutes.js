@@ -45,11 +45,20 @@ router.patch('/semesters/:id',            authMiddleware, requireAdmin, adminCon
 router.patch('/semesters/:id/activate',   authMiddleware, requireAdmin, adminController.activateSemester);
 router.post('/semesters/:id/close',       authMiddleware, requireAdmin, adminController.closeSemester);
 
+function requireUserManagement(req, res, next) {
+  const allowedRoles = ['faculty', 'admin', 'management', 'super_admin'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'User management access required' });
+  }
+  next();
+}
+
 // ── Users ──────────────────────────────────────────────────────────────────
-router.get('/users',             authMiddleware, requireAdmin, adminController.getUsers);
-router.post('/users',            authMiddleware, requireAdmin, adminController.createUser);
-router.patch('/users/bulk',      authMiddleware, requireAdmin, adminController.bulkUpdateUsers);
-router.post('/users/bulk/csv',   authMiddleware, requireAdmin, upload.single('file'), adminController.bulkCreateUsersCsv);
+router.get('/users',             authMiddleware, requireUserManagement, adminController.getUsers);
+router.post('/users',            authMiddleware, requireUserManagement, adminController.createUser);
+router.patch('/users/bulk',      authMiddleware, requireUserManagement, adminController.bulkUpdateUsers);
+router.post('/users/bulk/csv',   authMiddleware, requireUserManagement, upload.single('file'), adminController.bulkCreateUsersCsv);
+router.post('/users/:id/password-reset', authMiddleware, requireUserManagement, adminController.resetUserPassword);
 
 // ── Help Desk / Support Tickets ────────────────────────────────────────────
 // Students create their own; admins read all + respond

@@ -6,8 +6,8 @@ export const DOMAIN_CONFIG = {
     label: 'Student',
     description: 'Access your courses, assignments, grades and more.',
     icon: GraduationCap,
-    accent: '#8B5CF6',
-    bg: '#F3F0FF',
+    accent: 'var(--brand, #C43D3D)',
+    bg: 'var(--brand-subtle, #FDF3F3)',
     identifierLabel: 'Email or Student ID'
   },
   faculty: {
@@ -15,8 +15,8 @@ export const DOMAIN_CONFIG = {
     label: 'Faculty',
     description: 'Manage classes, students, assessments and academic activities.',
     icon: Presentation,
-    accent: '#3B82F6',
-    bg: '#EFF6FF',
+    accent: 'var(--brand, #C43D3D)',
+    bg: 'var(--brand-subtle, #FDF3F3)',
     identifierLabel: 'Institutional Email or Faculty ID'
   },
   admin: {
@@ -24,8 +24,8 @@ export const DOMAIN_CONFIG = {
     label: 'Admin',
     description: 'Manage system operations, users, and platform settings.',
     icon: Shield,
-    accent: '#10B981',
-    bg: '#ECFDF5',
+    accent: 'var(--brand, #C43D3D)',
+    bg: 'var(--brand-subtle, #FDF3F3)',
     identifierLabel: 'Admin Email or Admin ID'
   },
   management: {
@@ -33,8 +33,8 @@ export const DOMAIN_CONFIG = {
     label: 'Management',
     description: 'Executive dashboards, reports, analytics and insights.',
     icon: Building,
-    accent: '#F59E0B',
-    bg: '#FFFBEB',
+    accent: 'var(--brand, #C43D3D)',
+    bg: 'var(--brand-subtle, #FDF3F3)',
     identifierLabel: 'Institutional Email or Management ID'
   }
 };

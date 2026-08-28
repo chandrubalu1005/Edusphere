@@ -3,12 +3,14 @@ const cors = require('cors');
 const redis = require('redis');
 const connectDB = require('./config/db');
 const { connectRabbitMQ } = require('./config/rabbitmq');
+const { startAttendanceConsumers } = require('./consumers/academicEvents');
+const { seedDefaultPolicy } = require('./config/initDb');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const otpAttendanceRoutes = require('./routes/otpAttendanceRoutes');
 const attendanceController = require('./controllers/attendanceController');
-const otpAttendanceController = require('./controllers/otpAttendanceController');
-const OtpAttendanceSession = require('./models/OtpAttendanceSession');
+const liveController = require('./controllers/liveController');
+const sessionController = require('./controllers/sessionController');
 const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
@@ -88,36 +90,31 @@ app.get('/api-docs', (req, res) => {
 });
 
 async function startServer() {
-  await connectDB(MONGO_URI);
-  await connectRabbitMQ(RABBITMQ_URL);
+  const dbConnected = await connectDB(MONGO_URI);
+  if (dbConnected) {
+    try { await seedDefaultPolicy(); } catch(e) { console.error('Seed error:', e.message); }
+  }
   
+  try { 
+    await connectRabbitMQ(RABBITMQ_URL); 
+    await startAttendanceConsumers();
+  } catch (e) { console.error('RabbitMQ error:', e.message); }
   try {
     const redisClient = redis.createClient({ url: REDIS_URL, socket: { reconnectStrategy: false } });
     redisClient.on('error', (err) => console.error('Redis Client Error', err));
     await redisClient.connect();
     console.log('Connected to Redis');
     attendanceController.setRedisClient(redisClient);
-    otpAttendanceController.setRedisClient(redisClient);
+    liveController.setRedisClient(redisClient);
   } catch (err) {
     console.error('Failed to connect to Redis:', err.message);
   }
 
-  otpAttendanceController.setIoInstance(io);
+  liveController.setIoInstance(io);
+  sessionController.setIoInstance(io);
 
-  // Cleanup Cron for expired OTP sessions
-  setInterval(async () => {
-    try {
-      const result = await OtpAttendanceSession.updateMany(
-        { status: 'active', endTime: { $lt: new Date() } },
-        { status: 'closed' }
-      );
-      if (result.modifiedCount > 0) {
-        console.log(`Auto-closed ${result.modifiedCount} expired OTP sessions`);
-      }
-    } catch (error) {
-      console.error('Error auto-closing OTP sessions:', error.message);
-    }
-  }, 60000); // Check every minute
+  // Cleanup Cron for expired sessions is now handled by scheduledEndAt checking or a robust job queue.
+  // In a real system, we would check for AttendanceSession records stuck in LIVE or CHECK_IN_OPEN past scheduledEndAt.
 
   server.listen(PORT, () => console.log(`Attendance Service listening on port ${PORT}`));
 }

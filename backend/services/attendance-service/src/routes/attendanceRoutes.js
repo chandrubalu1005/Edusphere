@@ -15,4 +15,11 @@ router.get('/weekly-summary',                 authMiddleware, attendanceControll
 router.post('/sessions',                      authMiddleware, attendanceController.createQRSession);
 router.post('/sessions/:sessionId/scan',      authMiddleware, attendanceController.scanQRSession);
 
+// Class Sessions
+router.post('/class-sessions/resolve',        authMiddleware, attendanceController.resolveTodaysClasses);
+router.get('/class-sessions',                 authMiddleware, attendanceController.getClassSessions);
+
+// Manual Operations
+router.post('/sessions/:sessionId/manual-add', authMiddleware, attendanceController.manualAddParticipant);
+
 module.exports = router;

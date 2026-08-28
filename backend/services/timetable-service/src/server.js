@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const { connectRabbitMQ } = require('./config/rabbitmq');
+const { startAcademicEventConsumers } = require('./consumers/academicEvents');
 const timetableRoutes = require('./routes/timetableRoutes');
 require('dotenv').config();
 
@@ -15,6 +17,13 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_
 
 async function startServer() {
   await connectDB(MONGO_URI);
+  try {
+    const amqpUrl = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
+    await connectRabbitMQ(amqpUrl);
+    await startAcademicEventConsumers();
+  } catch (err) {
+    console.error('Failed to start Timetable RabbitMQ:', err.message);
+  }
   app.listen(PORT, () => console.log('timetable-service running on port ' + PORT));
 }
 

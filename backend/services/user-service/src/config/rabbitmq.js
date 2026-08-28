@@ -24,7 +24,8 @@ async function connectRabbitMQ(url) {
             const profile = new Profile({
               userId: content.userId,
               username: content.username,
-              email: content.email
+              email: content.email,
+              role: content.role || 'student'
             });
             await profile.save();
             console.log(`Initialized profile for: ${content.username}`);

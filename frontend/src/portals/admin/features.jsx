@@ -13,31 +13,36 @@ import {
   EmptyState, Modal, CommandPalette, WorkflowTimeline, ApprovalCard
 } from '../../components/shared/index.jsx';
 import {
-  TIMETABLE as MOCK_TIMETABLE, CALENDAR_EVENTS as MOCK_CALENDAR_EVENTS,
-  DISCUSSIONS as MOCK_DISCUSSIONS, DISCUSSION_REPLIES as MOCK_DISCUSSION_REPLIES,
-  TRANSCRIPTS as MOCK_TRANSCRIPTS, FEE_RECORDS as MOCK_FEE_RECORDS,
-  DOWNLOADS as MOCK_DOWNLOADS, ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
-  LIBRARY_RESOURCES as MOCK_LIBRARY_RESOURCES, PLACEMENT_DRIVES as MOCK_PLACEMENT_DRIVES,
-  ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS, NOTIFICATIONS as MOCK_NOTIFICATIONS,
-  ENROLLMENTS as MOCK_ENROLLMENTS, ATTENDANCE_RECORDS as MOCK_ATTENDANCE_RECORDS,
-  COURSES as MOCK_COURSES, ASSIGNMENTS as MOCK_ASSIGNMENTS,
-  USERS as MOCK_USERS, BACKUP_RECORDS as MOCK_BACKUP_RECORDS,
-  SYSTEM_HEALTH as MOCK_SYSTEM_HEALTH, API_LOGS as MOCK_API_LOGS,
-  AUDIT_LOGS as MOCK_AUDIT_LOGS, ROLES as MOCK_ROLES,
-  SUPPORT_TICKETS as MOCK_SUPPORT_TICKETS, EMAIL_TEMPLATES as MOCK_EMAIL_TEMPLATES,
-  SYSTEM_SETTINGS as MOCK_SYSTEM_SETTINGS, APPROVAL_QUEUE as MOCK_APPROVAL_QUEUE,
-  FILE_RECORDS as MOCK_FILE_RECORDS
+  Calendar, CheckSquare, Settings, Database, Activity, ShieldCheck, HelpCircle, 
+  LayoutDashboard, Server, Download, Shield, HeartPulse, Ticket, Building, 
+  Users, BookOpen, ClipboardCheck, MessageSquare, Briefcase, FileText, Archive
+} from 'lucide-react';
+import {
+  TIMETABLE, CALENDAR_EVENTS,
+  DISCUSSIONS, DISCUSSION_REPLIES,
+  TRANSCRIPTS, FEE_RECORDS,
+  DOWNLOADS, ACTIVITY_LOG,
+  LIBRARY_RESOURCES, PLACEMENT_DRIVES,
+  ANNOUNCEMENTS, NOTIFICATIONS,
+  ENROLLMENTS, ATTENDANCE_RECORDS,
+  COURSES, ASSIGNMENTS,
+  USERS, BACKUP_RECORDS,
+  SYSTEM_HEALTH, API_LOGS,
+  AUDIT_LOGS, ROLES,
+  SUPPORT_TICKETS, EMAIL_TEMPLATES,
+  SYSTEM_SETTINGS, APPROVAL_QUEUE,
+  FILE_RECORDS
 } from '../../mockData.js';
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
   useLivePlacementDrives, useLiveAuditLogs, useLiveCourses
 } from '../../api/liveData.js';
 
-// ── MOCK_TIMETABLE MANAGEMENT ────────────────────────────────────────────────────
+// ── TIMETABLE MANAGEMENT ────────────────────────────────────────────────────
 export function TimetableMgmt({ user }) {
-  const { data: MOCK_TIMETABLE } = useLiveTimetable();
+  const { data: TIMETABLE } = useLiveTimetable();
   const { data: COURSES } = useLiveCourses();
-  const [slots, setSlots] = useState(MOCK_TIMETABLE || MOCK_TIMETABLE);
+  const [slots, setSlots] = useState(TIMETABLE || TIMETABLE);
   
   const [modalOpen, setModalOpen] = useState(false);
   const [day, setDay] = useState('Monday');
@@ -47,8 +52,8 @@ export function TimetableMgmt({ user }) {
   const [type, setType] = useState('lecture');
 
   useEffect(() => {
-    if (MOCK_TIMETABLE) setSlots(MOCK_TIMETABLE);
-  }, [MOCK_TIMETABLE]);
+    if (TIMETABLE) setSlots(TIMETABLE);
+  }, [TIMETABLE]);
 
   function handleAdd(e) {
     e.preventDefault();
@@ -195,10 +200,10 @@ export function SystemHealth({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Overall Status" value={healthData?.overall === 'healthy' ? 'Operational' : 'Degraded'} icon="💚" />
-        <StatCard label="Active Services" value={`${activeCount} / ${services.length}`} icon="⚙️" />
-        <StatCard label="Active DB Conns" value={healthData?.database?.connections || 0} icon="💾" />
-        <StatCard label="Database Ops" value={`${healthData?.database?.opsPerSec || 0} ops/s`} icon="📈" />
+        <StatCard label="Overall Status" value={healthData?.overall === 'healthy' ? 'Operational' : 'Degraded'} icon={<HeartPulse size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Active Services" value={`${activeCount} / ${services.length}`} icon={<Settings size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Active DB Conns" value={healthData?.database?.connections || 0} icon={<Database size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Database Ops" value={`${healthData?.database?.opsPerSec || 0} ops/s`} icon={<Activity size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
@@ -324,8 +329,8 @@ export function AuditLogsCenter({ user }) {
         breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Audit Logs' }]}
       />
       <Tabs tabs={[
-        { id: 'audit', label: 'Audit Trail', icon: '📝' },
-        { id: 'api', label: 'API Requests', icon: '💻' }
+        { id: 'audit', label: 'Audit Trail', icon: <FileText size={16} /> },
+        { id: 'api', label: 'API Requests', icon: <Server size={16} /> }
       ]} active={tab} onChange={setTab} />
 
       <div style={{ marginTop: 16 }}>
@@ -350,7 +355,7 @@ export function AuditLogsCenter({ user }) {
               { key: 'duration', label: 'Latency', width: 80 },
               { key: 'ip', label: 'IP Address', width: 120 }
             ]}
-            data={MOCK_API_LOGS}
+            data={API_LOGS}
           />
         )}
       </div>
@@ -377,7 +382,7 @@ export function LibraryManagement({ user }) {
           { key: 'copies', label: 'Total Copies', width: 90 },
           { key: 'available', label: 'Available', width: 90 }
         ]}
-        data={MOCK_LIBRARY_RESOURCES}
+        data={LIBRARY_RESOURCES}
       />
     </div>
   );
@@ -395,7 +400,7 @@ export function PlacementManagement({ user }) {
 
       <DataTable
         columns={[
-          { key: 'company', label: 'Company Name', render: (v, row) => <span>{row.logo} <strong>{v}</strong></span> },
+          { key: 'company', label: 'Company Name', render: (v, row) => <span><Briefcase size={14} style={{ marginRight: 6 }} /> <strong>{v}</strong></span> },
           { key: 'role', label: 'Designated Role' },
           { key: 'package', label: 'Annual Package', width: 100 },
           { key: 'date', label: 'Drive Date', width: 100 },
@@ -404,7 +409,7 @@ export function PlacementManagement({ user }) {
           { key: 'selected', label: 'Selected', width: 80 },
           { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> }
         ]}
-        data={MOCK_PLACEMENT_DRIVES}
+        data={PLACEMENT_DRIVES}
       />
     </div>
   );
@@ -481,7 +486,7 @@ export function FileManager({ user }) {
 
       <DataTable
         columns={[
-          { key: 'name', label: 'File Name', render: (v, row) => <strong>{row.type.toUpperCase() === 'ZIP' ? '📦' : '📄'} {v}</strong> },
+          { key: 'name', label: 'File Name', render: (v, row) => <strong>{row.type.toUpperCase() === 'ZIP' ? <Archive size={14} style={{ marginRight: 4 }} /> : <FileText size={14} style={{ marginRight: 4 }} />} {v}</strong> },
           { key: 'path', label: 'Catalog Path' },
           { key: 'size', label: 'Size', width: 90 },
           { key: 'uploadedBy', label: 'Uploader' },
@@ -493,3 +498,5 @@ export function FileManager({ user }) {
     </div>
   );
 }
+
+

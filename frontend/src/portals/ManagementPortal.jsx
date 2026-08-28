@@ -1,15 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import {
   COURSES, DEPARTMENTS, USERS, MONTHLY_ENROLLMENT, DEPT_PERFORMANCE, AUDIT_LOGS
 } from '../mockData.js';
 import {
-  useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs
+  useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs, useLiveProfile
 } from '../api/liveData.js';
-import { useSystemHealth } from '../api/hooks.js';
+import { useSystemHealth, useUpdateProfile } from '../api/hooks.js';
 import * as F from './management/features.jsx';
-
+import toast from 'react-hot-toast';
+import ProfilePage from '../components/profile/ProfilePage.jsx';
+import UserManagement from '../components/users/UserManagement.jsx';
+import { profileThemes } from '../components/profile/profileTheme.js';
+import AcademicManagement from './management/AcademicManagement.jsx';
+import CurriculumBuilder from './management/CurriculumBuilder.jsx';
+import CourseCatalog from './management/CourseCatalog.jsx';
+import { Building2, Landmark, Target, Users, LayoutDashboard, Settings, UsersRound, BookOpen, Hourglass, BarChart2, Trophy } from 'lucide-react';
 
 function PageHeader({ title, subtitle, children }) {
   return (
@@ -21,6 +28,14 @@ function PageHeader({ title, subtitle, children }) {
       {children && <div className="page-actions">{children}</div>}
     </div>
   );
+}
+
+// Greeting helper
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 // ── EXECUTIVE DASHBOARD (Boardroom Mode) ────────────────────────────────────
@@ -36,52 +51,32 @@ function ExecutiveDashboard({ user, onNavigate }) {
 
   return (
     <div>
-      {/* Boardroom Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, var(--primary) 0%, #0A1628 100%)',
-        borderRadius: 20,
-        padding: '40px 40px 32px',
-        marginBottom: 28,
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: 'radial-gradient(circle, rgba(201,138,59,0.15) 0%, transparent 70%)', borderRadius: '50%' }}></div>
-        <div style={{ position: 'absolute', bottom: -40, left: 100, width: 150, height: 150, background: 'radial-gradient(circle, rgba(76,124,89,0.1) 0%, transparent 70%)', borderRadius: '50%' }}></div>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 2.5, color: 'rgba(255,255,255,0.45)', fontWeight: 700, marginBottom: 8 }}>
-            Executive Management Portal
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 300, color: 'white', letterSpacing: -0.5, marginBottom: 4 }}>
-            Welcome, <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{user.firstName} {user.lastName}</span>
-          </h1>
-          <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            &nbsp;·&nbsp; Academic Year 2025-26
-          </p>
-        </div>
-      </div>
+      {/* Clean Executive Dashboard Header */}
+      <PageHeader
+        title={`${getGreeting()}, ${user.firstName} ${user.lastName}`}
+        subtitle={`${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} · Academic Year 2025-26`}
+      >
+        <span className="badge badge-neutral" style={{ fontSize: 11 }}>Executive Portal</span>
+      </PageHeader>
 
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Active Students', value: totalStudents.toLocaleString(), icon: '👨‍🎓' },
-          { label: 'Total Faculty', value: totalFaculty.toLocaleString(), icon: '👨‍🏫' },
-          { label: 'Course Catalog', value: publishedCourses.toLocaleString(), icon: '📚' },
-          { label: 'Pending Approvals', value: pendingApprovals.toLocaleString(), icon: '⏳', color: 'var(--warning)' },
+          { label: 'Active Students', value: totalStudents.toLocaleString(), icon: <Users size={24} color="var(--brand)" strokeWidth={1.5} /> },
+          { label: 'Total Faculty', value: totalFaculty.toLocaleString(), icon: <UsersRound size={24} color="var(--brand)" strokeWidth={1.5} /> },
+          { label: 'Course Catalog', value: publishedCourses.toLocaleString(), icon: <BookOpen size={24} color="var(--brand)" strokeWidth={1.5} /> },
+          { label: 'Pending Approvals', value: pendingApprovals.toLocaleString(), icon: <Hourglass size={24} color="var(--warning)" strokeWidth={1.5} />, color: 'var(--warning)' },
         ].map(kpi => (
           <div key={kpi.label} className="card" style={{ overflow: 'visible' }}>
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--text-2)' }}>{kpi.label}</div>
-                <div style={{ fontSize: 22 }}>{kpi.icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--text-3)' }}>{kpi.label}</div>
+                <div>{kpi.icon}</div>
               </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700, color: kpi.color || 'var(--text-1)', lineHeight: 1 }}>
                 {kpi.value}
               </div>
-              <div style={{
-                marginTop: 8, fontSize: 12, fontWeight: 600,
-                color: kpi.good === true ? 'var(--secondary)' : kpi.good === false ? 'var(--danger)' : 'var(--text-2)',
-              }}>
+              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: kpi.good === true ? 'var(--success)' : kpi.good === false ? 'var(--danger)' : 'var(--text-2)' }}>
                 {kpi.delta}
               </div>
             </div>
@@ -111,8 +106,8 @@ function ExecutiveDashboard({ user, onNavigate }) {
                         style={{
                           width: '100%', height: `${h}px`,
                           background: i === MONTHLY_ENROLLMENT.length - 1
-                            ? 'linear-gradient(180deg, var(--accent) 0%, rgba(201,138,59,0.3) 100%)'
-                            : 'linear-gradient(180deg, rgba(30,42,74,0.7) 0%, rgba(30,42,74,0.2) 100%)',
+                            ? 'linear-gradient(180deg, var(--accent) 0%, var(--accent-light) 100%)'
+                            : 'linear-gradient(180deg, var(--surface-2) 0%, transparent 100%)',
                           borderRadius: '4px 4px 0 0',
                           position: 'relative',
                           cursor: 'pointer',
@@ -144,8 +139,8 @@ function ExecutiveDashboard({ user, onNavigate }) {
             <div className="card-header"><div className="card-title">Pending Actions</div></div>
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {pendingApprovals > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 8, cursor: 'pointer' }} onClick={() => onNavigate('courses')}>
-                  <span style={{ fontSize: 18 }}>📚</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--warning-soft)', border: '1px solid var(--warning)', borderRadius: 8, cursor: 'pointer' }} onClick={() => onNavigate('courses')}>
+                  <span style={{ fontSize: 18 }}><BookOpen size={18} color="var(--warning)" /></span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{pendingApprovals} Course Approvals</div>
                     <div style={{ fontSize: 12, color: 'var(--text-2)' }}>Awaiting your review</div>
@@ -154,8 +149,8 @@ function ExecutiveDashboard({ user, onNavigate }) {
                 </div>
               )}
               {[
-                { icon: '📊', label: 'Q2 Report Ready', sub: 'Download quarterly report', action: 'analytics' },
-                { icon: '🏆', label: 'Placements Updated', sub: '47 new placements this month', action: 'placement' },
+                { icon: <BarChart2 size={18} />, label: 'Q2 Report Ready', sub: 'Download quarterly report', action: 'analytics' },
+                { icon: <Trophy size={18} />, label: 'Placements Updated', sub: '47 new placements this month', action: 'placement' },
               ].map(i => (
                 <div
                   key={i.label}
@@ -212,7 +207,7 @@ function AnalyticsReports() {
       </PageHeader>
 
       {/* Top-level KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 32 }}>
         {[
           { label: 'Gross Enrollment Ratio', value: '92.4%', delta: '↑ 4.2%' },
           { label: 'Completion Rate', value: '87.8%', delta: '↑ 1.1%' },
@@ -221,10 +216,12 @@ function AnalyticsReports() {
           { label: 'Placement Rate', value: '94.1%', delta: '↑ 6% YoY' },
           { label: 'CGPA Average', value: '7.8/10', delta: 'Stable' },
         ].map(kpi => (
-          <div className="stat-card" key={kpi.label}>
-            <div className="stat-label">{kpi.label}</div>
-            <div className="stat-value sm">{kpi.value}</div>
-            <div className="stat-trend trend-up" style={{ fontSize: 12 }}>{kpi.delta}</div>
+          <div className="card" key={kpi.label} style={{ padding: '24px 32px' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--text-2)', marginBottom: 12 }}>{kpi.label}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 42, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>{kpi.value}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--secondary)' }}>{kpi.delta}</div>
+            </div>
           </div>
         ))}
       </div>
@@ -328,7 +325,7 @@ function AnalyticsReports() {
                 <div style={{
                   width: '100%',
                   height: `${(c.count / 120) * 80}px`,
-                  background: 'linear-gradient(180deg, var(--secondary), rgba(76,124,89,0.3))',
+                  background: 'linear-gradient(180deg, var(--secondary), var(--secondary-light))',
                   borderRadius: '3px 3px 0 0', opacity: 0.85,
                 }}></div>
                 <div style={{ fontSize: 9, color: 'var(--text-3)', textAlign: 'center' }}>{c.company}</div>
@@ -426,57 +423,72 @@ function CourseApprovals() {
         <div className="alert alert-success">✓ All pending courses have been reviewed. No new approvals required.</div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {pending.map(c => (
-          <div className="card" key={c.id}>
-            <div className="card-body">
-              <div style={{ display: 'flex', gap: 20, justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <span className="badge badge-warning">Pending Approval</span>
-                    <span className="badge badge-neutral">{c.dept_code}</span>
-                    <span className="badge badge-neutral">{c.credits} Credits</span>
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{c.code}: {c.title}</div>
-                  <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 12, lineHeight: 1.6 }}>{c.description}</p>
-                  <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                    Proposed by: <strong style={{ color: 'var(--text-1)' }}>{c.facultyName}</strong> · Capacity: {c.capacity} students
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => setRejected(prev => [...prev, c.id])}
-                  >
-                    ✗ Reject
-                  </button>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setApproved(prev => [...prev, c.id])}
-                  >
-                    ✓ Approve
-                  </button>
-                </div>
-              </div>
+      {pending.length > 0 && (
+        <div className="card">
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Course Code & Title</th>
+                  <th>Department / Credits</th>
+                  <th>Proposed By</th>
+                  <th>Capacity</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pending.map(c => (
+                  <tr key={c.id}>
+                    <td>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{c.code}: {c.title}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-2)', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.description}</div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <span className="badge badge-neutral">{c.dept_code}</span>
+                        <span className="badge badge-neutral">{c.credits} Credits</span>
+                      </div>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{c.facultyName}</td>
+                    <td>{c.capacity} students</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => setRejected(prev => [...prev, c.id])}>Reject</button>
+                        <button className="btn btn-primary btn-sm" onClick={() => setApproved(prev => [...prev, c.id])}>Approve</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Processed */}
+      {(approved.length > 0 || rejected.length > 0) && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-2)', marginBottom: 12 }}>Processed in this session</div>
+          <div className="card">
+            <div className="table-wrapper">
+              <table>
+                <tbody>
+                  {COURSES.filter(c => approved.includes(c.id) || rejected.includes(c.id)).map(c => (
+                    <tr key={c.id}>
+                      <td style={{ fontWeight: 600 }}>{c.code}: {c.title}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <span className={`badge ${approved.includes(c.id) ? 'badge-success' : 'badge-danger'}`}>
+                          {approved.includes(c.id) ? '✓ Approved' : '✗ Rejected'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        ))}
-
-        {/* Processed */}
-        {(approved.length > 0 || rejected.length > 0) && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-2)', marginBottom: 8, marginTop: 4 }}>Processed in this session</div>
-            {COURSES.filter(c => approved.includes(c.id) || rejected.includes(c.id)).map(c => (
-              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8 }}>
-                <div style={{ fontWeight: 600 }}>{c.code}: {c.title}</div>
-                <span className={`badge ${approved.includes(c.id) ? 'badge-success' : 'badge-danger'}`}>
-                  {approved.includes(c.id) ? '✓ Approved' : '✗ Rejected'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -529,17 +541,79 @@ function ComplianceLogs() {
   );
 }
 
+// ── MANAGEMENT PROFILE ───────────────────────────────────────────────────────
+function ManagementProfile({ user }) {
+  const { data: profile, isLoading } = useLiveProfile(user.id || user._id);
+  const { data: departments } = useLiveDepartments();
+  const updateProfile = useUpdateProfile();
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading profile...</div>;
+
+  const displayFirstName = profile?.firstName || user.firstName || 'Management';
+  const displayLastName = profile?.lastName || user.lastName || 'Executive';
+  const fullName = `${displayFirstName} ${displayLastName}`.trim();
+
+  const formattedProfile = {
+    userId: user.id || user._id,
+    name: fullName,
+    firstName: profile?.firstName,
+    lastName: profile?.lastName,
+    designation: 'Dean Academic',
+    department: 'N/A', // Update this if department exists in user data
+    id: (user.id || user._id).toUpperCase(),
+    idLabel: 'Management ID',
+    status: 'Active Executive',
+    avatar: 'N/A',
+    email: user.email,
+    phone: profile?.phone,
+    dob: profile?.dob,
+    gender: profile?.gender,
+    address: profile?.address,
+    bio: profile?.bio,
+    professionalTitle: 'Professional Information',
+    professional: [
+      ['Department', 'N/A'],
+      ['Designation', 'N/A'],
+      ['Experience', 'N/A'],
+      ['Date of Joining', 'N/A']
+    ],
+    statsTitle: 'Responsibilities Overview',
+    stats: [
+      { icon: Building2, label: 'Departments', value: departments?.length || 0, helper: 'Under purview' },
+      { icon: Landmark, label: 'Institutes', value: 'N/A', helper: 'Total count' },
+      { icon: Target, label: 'KPIs Managed', value: 'N/A', helper: 'Performance metrics' },
+      { icon: Users, label: 'Direct Reports', value: 'N/A', helper: 'Heads & Deans' }
+    ],
+    activities: [],
+    metadata: [
+      { icon: LayoutDashboard, label: 'Designation', value: 'Dean Academic' },
+      { icon: Users, label: 'Department', value: 'N/A' }
+    ]
+  };
+
+  return (
+    <ProfilePage
+      profile={formattedProfile}
+      accent={profileThemes.management}
+      updateProfileHook={updateProfile}
+    >
+    </ProfilePage>
+  );
+}
+
 // ── MANAGEMENT PORTAL ROUTER ─────────────────────────────────────────────
 export default function ManagementPortal({ page, onNavigate }) {
   const { user } = useAuth();
 
   const pages = {
     dashboard:   <ExecutiveDashboard user={user} onNavigate={onNavigate} />,
+    users:       <UserManagement />,
     analytics:   <AnalyticsReports />,
     departments: <ManagementDepartments />,
     courses:     <CourseApprovals />,
     audit:       <ComplianceLogs />,
     placement:   <F.PlacementAnalytics user={user} />,
+    profile:     <ManagementProfile user={user} />,
     notifications: <div style={{ padding: 20 }}><h1 className="page-title">Notifications</h1></div>,
     // New Enterprise Pages
     kpis:         <F.InstitutionalKPIs user={user} />,
@@ -554,7 +628,12 @@ export default function ManagementPortal({ page, onNavigate }) {
     'ai-insights': <F.AIInsights user={user} />,
     predictive:   <F.PredictiveAnalytics user={user} />,
     'executive-reports': <F.ExecutiveReports user={user} />,
+    // Academic Core Enterprise Overhaul
+    'academic-core':  <AcademicManagement />,
+    curriculum:       <CurriculumBuilder />,
+    catalog:          <CourseCatalog />
   };
 
   return pages[page] || pages.dashboard;
 }
+

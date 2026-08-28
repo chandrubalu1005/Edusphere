@@ -2,7 +2,15 @@
 // EduSphere Enterprise — Student Portal Feature Modules
 // New enterprise features split into separate file for maintainability
 // ══════════════════════════════════════════════════════════════════════════════
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useLiveLibraryLoans } from '../../api/liveData';
+import { useReturnLoan, useIssueLoan, useSearchCatalog } from '../../api/hooks';
+import { 
+  BookOpen, Calendar as CalendarIcon, Clock, CreditCard, 
+  FileText, GraduationCap, Users, Video, AlertCircle, CheckCircle, 
+  MapPin, Phone, Mail, Award, Briefcase, Building, Book, Download,
+  MessageSquare, Pin, CheckCircle2, TrendingUp, HelpCircle
+} from 'lucide-react';
 import { Icon, ICONS } from '../../components/Layout.jsx';
 import {
   PageHeader, StatCard, DataTable, StatusBadge, Tabs, FilterBar,
@@ -11,14 +19,14 @@ import {
   EmptyState, Modal, CommandPalette, WorkflowTimeline
 } from '../../components/shared/index.jsx';
 import {
-  FEE_RECORDS as MOCK_FEE_RECORDS,
-  ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
+  FEE_RECORDS,
+  ACTIVITY_LOG,
 } from '../../mockData.js';
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
   useLivePlacementDrives, useLivePlacementApplications, useLiveNotifications,
   useLiveDiscussionThreads, useLiveThreadDetails,
-  useLiveLeaveRecords, useLiveLeaveBalance, useLiveCourses
+  useLiveLeaveRecords, useLiveLeaveBalance, useLiveCourses, useLiveEnrollments
 } from '../../api/liveData.js';
 import {
   useCreateReply, useApplyForLeave, useWithdrawLeave,
@@ -46,11 +54,11 @@ export function StudentTimetable({ user }) {
 
       {/* Today's Summary */}
       <div className="card" style={{ padding: 20, marginBottom: 20 }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 12, color: 'var(--text-1)' }}>
-          📅 Today — {todayName}
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginBottom: 12, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CalendarIcon size={18} color="var(--brand, #C43D3D)" /> Today — {todayName}
         </h3>
         {todaySlots.length === 0 ? (
-          <p style={{ color: 'var(--text-3)', fontSize: 14 }}>🎉 No classes scheduled today!</p>
+          <p style={{ color: 'var(--text-3)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}><Star size={16} /> No classes scheduled today!</p>
         ) : (
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {todaySlots.map(slot => (
@@ -61,7 +69,7 @@ export function StudentTimetable({ user }) {
               }}>
                 <div style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: 13 }}>{slot.courseCode}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{slot.time}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>📍 {slot.room} • {slot.type}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={10} /> {slot.room} • {slot.type}</div>
               </div>
             ))}
           </div>
@@ -128,7 +136,7 @@ export function AcademicCalendar({ user }) {
           </div>
 
           {(selectedDate ? selectedEvents : filteredEvents).length === 0 ? (
-            <EmptyState icon="📅" message="No events found" description={selectedDate ? 'No events on this date.' : 'No events match your filter.'} compact />
+            <EmptyState icon={<CalendarIcon size={32} color="var(--text-3)" />} message="No events found" description={selectedDate ? 'No events on this date.' : 'No events match your filter.'} compact />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(selectedDate ? selectedEvents : filteredEvents).map(ev => (
@@ -179,10 +187,10 @@ export function LearningProgress({ user }) {
 
       {/* Summary Stats */}
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <StatCard label="CGPA" value={user.gpa || '8.74'} trend="↑ 0.4 from last sem" trendType="up" icon="🎓" />
-        <StatCard label="Courses Completed" value="8" trend="3 active" trendType="neutral" icon="📚" />
-        <StatCard label="Study Hours / Week" value="6.2h" trend="↑ 12% from last week" trendType="up" icon="⏱️" />
-        <StatCard label="Skills Mastered" value="4 / 6" trend="2 in progress" trendType="neutral" icon="🎯" />
+        <StatCard label="CGPA" value={user.gpa || '8.74'} trend="↑ 0.4 from last sem" trendType="up" icon={<GraduationCap size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Courses Completed" value="8" trend="3 active" trendType="neutral" icon={<BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Study Hours / Week" value="6.2h" trend="↑ 12% from last week" trendType="up" icon={<Clock size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Skills Mastered" value="4 / 6" trend="2 in progress" trendType="neutral" icon={<Star size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       {/* Activity Heatmap & Peer Comparison */}
@@ -233,7 +241,7 @@ export function LearningProgress({ user }) {
         {/* Peer Comparison */}
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>🏆 Class Peer Standing: Top 8%</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 6 }}><Star size={16} color="var(--brand, #C43D3D)" /> Class Peer Standing: Top 8%</div>
             <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>You are performing better than 92% of students in your department cohort.</div>
           </div>
           <span className="badge badge-accent" style={{ fontSize: 13, padding: '6px 12px' }}>92nd Percentile</span>
@@ -312,9 +320,9 @@ export function CommunicationHub({ user }) {
   const displayAnnouncements = announcements.filter(a => a.targetRoles?.includes('student') || a.targetRoles?.length === 0);
 
   const tabs = [
-    { id: 'forum', label: 'Discussion Forum', icon: '💬', badge: threads.length },
-    { id: 'announcements', label: 'Announcements', icon: '📢', badge: displayAnnouncements.length },
-    { id: 'queries', label: 'My Queries', icon: '❓' },
+    { id: 'forum', label: 'Discussion Forum', icon: <MessageSquare size={16} />, badge: threads.length },
+    { id: 'announcements', label: 'Announcements', icon: <Megaphone size={16} />, badge: displayAnnouncements.length },
+    { id: 'queries', label: 'My Queries', icon: <HelpCircle size={16} /> },
   ];
 
   const filteredDiscussions = courseFilter === 'all'
@@ -357,8 +365,8 @@ export function CommunicationHub({ user }) {
             <div className="card" style={{ padding: 20 }}>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                  {selectedThread.pinned && <span className="badge badge-accent">📌 Pinned</span>}
-                  {selectedThread.resolved && <span className="badge badge-success">✓ Resolved</span>}
+                  {selectedThread.pinned && <span className="badge badge-accent"><Pin size={10} style={{ marginRight: 4 }} /> Pinned</span>}
+                  {selectedThread.resolved && <span className="badge badge-success"><CheckCircle2 size={10} style={{ marginRight: 4 }} /> Resolved</span>}
                   <span className="badge badge-neutral">{selectedThread.courseCode || selectedThread.courseId}</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>{selectedThread.title}</h3>
@@ -371,10 +379,10 @@ export function CommunicationHub({ user }) {
                 <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 12 }}>{replies.length} Replies</h4>
                 {replies.map(rep => (
                   <div key={rep.id || rep._id} style={{ padding: '12px 16px', background: rep.isAnswer ? 'rgba(76,124,89,0.06)' : 'var(--surface-2)', borderRadius: 'var(--r-md)', marginBottom: 8, borderLeft: rep.isAnswer ? '3px solid var(--secondary)' : 'none' }}>
-                    {rep.isAnswer && <span className="badge badge-success" style={{ marginBottom: 6 }}>✓ Best Answer</span>}
+                    {rep.isAnswer && <span className="badge badge-success" style={{ marginBottom: 6 }}><CheckCircle2 size={10} style={{ marginRight: 4 }} /> Best Answer</span>}
                     <p style={{ fontSize: 13, color: 'var(--text-1)', lineHeight: 1.5 }}>{rep.content}</p>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
-                      {rep.authorRole === 'faculty' ? '👩‍🏫' : '👤'} {rep.authorName || rep.author} • {new Date(rep.createdAt || rep.timestamp).toLocaleString()}
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {rep.authorRole === 'faculty' ? <Users size={12} /> : <Users size={12} />} {rep.authorName || rep.author} • {new Date(rep.createdAt || rep.timestamp).toLocaleString()}
                     </div>
                   </div>
                 ))}
@@ -391,16 +399,16 @@ export function CommunicationHub({ user }) {
               {filteredDiscussions.map(disc => (
                 <div key={disc.id || disc._id} className={`discussion-card ${disc.pinned ? 'pinned' : ''}`} onClick={() => setSelectedThread(disc)}>
                   <div className="discussion-header">
-                    {disc.pinned && <span style={{ fontSize: 14 }}>📌</span>}
+                    {disc.pinned && <span style={{ fontSize: 14 }}><Pin size={14} color="var(--brand, #C43D3D)" /></span>}
                     <span className="discussion-title">{disc.title}</span>
                     <span className="badge badge-neutral">{disc.courseCode || disc.courseId}</span>
-                    {disc.resolved && <span className="badge badge-success">Resolved</span>}
+                    {disc.resolved && <span className="badge badge-success"><CheckCircle2 size={10} style={{ marginRight: 4 }} /> Resolved</span>}
                   </div>
                   <div className="discussion-body">{disc.content}</div>
                   <div className="discussion-footer">
-                    <span className="discussion-stat">{disc.authorRole === 'faculty' ? '👩‍🏫' : '👤'} {disc.authorName || disc.author}</span>
+                    <span className="discussion-stat" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{disc.authorRole === 'faculty' ? <Users size={12} /> : <Users size={12} />} {disc.authorName || disc.author}</span>
                     <span className="discussion-stat">▲ {disc.upvotes || 0}</span>
-                    <span className="discussion-stat">💬 {disc.replies || 0} replies</span>
+                    <span className="discussion-stat" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MessageSquare size={12} /> {disc.replies || 0} replies</span>
                     <span className="discussion-stat" style={{ marginLeft: 'auto' }}>{new Date(disc.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -430,7 +438,7 @@ export function CommunicationHub({ user }) {
 
       {activeTab === 'queries' && (
         <div style={{ marginTop: 16 }}>
-          <EmptyState icon="❓" message="No active queries" description="Post a query in the Discussion Forum to get help from faculty and peers." />
+          <EmptyState icon={<HelpCircle size={32} color="var(--text-3)" />} message="No active queries" description="Post a query in the Discussion Forum to get help from faculty and peers." />
         </div>
       )}
     </div>
@@ -455,10 +463,10 @@ export function TranscriptGrades({ user }) {
 
       {/* GPA Summary */}
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <StatCard label="CGPA" value={cgpa.toFixed(2)} trend="Cumulative" icon="🎓" />
-        <StatCard label="Latest SGPA" value={transcripts[transcripts.length - 1]?.sgpa || '—'} trend={transcripts[transcripts.length - 1]?.semester} icon="📊" />
-        <StatCard label="Credits Earned" value={transcripts.reduce((sum, t) => sum + t.courses.reduce((s, c) => s + c.credits, 0), 0)} trend="Total accumulated" icon="📚" />
-        <StatCard label="Current Semester" value={transcripts[transcripts.length - 1]?.semester || 'S4'} trend="In Progress" icon="📅" />
+        <StatCard label="CGPA" value={cgpa.toFixed(2)} trend="Cumulative" icon={<GraduationCap size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Latest SGPA" value={transcripts[transcripts.length - 1]?.sgpa || '—'} trend={transcripts[transcripts.length - 1]?.semester} icon={<TrendingUp size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Credits Earned" value={transcripts.reduce((sum, t) => sum + t.courses.reduce((s, c) => s + c.credits, 0), 0)} trend="Total accumulated" icon={<BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Current Semester" value={transcripts[transcripts.length - 1]?.semester || 'S4'} trend="In Progress" icon={<CalendarIcon size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       {/* Semester-wise Grades */}
@@ -498,7 +506,7 @@ export function TranscriptGrades({ user }) {
 
 // ── FEE & PAYMENT ───────────────────────────────────────────────────────────
 export function FeePayment({ user }) {
-  const [fees, setFees] = useState(() => MOCK_FEE_RECORDS.filter(f => f.studentId === user.id));
+  const [fees, setFees] = useState(() => FEE_RECORDS.filter(f => f.studentId === user.id));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFee, setSelectedFee] = useState(null);
   const [cardNumber, setCardNumber] = useState('');
@@ -543,9 +551,9 @@ export function FeePayment({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Total Paid" value={`₹${(totalPaid / 1000).toFixed(0)}K`} trend="All semesters" trendType="up" icon="💰" />
-        <StatCard label="Outstanding" value={totalDue > 0 ? `₹${(totalDue / 1000).toFixed(0)}K` : '₹0'} trend={totalDue > 0 ? 'Payment pending' : 'No dues'} trendType={totalDue > 0 ? 'down' : 'up'} icon="📋" />
-        <StatCard label="Scholarships" value="₹25K" trend="Merit scholarship applied" trendType="up" icon="🎖️" />
+        <StatCard label="Total Paid" value={`₹${(totalPaid / 1000).toFixed(0)}K`} trend="All semesters" trendType="up" icon={<CheckCircle2 size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Outstanding" value={totalDue > 0 ? `₹${(totalDue / 1000).toFixed(0)}K` : '₹0'} trend={totalDue > 0 ? 'Payment pending' : 'No dues'} trendType={totalDue > 0 ? 'down' : 'up'} icon={<AlertCircle size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Scholarships" value="₹25K" trend="Merit scholarship applied" trendType="up" icon={<Star size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <DataTable
@@ -561,10 +569,10 @@ export function FeePayment({ user }) {
           { key: 'id', label: 'Action', width: 110, render: (_, row) => (
             row.status === 'unpaid' ? (
               <button className="btn btn-accent btn-sm" onClick={() => { setSelectedFee(row); setIsModalOpen(true); }}>
-                💳 Pay Now
+                Pay Now
               </button>
             ) : (
-              <span style={{ color: 'var(--text-3)', fontSize: 12 }}>✓ Paid</span>
+              <span style={{ color: 'var(--text-3)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12} /> Paid</span>
             )
           ), sortable: false }
         ]}
@@ -643,7 +651,7 @@ export function DownloadCenter({ user }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {categories.map(c => (
           <button key={c} className={`btn btn-sm ${category === c ? 'btn-primary' : 'btn-outline'}`} onClick={() => setCategory(c)}>
-            {c === 'all' ? '📁 All' : c}
+            {c === 'all' ? <><Download size={14} style={{ marginRight: 4 }} /> All</> : c}
           </button>
         ))}
       </div>
@@ -659,7 +667,7 @@ export function DownloadCenter({ user }) {
           { key: 'type', label: 'Type', width: 70, render: v => <span className="badge badge-neutral">{v}</span> },
           { key: 'courseTitle', label: 'Course' },
           { key: 'addedAt', label: 'Date', width: 100, render: v => v ? new Date(v).toLocaleDateString() : 'N/A' },
-          { key: 'url', label: 'Action', width: 100, render: (v) => <a href={v} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">⬇ View</a>, sortable: false },
+          { key: 'url', label: 'Action', width: 100, render: (v) => <a href={v} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm"><Download size={14} style={{ marginRight: 4 }} /> View</a>, sortable: false },
         ]}
         data={filtered}
         exportable
@@ -681,7 +689,7 @@ export function ActivityTimeline({ user }) {
         <Timeline
           items={(auditLogs || []).map(a => ({
             id: a._id || a.id,
-            icon: a.icon || '📝',
+            icon: a.icon || <Activity size={14} />,
             title: a.details || a.description || a.action,
             timestamp: a.createdAt || a.timestamp,
           }))}
@@ -704,13 +712,13 @@ export function AIAssistant({ user }) {
 
   return (
     <div>
-      <PageHeader title="AI Learning Assistant" subtitle="Powered by EduSphere AI — Get instant academic insights"
+      <PageHeader title="AI Learning Assistant" subtitle="Powered by CampusSphere AI — Get instant academic insights"
         breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'AI Assistant' }]}
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
         <AIChatInterface
-          title="EduSphere AI Assistant"
+          title="CampusSphere AI Assistant"
           placeholder="Ask about grades, attendance, deadlines, recommendations..."
           suggestions={suggestions}
           messages={[
@@ -760,7 +768,7 @@ export function AIAssistant({ user }) {
 
 // ── STUDENT NOTIFICATIONS (FULL PAGE) ───────────────────────────────────────
 export function StudentNotifications({ user }) {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS.filter(n => n.userId === user.id));
+  const [notifications, setNotifications] = useState(NOTIFICATIONS.filter(n => n.userId === user.id));
 
   function markRead(id) {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -774,9 +782,29 @@ export function StudentNotifications({ user }) {
 }
 
 // ── DIGITAL LIBRARY (Student View) ──────────────────────────────────────────
+
 export function StudentLibrary({ user }) {
-  const { data: LIBRARY_RESOURCES } = useLiveLibraryBooks();
   const [tab, setTab] = useState('browse');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFilters, setSearchFilters] = useState({});
+  const { data: searchResults, isLoading: searchLoading } = useSearchCatalog(searchQuery, searchFilters);
+  const { data: LOANS, isLoading: loansLoading } = useLiveLibraryLoans(user.id, 'ACTIVE');
+  const { data: digitalResources, isLoading: digitalLoading } = useDigitalResources();
+  const returnMutation = useReturnLoan();
+  const issueMutation = useIssueLoan();
+  const accessMutation = useAccessResource();
+
+  const handleReturn = (loanId) => {
+    returnMutation.mutate({ loanId, conditionAtReturn: 'GOOD' });
+  };
+
+  const handleRequest = (bookId) => {
+    toast.success('Book requested. Please collect from the circulation desk.');
+  };
+
+  const handleAccess = (resourceId, action = 'VIEW') => {
+    accessMutation.mutate({ resourceId, memberId: user.id, action });
+  };
 
   return (
     <div>
@@ -784,72 +812,147 @@ export function StudentLibrary({ user }) {
         breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Digital Library' }]}
       />
       <Tabs tabs={[
-        { id: 'browse', label: 'Browse Catalog', icon: '📚' },
-        { id: 'issued', label: 'My Issued Books', icon: '📖' },
-        { id: 'digital', label: 'E-Resources', icon: '💻' },
+        { id: 'browse', label: 'Browse Catalog', icon: <BookOpen size={16} /> },
+        { id: 'issued', label: 'My Issued Books', icon: <Book size={16} /> },
+        { id: 'digital', label: 'E-Resources', icon: <FileText size={16} /> },
       ]} active={tab} onChange={setTab} />
 
       {tab === 'browse' && (
         <div style={{ marginTop: 16 }}>
-          <DataTable
-            columns={[
-              { key: 'title', label: 'Title', render: (v, row) => (
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{v}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{row.author}</div>
-                </div>
-              )},
-              { key: 'category', label: 'Category', render: v => <span className="badge badge-neutral">{v}</span> },
-              { key: 'department', label: 'Dept', width: 70 },
-              { key: 'type', label: 'Type', render: v => <span className="badge badge-info">{v}</span> },
-              { key: 'available', label: 'Available', render: (v, row) => `${v}/${row.copies}` },
-              { key: 'id', label: 'Action', width: 120, render: (_, row) => (
-                <button className="btn btn-outline btn-sm" disabled={row.available === 0}>
-                  {row.type === 'digital' ? '🔗 Access' : '📚 Request'}
-                </button>
-              ), sortable: false },
-            ]}
-            data={LIBRARY_RESOURCES}
-          />
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="Search by title, author, keyword..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <select 
+              className="select" 
+              value={searchFilters.format || ''} 
+              onChange={(e) => setSearchFilters({...searchFilters, format: e.target.value || undefined})}
+            >
+              <option value="">All Formats</option>
+              <option value="PRINT">Physical Books</option>
+              <option value="EBOOK">E-Books</option>
+              <option value="JOURNAL">Journals</option>
+            </select>
+            <select 
+              className="select" 
+              value={searchFilters.available || ''} 
+              onChange={(e) => setSearchFilters({...searchFilters, available: e.target.value || undefined})}
+            >
+              <option value="">Availability</option>
+              <option value="true">Available Now</option>
+            </select>
+          </div>
+          
+          {searchLoading ? (
+             <div style={{ padding: 20 }}>Searching catalog...</div>
+          ) : (
+            <DataTable
+              columns={[
+                { key: 'title', label: 'Title', render: (v, row) => (
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{v}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{row.authors?.map(a => a.name).join(', ')}</div>
+                  </div>
+                )},
+                { key: 'format', label: 'Format', render: v => <span className="badge badge-neutral">{v}</span> },
+                { key: 'availableCopies', label: 'Available', render: (v, row) => row.format === 'PRINT' ? `${v} copies` : 'Unlimited' },
+                { key: '_id', label: 'Action', width: 120, render: (_, row) => (
+                  <button 
+                    className="btn btn-outline btn-sm" 
+                    disabled={row.format === 'PRINT' && row.availableCopies === 0}
+                    onClick={() => row.digitalAvailable ? setTab('digital') : handleRequest(row._id)}
+                  >
+                    {row.digitalAvailable ? <><FileText size={14} style={{ marginRight: 4 }} /> Access</> : <><Book size={14} style={{ marginRight: 4 }} /> Request</>}
+                  </button>
+                ), sortable: false },
+              ]}
+              data={searchResults?.data || []}
+            />
+          )}
         </div>
       )}
 
       {tab === 'issued' && (
-        <div style={{ marginTop: 16 }}>
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ display: 'flex', gap: 16, padding: 16, background: 'var(--surface-2)', borderRadius: 'var(--r-md)' }}>
-              <div style={{ fontSize: 40 }}>📕</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>Introduction to Algorithms (CLRS)</div>
-                <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>Cormen, Leiserson, Rivest, Stein</div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>Issued: June 20, 2026 • Due: July 20, 2026</div>
-                <div style={{ marginTop: 8 }}>
-                  <StatusBadge status="active" map={{ active: { label: 'Currently Issued', cls: 'badge-success' } }} />
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {loansLoading ? (
+             <div style={{ padding: 20 }}>Loading your loans...</div>
+          ) : LOANS.length === 0 ? (
+             <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>
+                <Book size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
+                <div>You currently have no active loans.</div>
+             </div>
+          ) : LOANS.map(loan => (
+            <div key={loan._id} className="card" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', gap: 16, padding: 16, background: 'var(--surface-2)', borderRadius: 'var(--r-md)' }}>
+                <div style={{ padding: 12, background: 'var(--brand-soft, #FDF3F3)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Book size={28} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>{loan.bookCopyId?.bookTitleId?.title || 'Unknown Title'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{loan.bookCopyId?.bookTitleId?.authors?.map(a => a.name).join(', ')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>Issued: {new Date(loan.issuedAt).toLocaleDateString()} • Due: {new Date(loan.dueAt).toLocaleDateString()}</div>
+                  <div style={{ marginTop: 8 }}>
+                    <StatusBadge status={loan.status.toLowerCase()} map={{ active: { label: 'Currently Issued', cls: 'badge-success' }, overdue: { label: 'Overdue', cls: 'badge-error' } }} />
+                  </div>
                 </div>
+                <button 
+                  className="btn btn-outline btn-sm" 
+                  style={{ alignSelf: 'center' }}
+                  onClick={() => handleReturn(loan._id)}
+                  disabled={returnMutation.isLoading}
+                >
+                  {returnMutation.isLoading ? 'Returning...' : 'Return'}
+                </button>
               </div>
-              <button className="btn btn-outline btn-sm" style={{ alignSelf: 'center' }}>Return</button>
             </div>
-          </div>
+          ))}
         </div>
       )}
 
       {tab === 'digital' && (
         <div style={{ marginTop: 16 }}>
-          <DataTable
-            columns={[
-              { key: 'title', label: 'Resource', render: (v, row) => (
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{v}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{row.author}</div>
-                </div>
-              )},
-              { key: 'category', label: 'Type', render: v => <span className="badge badge-info">{v}</span> },
-              { key: 'id', label: 'Action', width: 100, render: () => <button className="btn btn-primary btn-sm">🔗 Access</button>, sortable: false },
-            ]}
-            data={LIBRARY_RESOURCES.filter(r => r.type === 'digital')}
-            searchable
-            paginated={false}
-          />
+          {digitalLoading ? (
+            <div style={{ padding: 20 }}>Loading digital resources...</div>
+          ) : !digitalResources?.data || digitalResources.data.length === 0 ? (
+            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>
+              <FileText size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
+              <div>No digital resources available at the moment.</div>
+            </div>
+          ) : (
+            <DataTable
+              columns={[
+                { key: 'fileName', label: 'Resource', render: (v, row) => (
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{row.bookTitleId?.title || v}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{row.bookTitleId?.authors?.map(a=>a.name).join(', ')} • {(row.fileSize / 1024 / 1024).toFixed(2)} MB</div>
+                  </div>
+                )},
+                { key: 'fileType', label: 'Format', render: v => <span className="badge badge-info">{v}</span> },
+                { key: '_id', label: 'Action', width: 140, render: (_, row) => (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button 
+                      className="btn btn-primary btn-sm" 
+                      onClick={() => handleAccess(row._id, 'VIEW')}
+                      disabled={accessMutation.isLoading}
+                    >
+                      <FileText size={14} style={{ marginRight: 4 }} /> Read
+                    </button>
+                    <button 
+                      className="btn btn-outline btn-sm" 
+                      onClick={() => handleAccess(row._id, 'DOWNLOAD')}
+                      disabled={accessMutation.isLoading}
+                    >
+                      <Download size={14} />
+                    </button>
+                  </div>
+                ), sortable: false },
+              ]}
+              data={digitalResources.data}
+            />
+          )}
         </div>
       )}
     </div>
@@ -868,16 +971,16 @@ export function StudentPlacement({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Upcoming Drives" value={PLACEMENT_DRIVES.filter(d => d.status === 'upcoming').length} icon="🏢" />
-        <StatCard label="Applications" value="2" trend="1 in progress" trendType="neutral" icon="📝" />
-        <StatCard label="Your CGPA" value={user.gpa || '8.74'} trend="Eligible for most drives" trendType="up" icon="🎓" />
-        <StatCard label="Offers Received" value="0" trend="Season in progress" trendType="neutral" icon="🎉" />
+        <StatCard label="Upcoming Drives" value={PLACEMENT_DRIVES.filter(d => d.status === 'upcoming').length} icon={<Building size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Applications" value="2" trend="1 in progress" trendType="neutral" icon={<FileText size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Your CGPA" value={user.gpa || '8.74'} trend="Eligible for most drives" trendType="up" icon={<GraduationCap size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Offers Received" value="0" trend="Season in progress" trendType="neutral" icon={<Briefcase size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <Tabs tabs={[
-        { id: 'drives', label: 'Placement Drives', icon: '🏢' },
-        { id: 'applied', label: 'My Applications', icon: '📋' },
-        { id: 'preparation', label: 'Preparation', icon: '📚' },
+        { id: 'drives', label: 'Placement Drives', icon: <Building size={16} /> },
+        { id: 'applied', label: 'My Applications', icon: <FileText size={16} /> },
+        { id: 'preparation', label: 'Preparation', icon: <BookOpen size={16} /> },
       ]} active={tab} onChange={setTab} />
 
       {tab === 'drives' && (
@@ -891,11 +994,11 @@ export function StudentPlacement({ user }) {
                     <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{drive.company}</h4>
                     <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>{drive.role}</div>
                     <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: 'var(--text-3)' }}>
-                      <span>📅 {drive.date}</span>
-                      <span>💰 {drive.package}</span>
-                      <span>👥 {drive.eligible} eligible</span>
-                      {drive.applied > 0 && <span>✅ {drive.applied} applied</span>}
-                      {drive.selected > 0 && <span>🎉 {drive.selected} selected</span>}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CalendarIcon size={12} /> {drive.date}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Briefcase size={12} /> {drive.package}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={12} /> {drive.eligible} eligible</span>
+                      {drive.applied > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12} /> {drive.applied} applied</span>}
+                      {drive.selected > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} /> {drive.selected} selected</span>}
                     </div>
                   </div>
                 </div>
@@ -914,7 +1017,7 @@ export function StudentPlacement({ user }) {
         <div style={{ marginTop: 16 }}>
           <div className="card" style={{ padding: 20 }}>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <div style={{ fontSize: 28 }}>🟦</div>
+              <div style={{ padding: 12, background: 'var(--brand-soft, #FDF3F3)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>Microsoft — Full Stack Developer</div>
                 <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Applied on July 12, 2026</div>
@@ -936,12 +1039,12 @@ export function StudentPlacement({ user }) {
         <div style={{ marginTop: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {[
-              { title: 'DSA Practice', icon: '🧩', desc: '150 problems solved', progress: 60 },
-              { title: 'System Design', icon: '🏗️', desc: '8 case studies', progress: 35 },
-              { title: 'Mock Interviews', icon: '🎙️', desc: '3 completed', progress: 25 },
-              { title: 'Resume Building', icon: '📄', desc: 'Last updated Jul 10', progress: 90 },
-              { title: 'Aptitude Prep', icon: '🧮', desc: '45 tests taken', progress: 70 },
-              { title: 'Communication', icon: '💬', desc: '2 sessions completed', progress: 40 },
+              { title: 'DSA Practice', icon: <BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, desc: '150 problems solved', progress: 60 },
+              { title: 'System Design', icon: <Building size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, desc: '8 case studies', progress: 35 },
+              { title: 'Mock Interviews', icon: <MessageSquare size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, desc: '3 completed', progress: 25 },
+              { title: 'Resume Building', icon: <FileText size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, desc: 'Last updated Jul 10', progress: 90 },
+              { title: 'Aptitude Prep', icon: <TrendingUp size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, desc: '45 tests taken', progress: 70 },
+              { title: 'Communication', icon: <Users size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, desc: '2 sessions completed', progress: 40 },
             ].map(item => (
               <div key={item.title} className="card" style={{ padding: 16 }}>
                 <div style={{ fontSize: 28, marginBottom: 8 }}>{item.icon}</div>
@@ -963,7 +1066,7 @@ export function StudentPlacement({ user }) {
 export function StudentLeaveManagement({ user }) {
   const { data: leaves } = useLiveLeaveRecords({ role: 'student', userId: user.id });
   const { data: balanceData } = useLiveLeaveBalance(user.id);
-  const { data: ENROLLMENTS } = useLiveCourses();
+  const { data: ENROLLMENTS } = useLiveEnrollments(user.id);
   
   const applyMutation = useApplyForLeave();
   const withdrawMutation = useWithdrawLeave();
@@ -1019,10 +1122,10 @@ export function StudentLeaveManagement({ user }) {
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
         {balanceData.map(b => (
-          <StatCard key={b.type} label={`${b.type} Balance`} value={`${b.remaining} / ${b.total}`} icon="📅" trend={`${b.used} used`} trendType="neutral" />
+          <StatCard key={b.type} label={`${b.type} Balance`} value={`${b.remaining} / ${b.total}`} icon={<CalendarIcon size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} trend={`${b.used} used`} trendType="neutral" />
         ))}
         {balanceData.length === 0 && (
-           <StatCard label="Leave Policy" value="Loading..." icon="📅" />
+           <StatCard label="Leave Policy" value="Loading..." icon={<FileText size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
         )}
       </div>
 
@@ -1121,3 +1224,5 @@ export function StudentLeaveManagement({ user }) {
     </div>
   );
 }
+
+

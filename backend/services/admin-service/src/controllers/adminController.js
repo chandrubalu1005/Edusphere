@@ -84,7 +84,7 @@ exports.getAuditLogs = async (req, res) => {
     const logs = await AuditLog.find(filter)
       .sort({ timestamp: -1 })
       .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit), 1000));
     const total = await AuditLog.countDocuments(filter);
     res.json({ logs, total, page: Number(page), limit: Number(limit) });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -199,6 +199,22 @@ exports.createUser = async (req, res) => {
     res.status(201).json(response.data);
   } catch (error) {
     res.status(error.response?.status || 502).json({ error: error.response?.data?.error || 'Failed to create user' });
+  }
+};
+
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const { id } = req.params;
+    const response = await axios.post(`${AUTH_URL}/users/${id}/password-reset`, {}, {
+      headers: { Authorization: token, 'Content-Type': 'application/json' },
+      timeout: 5000
+    });
+    const log = new AuditLog({ action: 'password_reset', userId: req.user.userId, username: req.user.username, details: `Reset password for user ID: ${id}` });
+    await log.save();
+    res.json(response.data);
+  } catch (error) {
+    res.status(error.response?.status || 502).json({ error: error.response?.data?.error || 'Failed to reset password' });
   }
 };
 
@@ -382,7 +398,7 @@ exports.getTickets = async (req, res) => {
     const tickets = await SupportTicket.find(filter)
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit), 1000));
     const total = await SupportTicket.countDocuments(filter);
     res.json({ tickets, total, page: Number(page) });
   } catch (error) { res.status(500).json({ error: error.message }); }

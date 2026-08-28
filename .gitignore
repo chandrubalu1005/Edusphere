@@ -1,4 +1,26 @@
 node_modules/
 .env
+.env.*
+!.env.*.example
 dist/
 build/
+
+# Runtime logs & PID files
+logs/
+*.log
+*.pids
+.edusphere.pids
+
+# Uploaded files (binary user content)
+uploads/
+backend/services/assignment-service/uploads/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test coverage
+coverage/
+.nyc_output/

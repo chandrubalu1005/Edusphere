@@ -1,7 +1,0 @@
-
-> course-service@1.0.0 start
-> node server.js
-
-course-service: Meilisearch configured
-Connected to MongoDB successfully
-Course Service listening on port 3003

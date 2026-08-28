@@ -3,6 +3,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const { connectRabbitMQ } = require('./config/rabbitmq');
 const courseRoutes = require('./routes/courseRoutes');
+const academicRoutes = require('./routes/academicRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -15,7 +16,8 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
 // Register routes
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'course-service' }));
-app.use('/', courseRoutes);
+app.use('/', courseRoutes); // Legacy routes
+app.use('/academic', academicRoutes); // Enterprise Academic Core routes
 
 // Swagger API Documentation
 const swaggerDocument = {

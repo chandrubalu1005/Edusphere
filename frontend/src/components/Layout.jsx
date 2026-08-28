@@ -4,48 +4,60 @@ import { useTheme } from '../contexts/ThemeContext.jsx';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../api/hooks.js';
 import CommandPalette from './shared/CommandPalette.jsx';
 
-// ── SVG Icons ───────────────────────────────────────────────────────────────
-const Icon = ({ d, size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    {Array.isArray(d)
-      ? d.map((p, i) => <path key={i} d={p} />)
-      : <path d={d} />}
-  </svg>
-);
+import { 
+  Home, BookOpen, Calendar, Users, BarChart2, Settings, Bell, Search, 
+  LogOut, Clipboard, Award, Zap, Shield, FileText, Mail, Building, 
+  Check, Plus, Edit, Trash2, Eye, Download, Sun, Moon, ChevronRight, 
+  Briefcase, Headphones, Library, Cpu, QrCode, X, Menu 
+} from 'lucide-react';
 
+// ── SVG Icons (Lucide) ───────────────────────────────────────────────────────────────
 const ICONS = {
-  home:        'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z',
-  book:        ['M4 19.5A2.5 2.5 0 016.5 17H20', 'M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z'],
-  calendar:    ['M3 4h18v18H3z', 'M16 2v4M8 2v4M3 10h18'],
-  users:       ['M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2', 'M23 21v-2a4 4 0 00-3-3.87', 'M16 3.13a4 4 0 010 7.75', 'M9 7m-4 0a4 4 0 108 0 4 4 0 10-8 0'],
-  chart:       ['M18 20V10', 'M12 20V4', 'M6 20v-6'],
-  settings:    ['M12 15a3 3 0 100-6 3 3 0 000 6z', 'M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z'],
-  bell:        ['M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9', 'M13.73 21a2 2 0 01-3.46 0'],
-  search:      ['M11 17.25A6.25 6.25 0 1117.25 11 6.26 6.26 0 0111 17.25z', 'M16 16l4.5 4.5'],
-  logout:      ['M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4', 'M16 17l5-5-5-5', 'M21 12H9'],
-  clipboard:   ['M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2', 'M9 2h6a1 1 0 010 2H9a1 1 0 010-2z'],
-  award:       ['M12 15a7 7 0 100-14 7 7 0 000 14z', 'M8.21 13.89L7 23l5-3 5 3-1.21-9.12'],
-  zap:         'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
-  shield:      'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
-  file:        ['M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z', 'M14 2v6h6', 'M16 13H8M16 17H8M10 9H8'],
-  mail:        ['M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z', 'M22 6l-10 7L2 6'],
-  building:    ['M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z', 'M9 22V12h6v10'],
-  check:       'M20 6L9 17l-5-5',
-  plus:        ['M12 5v14', 'M5 12h14'],
-  edit:        ['M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7', 'M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z'],
-  trash:       ['M3 6h18', 'M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6', 'M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2'],
-  eye:         ['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z', 'M12 9a3 3 0 100 6 3 3 0 000-6z'],
-  download:    ['M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3'],
-  sun:         ['M12 1v2', 'M12 21v2', 'M4.22 4.22l1.42 1.42', 'M18.36 18.36l1.42 1.42', 'M1 12h2', 'M21 12h2', 'M4.22 19.78l1.42-1.42', 'M18.36 5.64l1.42-1.42', 'M12 17A5 5 0 1012 7a5 5 0 000 10z'],
-  moon:        'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z',
-  chevron:     'M9 18l6-6-6-6',
-  briefcase:   ['M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z', 'M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'],
-  headphones:  ['M3 18v-6a9 9 0 0118 0v6', 'M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z'],
-  library:     ['M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z', 'M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z'],
-  cpu:         ['M9 3H5a2 2 0 00-2 2v4', 'M15 3h4a2 2 0 012 2v4', 'M9 21H5a2 2 0 01-2-2v-4', 'M15 21h4a2 2 0 002-2v-4', 'M9 9h6v6H9z'],
-  qr:          ['M5 3H3v2h2V3z', 'M3 8V3h5v5H3z', 'M16 3h2v2h-2V3z', 'M16 8V3h5v5h-5z', 'M3 16h2v2H3v-2z', 'M3 16v5h5v-5H3z'],
-  x:           ['M18 6L6 18', 'M6 6l12 12'],
+  home:        Home,
+  book:        BookOpen,
+  calendar:    Calendar,
+  users:       Users,
+  chart:       BarChart2,
+  settings:    Settings,
+  bell:        Bell,
+  search:      Search,
+  logout:      LogOut,
+  clipboard:   Clipboard,
+  award:       Award,
+  zap:         Zap,
+  shield:      Shield,
+  file:        FileText,
+  mail:        Mail,
+  building:    Building,
+  check:       Check,
+  plus:        Plus,
+  edit:        Edit,
+  trash:       Trash2,
+  eye:         Eye,
+  download:    Download,
+  sun:         Sun,
+  moon:        Moon,
+  chevron:     ChevronRight,
+  briefcase:   Briefcase,
+  headphones:  Headphones,
+  library:     Library,
+  cpu:         Cpu,
+  qr:          QrCode,
+  x:           X,
+  menu:        Menu,
+};
+
+const Icon = ({ d, size = 18 }) => {
+  const IconComponent = d || Home;
+  return <IconComponent size={size} />;
+};
+
+// ── Theme swatch colors ──────────────────────────────────────────────────────
+const THEME_SWATCHES = {
+  crimson: '#C43D3D',
+  emerald: '#2D7A5A',
+  cobalt:  '#2A5FA5',
+  plum:    '#7C3A8A',
 };
 
 // ── NAV CONFIG ────────────────────────────────────────────────────────────
@@ -61,6 +73,8 @@ const NAV_CONFIG = {
       { id: 'progress',     label: 'Learning Progress',    icon: 'chart' },
     ]},
     { section: 'Academic', items: [
+      { id: 'plan',         label: 'Degree Plan',          icon: 'check' },
+      { id: 'registration', label: 'Course Registration',  icon: 'plus' },
       { id: 'transcript',   label: 'Grades & Transcript',  icon: 'file' },
       { id: 'certificates', label: 'Certificates',         icon: 'award' },
       { id: 'acad-calendar',label: 'Academic Calendar',     icon: 'calendar' },
@@ -91,6 +105,7 @@ const NAV_CONFIG = {
       { id: 'timetable',    label: 'My Timetable',           icon: 'calendar' },
     ]},
     { section: 'Student Management', items: [
+      { id: 'users',        label: 'User Management',        icon: 'users' },
       { id: 'performance',  label: 'Student Performance',    icon: 'chart' },
       { id: 'grades',       label: 'Grade Submission',       icon: 'edit' },
       { id: 'completion',   label: 'Course Completion',      icon: 'check' },
@@ -119,6 +134,9 @@ const NAV_CONFIG = {
       { id: 'timetable-mgmt',label: 'Timetable Mgmt',       icon: 'calendar' },
     ]},
     { section: 'Enterprise', items: [
+      { id: 'academic-core',label: 'Academic Core',          icon: 'building' },
+      { id: 'curriculum',   label: 'Curriculum Builder',     icon: 'edit' },
+      { id: 'catalog',      label: 'Central Catalog',        icon: 'book' },
       { id: 'cert-approval',label: 'Certificate Approval',   icon: 'award' },
       { id: 'roles',        label: 'Roles & Permissions',    icon: 'shield' },
       { id: 'announcements',label: 'Announcements',          icon: 'bell' },
@@ -137,12 +155,14 @@ const NAV_CONFIG = {
     ]},
     { section: 'Account', items: [
       { id: 'reports',      label: 'Reports Center',          icon: 'chart' },
+      { id: 'profile',      label: 'Profile',                 icon: 'shield' },
       { id: 'notifications',label: 'Notifications',           icon: 'bell' },
     ]},
   ],
   management: [
     { section: 'Executive View', items: [
       { id: 'dashboard',    label: 'Executive Dashboard',     icon: 'home' },
+      { id: 'users',        label: 'User Management',         icon: 'users' },
       { id: 'analytics',    label: 'Analytics & Reports',     icon: 'chart' },
       { id: 'kpis',         label: 'Institutional KPIs',      icon: 'chart' },
       { id: 'departments',  label: 'Dept Comparison',         icon: 'building' },
@@ -154,6 +174,8 @@ const NAV_CONFIG = {
       { id: 'research',     label: 'Research Statistics',     icon: 'file' },
     ]},
     { section: 'Governance', items: [
+      { id: 'academic-core',label: 'Academic Operations',    icon: 'building' },
+      { id: 'curriculum',   label: 'Curriculum Strategy',    icon: 'award' },
       { id: 'approvals',    label: 'Approval Center',         icon: 'check', badge: 4 },
       { id: 'courses',      label: 'Course Approvals',        icon: 'book', badge: 1 },
       { id: 'budget',       label: 'Budget Overview',          icon: 'chart' },
@@ -166,24 +188,40 @@ const NAV_CONFIG = {
       { id: 'predictive',   label: 'Predictive Analytics',    icon: 'zap' },
       { id: 'executive-reports',label: 'Executive Reports',    icon: 'download' },
       { id: 'placement',    label: 'Placement Stats',          icon: 'briefcase' },
+      { id: 'profile',      label: 'Profile',                 icon: 'shield' },
       { id: 'notifications',label: 'Notifications',            icon: 'bell' },
     ]},
   ],
 };
 
 // ── SIDEBAR ───────────────────────────────────────────────────────────────
-function Sidebar({ currentPage, onNavigate, user, onLogout }) {
+function Sidebar({ currentPage, onNavigate, user, onLogout, onClose }) {
   const { theme, setTheme, dark, setDark } = useTheme();
   const navSections = NAV_CONFIG[user?.role] || [];
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo-mark">E</div>
-        <div>
-          <div className="sidebar-brand">EduSphere</div>
-          <div className="sidebar-tagline">Enterprise Platform</div>
+        <div className="sidebar-logo-mark">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+            <path d="M3.27 6.96L12 12.01l8.73-5.05" />
+            <path d="M12 22.08V12" />
+          </svg>
         </div>
+        <div>
+          <div className="sidebar-brand">CampusSphere</div>
+          <div className="sidebar-tagline">Academic Intelligence</div>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--sidebar-fg-muted)', cursor: 'pointer', padding: 4, display: 'flex' }}
+            aria-label="Close sidebar"
+          >
+            <Icon d={ICONS.x} size={16} />
+          </button>
+        )}
       </div>
 
       <nav className="sidebar-nav">
@@ -194,10 +232,12 @@ function Sidebar({ currentPage, onNavigate, user, onLogout }) {
               <div
                 key={item.id}
                 className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
-                onClick={() => onNavigate(item.id)}
+                onClick={() => { onNavigate(item.id); onClose?.(); }}
+                role="button"
+                aria-current={currentPage === item.id ? 'page' : undefined}
               >
                 <span className="nav-icon">
-                  <Icon d={ICONS[item.icon] || ICONS.home} size={17} />
+                  <Icon d={ICONS[item.icon] || ICONS.home} size={16} />
                 </span>
                 {item.label}
                 {item.badge && <span className="nav-badge">{item.badge}</span>}
@@ -208,38 +248,37 @@ function Sidebar({ currentPage, onNavigate, user, onLogout }) {
       </nav>
 
       <div className="sidebar-footer">
+        {/* Theme Swatches */}
         <div className="theme-switcher">
           <label>Theme</label>
           <div className="theme-swatches">
-            {[
-              { id: 'university', label: 'University', color: '#C98A3B' },
-              { id: 'corporate', label: 'Corporate', color: '#0084FF' },
-              { id: 'ocean', label: 'Ocean', color: '#06B6D4' },
-              { id: 'emerald', label: 'Emerald', color: '#10B981' },
-              { id: 'midnight', label: 'Midnight', color: '#6366F1' }
-            ].map(t => (
+            {Object.entries(THEME_SWATCHES).map(([name, color]) => (
               <button
-                key={t.id}
-                className={`theme-swatch ${theme === t.id ? 'active' : ''}`}
-                style={{ backgroundColor: t.color }}
-                onClick={() => setTheme(t.id)}
-                title={t.label}
+                key={name}
+                title={name.charAt(0).toUpperCase() + name.slice(1)}
+                className={`theme-swatch ${theme === name ? 'active' : ''}`}
+                style={{ background: color }}
+                onClick={() => setTheme(name)}
+                aria-label={`${name} theme`}
               />
             ))}
           </div>
         </div>
+
+        {/* Dark Mode Toggle */}
         <div className="dark-toggle">
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Icon d={dark ? ICONS.moon : ICONS.sun} size={14} />
-            {dark ? 'Dark Mode' : 'Light Mode'}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            <Icon d={dark ? ICONS.moon : ICONS.sun} size={13} />
+            {dark ? 'Dark' : 'Light'} Mode
           </span>
-          <label className="toggle-switch">
+          <label className="toggle-switch" aria-label="Toggle dark mode">
             <input type="checkbox" checked={dark} onChange={e => setDark(e.target.checked)} />
             <span className="toggle-track"></span>
           </label>
         </div>
-        <button className="logout-btn" onClick={onLogout}>
-          <Icon d={ICONS.logout} size={15} />
+
+        <button className="logout-btn" onClick={onLogout} aria-label="Sign out">
+          <Icon d={ICONS.logout} size={14} />
           Sign Out
         </button>
       </div>
@@ -248,7 +287,7 @@ function Sidebar({ currentPage, onNavigate, user, onLogout }) {
 }
 
 // ── TOPBAR ────────────────────────────────────────────────────────────────
-function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchClick }) {
+function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchClick, onMenuClick }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
   const { data: notifData } = useNotifications();
@@ -268,48 +307,75 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchC
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const displayName = user ? (user.username || user.email || 'User') : 'User';
-  const initials    = displayName.slice(0, 2).toUpperCase();
-  const rolePill    = { student: '🎓 Student', faculty: '👩‍🏫 Faculty', admin: '⚙️ Admin', management: '📊 Management' };
+  const displayName = user
+    ? (user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || user.email || 'User')
+    : 'User';
+  const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const rolePill = { student: 'Student', faculty: 'Faculty', admin: 'Admin', management: 'Management' };
+
+  let breadcrumb = 'Dashboard';
+  if (currentPageLabel !== 'Dashboard') {
+    const navSections = NAV_CONFIG[user?.role] || [];
+    for (const sec of navSections) {
+      const item = sec.items.find(i => i.label === currentPageLabel);
+      if (item) {
+        breadcrumb = `${sec.section} / ${item.label}`;
+        break;
+      }
+    }
+  }
 
   return (
     <header className="topbar">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Mobile hamburger — shown via CSS at ≤1024px */}
+        <button
+          className="icon-btn mobile-menu-btn"
+          onClick={onMenuClick}
+          aria-label="Open navigation"
+        >
+          <Icon d={ICONS.menu} size={17} />
+        </button>
         <div style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 500 }}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {breadcrumb}
         </div>
       </div>
 
       <div className="topbar-search" onClick={onSearchClick} style={{ cursor: 'pointer' }}>
-        <Icon d={ICONS.search} size={15} />
+        <Icon d={ICONS.search} size={14} />
         <input
           type="text"
           placeholder="Search courses, users, assignments…"
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
           readOnly
+          aria-label="Open search"
         />
         <span style={{ fontSize: 11, color: 'var(--text-3)', padding: '1px 6px', border: '1px solid var(--border)', borderRadius: 4, flexShrink: 0, fontFamily: 'var(--font-mono)' }}>⌘K</span>
       </div>
 
       <div className="topbar-actions">
         <div style={{ position: 'relative' }} ref={notifRef}>
-          <button className="icon-btn" onClick={() => setShowNotifs(!showNotifs)} title="Notifications">
-            <Icon d={ICONS.bell} size={17} />
+          <button
+            className="icon-btn"
+            onClick={() => setShowNotifs(!showNotifs)}
+            aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}
+          >
+            <Icon d={ICONS.bell} size={16} />
             {unread > 0 && <span className="badge">{unread}</span>}
           </button>
 
           {showNotifs && (
-            <div className="notifications-panel">
+            <div className="notifications-panel" role="dialog" aria-label="Notifications">
               <div className="card-header" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>Notifications</div>
-                  <span className="badge badge-accent">{unread} new</span>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>Notifications</div>
+                  {unread > 0 && <span className="badge badge-accent">{unread} new</span>}
                 </div>
                 {unread > 0 && (
                   <button
                     onClick={() => markAllReadMutation.mutate()}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}
                   >
                     Mark all read
                   </button>
@@ -332,8 +398,8 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchC
                 </div>
               ))}
               {(!Array.isArray(notifications) || notifications.length === 0) && (
-                <div style={{ padding: 16, textAlign: 'center', fontSize: 13, color: 'var(--text-3)' }}>
-                  No notifications
+                <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-3)' }}>
+                  No notifications yet
                 </div>
               )}
             </div>
@@ -344,7 +410,7 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchC
           <div className="name">{displayName}</div>
           <div className="role">{rolePill[user?.role] || user?.role}</div>
         </div>
-        <div className="user-avatar" title="Profile">{initials}</div>
+        <div className="user-avatar" title="Profile" aria-label={`${displayName} profile`}>{initials}</div>
       </div>
     </header>
   );
@@ -354,12 +420,16 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchC
 export default function Layout({ children, currentPage, onNavigate, searchQuery, onSearchChange }) {
   const { user, logout } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsSearchOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -371,12 +441,25 @@ export default function Layout({ children, currentPage, onNavigate, searchQuery,
 
   return (
     <div className="app-shell">
-      <Sidebar
-        currentPage={currentPage}
-        onNavigate={onNavigate}
-        user={user}
-        onLogout={logout}
-      />
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <div className={`sidebar-wrapper ${sidebarOpen ? 'open' : ''}`}>
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={onNavigate}
+          user={user}
+          onLogout={logout}
+          onClose={() => setSidebarOpen(false)}
+        />
+      </div>
+
       <div className="main-area">
         <Topbar
           user={user}
@@ -384,9 +467,11 @@ export default function Layout({ children, currentPage, onNavigate, searchQuery,
           searchQuery={searchQuery}
           onSearchChange={onSearchChange}
           onSearchClick={() => setIsSearchOpen(true)}
+          onMenuClick={() => setSidebarOpen(true)}
         />
         <main className="page-body">{children}</main>
       </div>
+
       <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onNavigate={onNavigate} />
     </div>
   );

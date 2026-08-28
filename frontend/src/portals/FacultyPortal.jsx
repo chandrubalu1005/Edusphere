@@ -1,21 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
 import { useUploadCourseContent } from '../api/hooks.js';
 import toast from 'react-hot-toast';
 import {
-  COURSES as MOCK_COURSES, ATTENDANCE_RECORDS as MOCK_ATTENDANCE_RECORDS,
-  ASSESSMENTS as MOCK_ASSESSMENTS, ASSIGNMENTS as MOCK_ASSIGNMENTS,
-  USERS as MOCK_USERS,
-  WEEKLY_ATTENDANCE as MOCK_WEEKLY_ATTENDANCE
+  COURSES, ATTENDANCE_RECORDS,
+  ASSESSMENTS, ASSIGNMENTS,
+  USERS,
+  WEEKLY_ATTENDANCE
 } from '../mockData.js';
 import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
-  useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions
+  useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions, useLiveProfile
 } from '../api/liveData.js';
-import { useGradeSubmission, useBulkGradeAssignment, useCreateCourse, useUpdateCourse, useResolveDispute } from '../api/hooks.js';
+import { useGradeSubmission, useBulkGradeAssignment, useCreateCourse, useUpdateCourse, useResolveDispute, useUpdateProfile } from '../api/hooks.js';
 import * as F from './faculty/features.jsx';
+import ProfilePage from '../components/profile/ProfilePage.jsx';
+import FacultyAssignments from './faculty/assignments/FacultyAssignments.jsx';
+import UserManagement from '../components/users/UserManagement.jsx';
+import { profileThemes } from '../components/profile/profileTheme.js';
+import { BookOpen, Calendar as CalendarIcon, CheckCircle2, GraduationCap, LayoutDashboard, Settings, Trophy, Users, UsersRound, ClipboardCheck } from 'lucide-react';
 
 
 function PageHeader({ title, subtitle, children }) {
@@ -41,7 +46,7 @@ function FacultyDashboard({ user, onNavigate }) {
   const totalAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId || c._id === a.courseId)).length;
   const pendingGrading = SUBMISSIONS.filter(s => s.status !== 'graded').length;
 
-  const dayAtt = MOCK_WEEKLY_ATTENDANCE;
+  const dayAtt = WEEKLY_ATTENDANCE;
 
   return (
     <div>
@@ -51,28 +56,28 @@ function FacultyDashboard({ user, onNavigate }) {
         <div className="stat-card">
           <div className="stat-label">Active Courses</div>
           <div className="stat-value">{myCourses.length}</div>
-          <div className="stat-trend trend-up">📚 This semester</div>
-          <div className="stat-icon">📚</div>
+          <div className="stat-trend trend-up">This semester</div>
+          <div className="stat-icon"><BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total Students</div>
           <div className="stat-value">{totalStudents}</div>
-          <div className="stat-trend trend-up">👥 Across all courses</div>
-          <div className="stat-icon">👥</div>
+          <div className="stat-trend trend-up">Across all courses</div>
+          <div className="stat-icon"><UsersRound size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Assignments Active</div>
           <div className="stat-value">{totalAssignments}</div>
-          <div className="stat-trend trend-neutral">📝 Submissions open</div>
-          <div className="stat-icon">📝</div>
+          <div className="stat-trend trend-neutral">Submissions open</div>
+          <div className="stat-icon"><ClipboardCheck size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Pending Grading</div>
           <div className="stat-value" style={{ color: pendingGrading > 0 ? 'var(--warning)' : 'var(--secondary)' }}>{pendingGrading}</div>
           <div className={`stat-trend ${pendingGrading > 0 ? 'trend-down' : 'trend-up'}`}>
-            {pendingGrading > 0 ? '⚠ Action needed' : '✓ All graded'}
+            {pendingGrading > 0 ? 'Action needed' : 'All graded'}
           </div>
-          <div className="stat-icon">✅</div>
+          <div className="stat-icon"><CheckCircle2 size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
       </div>
 
@@ -308,7 +313,7 @@ function FacultyCourses({ user, onNavigate }) {
 // ── MARK ATTENDANCE ────────────────────────────────────────────────────────
 function FacultyAttendance({ user }) {
   const { data: COURSES } = useLiveCourses();
-  const { data: USERS } = { data: MOCK_USERS };
+  const { data: USERS } = { data: USERS };
 
   const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
   const [selectedCourse, setSelectedCourse] = useState(myCourses[0]?.id || myCourses[0]?._id || '');
@@ -348,28 +353,58 @@ function FacultyAttendance({ user }) {
 
       {qrModal && (
         <div className="modal-overlay" onClick={() => setQrModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 400 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
-              <div className="modal-title">Live QR Attendance Session</div>
+              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 0 2px var(--surface), 0 0 0 4px var(--success-soft)' }}></div>
+                Active Attendance Session
+              </div>
               <button className="btn btn-ghost btn-icon" onClick={() => setQrModal(false)}><Icon d={ICONS.x} size={18} /></button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <div style={{ background: 'white', padding: 16, borderRadius: 12, border: '2px solid var(--border)' }}>
-                <div style={{ width: 180, height: 180, background: '#000', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4, padding: 8 }}>
-                  {Array.from({ length: 36 }).map((_, i) => (
-                    <div key={i} style={{ background: i % 2 === 0 || i % 5 === 0 ? 'white' : 'transparent', borderRadius: 2 }} />
-                  ))}
+            <div className="modal-body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                
+                {/* OTP Section */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--surface-2)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Session PIN</div>
+                  <div style={{ fontSize: 42, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '4px', color: 'var(--text-1)', lineHeight: 1 }}>
+                    742819
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 12 }}>
+                    Instruct students to enter this PIN.
+                  </div>
+                </div>
+
+                {/* QR Section */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--surface-2)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+                  <div style={{ width: 120, height: 120, background: '#fff', padding: 8, borderRadius: 8, boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ width: '100%', height: '100%', background: '#000', borderRadius: 4, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
+                      {Array.from({ length: 25 }).map((_, i) => (
+                        <div key={i} style={{ background: (i * 7) % 3 === 0 ? 'white' : 'transparent', borderRadius: 1 }} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>
-                  {Math.floor(qrTime / 60)}:{String(qrTime % 60).padStart(2, '0')}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>Session Timer</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-mono)', color: qrTime < 60 ? 'var(--danger)' : 'var(--text-1)' }}>
+                    {Math.floor(qrTime / 60)}:{String(qrTime % 60).padStart(2, '0')}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Session expires automatically when timer hits zero</div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>Live Sync</div>
+                  <div className="badge badge-success" style={{ marginTop: 4 }}>
+                    {presentCount} Students Joined
+                  </div>
+                </div>
               </div>
-              <div className="badge badge-success" style={{ padding: '6px 14px', fontSize: 13 }}>
-                ● 4 Students scanned live
-              </div>
+            </div>
+            <div className="modal-footer" style={{ background: 'var(--surface-2)' }}>
+              <button className="btn btn-outline" onClick={() => setQrTime(300)}>+ 5 Minutes</button>
+              <button className="btn btn-danger" onClick={() => setQrModal(false)}>End Session</button>
             </div>
           </div>
         </div>
@@ -461,409 +496,7 @@ function FacultyAttendance({ user }) {
   );
 }
 
-// ── ASSIGNMENTS GRADING ────────────────────────────────────────────────────
-function FacultyAssignments({ user }) {
-  const { data: COURSES } = useLiveCourses();
-  const { data: ASSIGNMENTS } = useLiveAssignments();
-  const { data: STATS } = useLiveAssignmentStats();
-
-  const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
-  const myAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId || c._id === a.courseId));
-  
-  const [selected, setSelected] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [csvFile, setCsvFile] = useState(null);
-  
-  const { data: SUBMISSIONS } = useLiveAssignmentSubmissions(selected?._id || selected?.id);
-  const gradeSubmission = useGradeSubmission();
-  const bulkGrade = useBulkGradeAssignment();
-  const resolveDispute = useResolveDispute();
-  const [resolvingDispute, setResolvingDispute] = useState(null);
-  const [viewingPlagiarism, setViewingPlagiarism] = useState(null);
-  const [gradingRubric, setGradingRubric] = useState(null);
-  const [extendingAssignment, setExtendingAssignment] = useState(null);
-
-  const handleCsvUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const text = ev.target.result;
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      // Expected format: studentId,grade,feedback
-      const grades = lines.slice(1).map(l => {
-        const [studentId, grade, ...fb] = l.split(',');
-        return { studentId, grade: Number(grade), feedback: fb.join(',') };
-      });
-      await bulkGrade.mutateAsync({ assignmentId: selected._id || selected.id, grades });
-      setCsvFile(null);
-    };
-    reader.readAsText(file);
-  };
-
-  const handleSaveGrade = async (sub, grade, feedback) => {
-    await gradeSubmission.mutateAsync({
-      submissionId: sub._id || sub.id,
-      grade: Number(grade),
-      feedback
-    });
-  };
-
-  return (
-    <div>
-      <PageHeader title="Assignments" subtitle="Create and grade student assignments.">
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <Icon d={ICONS.plus} size={15} /> New Assignment
-        </button>
-      </PageHeader>
-
-      {/* Assignment List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {myAssignments.map(a => {
-          const stat = STATS.find(s => s._id === (a._id || a.id)) || { submissionsCount: 0, gradedCount: 0 };
-          const submissionRate = a.studentsCount ? Math.round(stat.submissionsCount / a.studentsCount * 100) : 0;
-          return (
-            <div className="card" key={a.id || a._id}>
-              <div className="card-body">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                      <span className="badge badge-neutral">{a.courseCode}</span>
-                      <span className={`badge ${a.status === 'active' || a.status === 'published' ? 'badge-success' : 'badge-neutral'}`}>{a.status}</span>
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 6 }}>{a.title}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>{a.description}</div>
-                    <div style={{ display: 'flex', gap: 18, fontSize: 12, color: 'var(--text-2)', marginTop: 10 }}>
-                      <span>📅 Due: {new Date(a.dueDate).toLocaleDateString()}</span>
-                      <span>📊 {a.totalMarks} marks</span>
-                      <span>📨 {stat.submissionsCount}/{a.studentsCount} submitted</span>
-                      <span>✅ {stat.gradedCount} graded</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-                    <button className="btn btn-outline btn-sm" onClick={() => setExtendingAssignment(a)}>Extensions</button>
-                    <button className="btn btn-primary btn-sm" onClick={() => setSelected(a)}>Grade Submissions</button>
-                  </div>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <div className="progress-bar">
-                    <div className="progress-fill success" style={{ width: `${submissionRate}%` }}></div>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                    {submissionRate}% submission rate
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Grade Submission Modal */}
-      {selected && (
-        <div className="modal-overlay" onClick={() => setSelected(null)}>
-          <div className="modal modal-xl" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <div className="modal-title">Grade Submissions</div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>{selected.title}</div>
-              </div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setSelected(null)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Upload CSV to bulk grade: <code>studentId,grade,feedback</code></span>
-                <input type="file" accept=".csv" onChange={handleCsvUpload} style={{ fontSize: 13 }} disabled={bulkGrade.isLoading} />
-              </div>
-              <div className="table-wrapper" style={{ border: '1px solid var(--border)' }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Submitted At</th>
-                      <th>Plagiarism</th>
-                      <th>Grade (/{selected.totalMarks})</th>
-                      <th>Feedback</th>
-                      <th>Action</th>
-                      <th>Disputes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {SUBMISSIONS.map(sub => (
-                      <tr key={sub.id || sub._id}>
-                        <td style={{ fontWeight: 600 }}>{sub.studentId}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                          {new Date(sub.submittedAt).toLocaleDateString()} {sub.isLate && <span style={{color: 'red'}}>(Late)</span>}
-                        </td>
-                        <td style={{ cursor: 'pointer' }} onClick={() => setViewingPlagiarism(sub)}>
-                          {sub.plagiarismScore > 20 ? (
-                            <span className="badge badge-danger" title="Click to view report">High ({sub.plagiarismScore}%)</span>
-                          ) : (
-                            <span className="badge badge-success" title="Click to view report">OK ({sub.plagiarismScore || 0}%)</span>
-                          )}
-                        </td>
-                        <td>
-                          <input
-                            className="form-input"
-                            type="number"
-                            style={{ width: 80 }}
-                            defaultValue={sub.grade ?? ''}
-                            id={`grade-${sub._id}`}
-                            placeholder="—"
-                            min={0}
-                            max={selected.totalMarks}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            className="form-input"
-                            style={{ width: 200 }}
-                            defaultValue={sub.feedback || ''}
-                            id={`feedback-${sub._id}`}
-                            placeholder="Feedback…"
-                          />
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button 
-                              className="btn btn-primary btn-sm"
-                              onClick={() => {
-                                const g = document.getElementById(`grade-${sub._id}`).value;
-                                const f = document.getElementById(`feedback-${sub._id}`).value;
-                                handleSaveGrade(sub, g, f);
-                              }}
-                            >Save</button>
-                            <button className="btn btn-outline btn-sm" onClick={() => setGradingRubric(sub)}>Rubric</button>
-                          </div>
-                        </td>
-                        <td>
-                          {sub.disputeStatus === 'open' && (
-                            <button className="btn btn-warning btn-sm" onClick={() => setResolvingDispute(sub)}>Review</button>
-                          )}
-                          {sub.disputeStatus === 'resolved' && (
-                            <span className="badge badge-success">Resolved</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setSelected(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Resolve Dispute Modal */}
-      {resolvingDispute && (
-        <div className="modal-overlay" onClick={() => setResolvingDispute(null)} style={{ zIndex: 1100 }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Resolve Grade Dispute</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setResolvingDispute(null)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-2)' }}>Student Reason:</div>
-                <div style={{ padding: 12, background: 'var(--surface-2)', borderRadius: 8, marginTop: 8, fontSize: 14 }}>
-                  {resolvingDispute.disputeReason}
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Resolution Details <span className="required">*</span></label>
-                <textarea className="form-input" id="dispute-resolution" rows={3} placeholder="Explain your decision..."></textarea>
-              </div>
-              <div className="form-group">
-                <label className="form-label">New Grade (Optional, leave blank to keep current grade: {resolvingDispute.grade})</label>
-                <input className="form-input" id="dispute-new-grade" type="number" placeholder={resolvingDispute.grade} />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setResolvingDispute(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={async () => {
-                const resolution = document.getElementById('dispute-resolution').value;
-                const newGradeVal = document.getElementById('dispute-new-grade').value;
-                if (!resolution) {
-                   toast.error('Resolution is required');
-                   return;
-                }
-                await resolveDispute.mutateAsync({
-                  submissionId: resolvingDispute._id || resolvingDispute.id,
-                  resolution,
-                  newGrade: newGradeVal ? Number(newGradeVal) : undefined
-                });
-                setResolvingDispute(null);
-              }}>Resolve Dispute</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Plagiarism Report Modal */}
-      {viewingPlagiarism && (
-        <div className="modal-overlay" onClick={() => setViewingPlagiarism(null)} style={{ zIndex: 1200 }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Plagiarism Report</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setViewingPlagiarism(null)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0', flexDirection: 'column' }}>
-                <div style={{ fontSize: 48, fontWeight: 700, color: viewingPlagiarism.plagiarismScore > 20 ? 'var(--danger)' : 'var(--secondary)' }}>
-                  {viewingPlagiarism.plagiarismScore || 0}%
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Similarity Score</div>
-              </div>
-              {viewingPlagiarism.plagiarismFlags?.length > 0 ? (
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Flags Detected:</div>
-                  <ul style={{ paddingLeft: 20, margin: 0, fontSize: 13 }}>
-                    {viewingPlagiarism.plagiarismFlags.map((flag, idx) => (
-                      <li key={idx} style={{ color: 'var(--text-2)', marginBottom: 4 }}>{flag}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-2)', fontSize: 13 }}>
-                  No significant similarity detected. This submission appears original.
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-primary" onClick={() => setViewingPlagiarism(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rubric Grading Modal */}
-      {gradingRubric && (
-        <div className="modal-overlay" onClick={() => setGradingRubric(null)} style={{ zIndex: 1200 }}>
-          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Rubric Grading - {gradingRubric.studentId}</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setGradingRubric(null)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: 'grid', gap: 16 }}>
-                {['Completeness (0-40)', 'Originality (0-30)', 'Formatting (0-30)'].map((crit, i) => (
-                  <div key={i} className="card" style={{ padding: 12 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{crit}</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {[0, 10, 20, 30, (i === 0 ? 40 : null)].filter(v => v !== null).map(mark => (
-                        <button key={mark} className="btn btn-outline btn-sm" onClick={() => {
-                            toast.success(`Assigned ${mark} marks for ${crit.split(' ')[0]}`);
-                        }}>{mark} pts</button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-primary" onClick={() => {
-                toast.success('Rubric grades saved and totaled.');
-                setGradingRubric(null);
-              }}>Save & Total Grades</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Extensions Modal */}
-      {extendingAssignment && (
-        <div className="modal-overlay" onClick={() => setExtendingAssignment(null)} style={{ zIndex: 1200 }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Per-Student Extensions</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setExtendingAssignment(null)}>
-                 <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-               <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--text-2)' }}>
-                 Grant a deadline extension for a specific student for: <strong style={{color: 'var(--text-1)'}}>{extendingAssignment.title}</strong>
-               </div>
-               <div className="form-group">
-                  <label className="form-label">Student ID</label>
-                  <input className="form-input" id="ext-student-id" placeholder="e.g. S1001" />
-               </div>
-               <div className="form-group">
-                  <label className="form-label">New Due Date</label>
-                  <input className="form-input" type="date" id="ext-new-date" />
-               </div>
-               <div className="form-group">
-                  <label className="form-label">Reason / Notes</label>
-                  <textarea className="form-input" id="ext-reason" rows={2} placeholder="Medical leave, etc."></textarea>
-               </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-primary" onClick={() => {
-                 toast.success(`Extension granted for student!`);
-                 setExtendingAssignment(null);
-              }}>Grant Extension</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Assignment Modal */}
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Create Assignment</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setShowCreate(false)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="form-group">
-                <label className="form-label">Assignment Title <span className="required">*</span></label>
-                <input className="form-input" placeholder="Descriptive title" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Course <span className="required">*</span></label>
-                <select className="form-input">
-                  {myCourses.map(c => <option key={c.id}>{c.code} — {c.title}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Instructions</label>
-                <textarea className="form-input" rows={4} placeholder="Detailed assignment instructions…"></textarea>
-              </div>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Due Date</label>
-                  <input className="form-input" type="date" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Total Marks</label>
-                  <input className="form-input" type="number" defaultValue={100} />
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setShowCreate(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => setShowCreate(false)}>Publish Assignment</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// FacultyAssignments moved to src/portals/faculty/assignments/FacultyAssignments.jsx
 
 // ── FACULTY ANALYTICS ─────────────────────────────────────────────────────
 function FacultyAnalytics({ user }) {
@@ -1163,19 +796,100 @@ function CourseContent({ user }) {
   );
 }
 
+// ── FACULTY PROFILE ──────────────────────────────────────────────────────────
+function FacultyProfile({ user }) {
+  const { data: profile, isLoading } = useLiveProfile(user.id || user._id);
+  const { data: courses } = useLiveCourses();
+  const updateProfile = useUpdateProfile();
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading profile...</div>;
+
+  const displayFirstName = profile?.firstName || user.firstName || 'Faculty';
+  const displayLastName = profile?.lastName || user.lastName || '';
+  const fullName = `${displayFirstName} ${displayLastName}`.trim();
+
+  const formattedProfile = {
+    userId: user.id || user._id,
+    name: fullName,
+    firstName: profile?.firstName,
+    lastName: profile?.lastName,
+    designation: 'Associate Professor',
+    department: 'N/A', // Update this if department exists in user data
+    id: (user.id || user._id).toUpperCase(),
+    idLabel: 'Employee ID',
+    status: 'Active Faculty',
+    avatar: 'N/A',
+    email: user.email,
+    phone: profile?.phone,
+    dob: profile?.dob,
+    gender: profile?.gender,
+    address: profile?.address,
+    bio: profile?.bio,
+    professionalTitle: 'Professional Information',
+    professional: [
+      ['Department', 'N/A'],
+      ['Qualification', 'N/A'],
+      ['Experience', 'N/A'],
+      ['Date of Joining', 'N/A']
+    ],
+    statsTitle: 'Teaching Statistics',
+    stats: [
+      { icon: BookOpen, label: 'Courses', value: courses?.length || 0, helper: 'Active this semester' },
+      { icon: UsersRound, label: 'Students Mentored', value: 'N/A', helper: 'Total count' },
+      { icon: ClipboardCheck, label: 'Assignments Created', value: 'N/A', helper: 'Active across courses' },
+      { icon: CalendarIcon, label: 'Attendance Sessions', value: 'N/A', helper: 'Conducted this month' }
+    ],
+    activities: [],
+    metadata: [
+      { icon: LayoutDashboard, label: 'Designation', value: 'Associate Professor' },
+      { icon: Users, label: 'Department', value: 'N/A' }
+    ]
+  };
+
+  return (
+    <ProfilePage
+      profile={formattedProfile}
+      accent={profileThemes.faculty}
+      updateProfileHook={updateProfile}
+    >
+      <div className="card mt-6">
+        <div className="card-header"><div className="card-title">My Courses (This Semester)</div></div>
+        <div className="card-body">
+          {courses?.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {courses.slice(0, 6).map(c => (
+                <div key={c.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <span className="badge badge-neutral text-xs">{c.code}</span>
+                    <span className="text-sm font-medium text-slate-800">{c.title}</span>
+                  </div>
+                  <span className="text-xs text-slate-500">{c.credits || 4} Credits</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No active courses</p>
+          )}
+        </div>
+      </div>
+    </ProfilePage>
+  );
+}
+
 // ── FACULTY PORTAL ROUTER ─────────────────────────────────────────────────
 export default function FacultyPortal({ page, onNavigate }) {
   const { user } = useAuth();
 
   const pages = {
     dashboard:   <FacultyDashboard user={user} onNavigate={onNavigate} />,
+    users:       <UserManagement />,
     courses:     <FacultyCourses user={user} onNavigate={onNavigate} />,
     content:     <F.ResourceUpload user={user} />,
     attendance:  <FacultyAttendance user={user} />,
     assignments: <FacultyAssignments user={user} />,
     assessments: <FacultyDashboard user={user} onNavigate={onNavigate} />, // Placeholder uses dashboard
     analytics:   <FacultyAnalytics user={user} />,
-    profile:     <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}><h1 className="page-title">Faculty Profile</h1><div className="card"><div className="card-body">Faculty details for {user.firstName} {user.lastName} will appear here.</div></div></div>,
+    profile:      <FacultyProfile user={user} />,
     notifications: <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}><h1 className="page-title">Notifications</h1><div className="card"><div className="card-body">You have no new notifications.</div></div></div>,
     // New Enterprise Pages
     timetable:    <F.FacultyTimetable user={user} />,
@@ -1192,3 +906,4 @@ export default function FacultyPortal({ page, onNavigate }) {
 
   return pages[page] || pages.dashboard;
 }
+

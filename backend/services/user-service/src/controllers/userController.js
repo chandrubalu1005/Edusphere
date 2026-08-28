@@ -5,7 +5,7 @@ const path = require('path');
 
 exports.searchProfiles = async (req, res) => {
   try {
-    const { q, page = 1, limit = 10 } = req.query;
+    const { q, role, page = 1, limit = 10 } = req.query;
     const filter = { active: true };
     if (q) {
       filter.$or = [
@@ -15,10 +15,22 @@ exports.searchProfiles = async (req, res) => {
         { email: new RegExp(q, 'i') }
       ];
     }
-    
+
+    // Role-based filtering
+    const requesterRole = req.user?.role || 'student';
+    if (requesterRole === 'faculty') {
+      filter.role = 'student';
+    } else if (requesterRole === 'management' || requesterRole === 'admin' || requesterRole === 'super_admin') {
+      if (role) filter.role = role;
+    } else {
+      // Students can't list users
+      return res.status(403).json({ error: 'Access forbidden. Not authorized to list users.' });
+    }
+
     const profiles = await Profile.find(filter)
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit), 1000));
 
     const total = await Profile.countDocuments(filter);
 
@@ -88,21 +100,31 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+const roleHierarchy = {
+  super_admin: ['student', 'faculty', 'management', 'admin', 'super_admin'],
+  admin: ['student', 'faculty', 'management'],
+  management: ['student', 'faculty'],
+  faculty: ['student'],
+  student: []
+};
+
+function canManageRole(creatorRole, targetRole) {
+  return roleHierarchy[creatorRole]?.includes(targetRole) || false;
+}
+
 exports.deactivateProfile = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access forbidden. Admins only.' });
-    }
-
-    const profile = await Profile.findOneAndUpdate(
-      { userId: req.params.id },
-      { $set: { active: false } },
-      { new: true }
-    );
-    
+    const profile = await Profile.findOne({ userId: req.params.id });
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
+
+    if (!canManageRole(req.user.role, profile.role)) {
+      return res.status(403).json({ error: `Access forbidden. Cannot deactivate role ${profile.role}` });
+    }
+
+    profile.active = false;
+    await profile.save();
 
     res.json({ message: 'Profile deactivated successfully', profile });
   } catch (error) {
@@ -112,13 +134,18 @@ exports.deactivateProfile = async (req, res) => {
 
 exports.bulkUpdateProfiles = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access forbidden. Admins only.' });
-    }
     const { userIds, active } = req.body;
     if (!userIds || !Array.isArray(userIds) || active === undefined) {
       return res.status(400).json({ error: 'userIds array and active boolean are required' });
     }
+
+    const profiles = await Profile.find({ userId: { $in: userIds } });
+    for (const p of profiles) {
+      if (!canManageRole(req.user.role, p.role)) {
+        return res.status(403).json({ error: `Access forbidden. Cannot update role ${p.role}` });
+      }
+    }
+
     await Profile.updateMany({ userId: { $in: userIds } }, { active });
     res.json({ message: `Successfully updated ${userIds.length} profiles.` });
   } catch (error) {
@@ -157,3 +184,4 @@ exports.uploadAvatar = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+

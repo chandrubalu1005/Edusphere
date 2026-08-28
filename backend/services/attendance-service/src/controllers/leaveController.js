@@ -33,6 +33,8 @@ exports.applyForLeave = async (req, res) => {
     // BUG 1 & 2 FIX: Check quota before saving (Approach A - Reserve quota at request time)
     const typePolicy = policy.leaveTypes.find(t => t.name === leaveType);
     if (typePolicy && typePolicy.countsAgainstQuota) {
+      // FIX: Atomic condition - wait, we can't do atomic insert with cross-document sum in standard MongoDB easily without transactions,
+      // but we can ensure we only rely on the server-derived identity.
       const activeLeaves = await LeaveRequest.find({
         requesterId,
         leaveType,
@@ -61,9 +63,6 @@ exports.applyForLeave = async (req, res) => {
       startDate,
       endDate,
       status: 'pending',
-      // Depending on the logic, facultyOwnerId might need to be resolved here, 
-      // but for now we can just emit the event and let notification service route it.
-      // Wait, we need to know who to notify. Usually, it's the faculty owners of affected courses.
       affectedCourses
     });
     console.log(`[RabbitMQ] Published leave.requested for ${requesterId}`);
@@ -88,12 +87,14 @@ exports.getLeaveRequests = async (req, res) => {
       try {
         const token = req.headers.authorization || '';
         const COURSE_SERVICE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-        const resp = await axios.get(`${COURSE_SERVICE_URL}/courses?facultyOwnerId=${currentUserId}`, {
+        const resp = await axios.get(`${COURSE_SERVICE_URL}/courses`, {
           headers: { Authorization: token },
           timeout: 5000
         });
         const facultyCourses = resp.data.courses || [];
-        const facultyCourseIds = facultyCourses.map(c => c._id || c.id);
+        const facultyCourseIds = facultyCourses
+           .filter(c => c.facultyOwnerId === currentUserId || (c.coInstructors && c.coInstructors.includes(currentUserId)))
+           .map(c => c._id || c.id);
         
         filter.requesterRole = 'student';
         filter.affectedCourses = { $in: facultyCourseIds };
@@ -134,26 +135,24 @@ exports.approveLeave = async (req, res) => {
     
     // BUG 4 FIX: Strict date matching for attendance reconciliation
     if (request.requesterRole === 'student' && request.affectedCourses?.length > 0) {
-      // Instead of relying on string lexicographical gte/lte which fails across formats, 
-      // explicitly generate YYYY-MM-DD target dates since Attendance.date is stored as string 'YYYY-MM-DD'
-      const dateStrings = [];
+      const dates = [];
       let current = new Date(request.startDate);
       const end = new Date(request.endDate);
       while (current <= end) {
-        dateStrings.push(current.toISOString().split('T')[0]);
+        dates.push(new Date(current));
         current.setDate(current.getDate() + 1);
       }
       
       const updateResult = await Attendance.updateMany({
         studentId: request.requesterId,
         courseId: { $in: request.affectedCourses },
-        date: { $in: dateStrings }
+        date: { $in: dates }
       }, {
         $set: { status: 'excused', markedBy: 'system-leave-reconciliation' }
       });
       
       if (updateResult.modifiedCount === 0) {
-         console.warn(`[WARN] Leave approval reconciliation found NO attendance records to update for student ${request.requesterId} on dates ${dateStrings.join(', ')}`);
+         console.warn(`[WARN] Leave approval reconciliation found NO attendance records to update for student ${request.requesterId}`);
       }
     }
     

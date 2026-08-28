@@ -22,7 +22,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
     setLoading(true);
     try {
       await register(username, email, password, role);
-      toast.success('Registration successful! Welcome to EduSphere.');
+      toast.success('Registration successful! Welcome to CampusSphere.');
     } catch (err) {
       const msg = err.response?.data?.error || err.message || 'Registration failed';
       setError(msg);
@@ -38,7 +38,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
         <div className="login-logo">
           <div className="sidebar-logo-mark" style={{ width: 44, height: 44, fontSize: 22 }}>E</div>
           <div>
-            <div className="sidebar-brand" style={{ fontSize: 24 }}>EduSphere</div>
+            <div className="sidebar-brand" style={{ fontSize: 24 }}>CampusSphere</div>
             <div className="sidebar-tagline">Enterprise University Platform</div>
           </div>
         </div>

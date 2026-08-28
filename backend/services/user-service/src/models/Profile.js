@@ -4,6 +4,7 @@ const ProfileSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
   username: { type: String, required: true },
   email: { type: String, required: true },
+  role: { type: String, required: true, default: 'student' },
   firstName: { type: String, default: '' },
   lastName: { type: String, default: '' },
   bio: { type: String, default: '' },

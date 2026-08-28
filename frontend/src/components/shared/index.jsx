@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Icon, ICONS } from '../Layout.jsx';
+import { Bell, Bot, Calendar, FileText, Megaphone, Target, Settings, Zap, Award, Inbox } from 'lucide-react';
 
 // ── PAGE HEADER ─────────────────────────────────────────────────────────────
 export function PageHeader({ title, subtitle, breadcrumbs, children }) {
@@ -168,10 +169,12 @@ export function DataTable({ columns, data, searchable = true, paginated = true, 
 }
 
 // ── EMPTY STATE ─────────────────────────────────────────────────────────────
-export function EmptyState({ icon = '📭', message = 'No data available', description, action, compact = false }) {
+export function EmptyState({ icon, message = 'No data available', description, action, compact = false }) {
   return (
     <div className={`empty-state ${compact ? 'compact' : ''}`}>
-      <div className="empty-state-icon">{icon}</div>
+      <div className="empty-state-icon">
+        {icon ? icon : <Inbox size={32} strokeWidth={1.5} color="var(--text-3)" />}
+      </div>
       <div className="empty-state-message">{message}</div>
       {description && <div className="empty-state-desc">{description}</div>}
       {action && <div className="empty-state-action">{action}</div>}
@@ -319,7 +322,7 @@ export function CalendarWidget({ events = [], onDateClick, selectedDate }) {
     return events.filter(e => e.date === dateStr || (e.date <= dateStr && e.endDate && e.endDate >= dateStr));
   }
 
-  const eventColors = { exam: 'var(--danger)', holiday: 'var(--secondary)', deadline: 'var(--warning)', event: 'var(--info)', academic: 'var(--accent)', placement: '#8B5CF6' };
+  const eventColors = { exam: 'var(--danger)', holiday: 'var(--secondary)', deadline: 'var(--warning)', event: 'var(--info)', academic: 'var(--accent)', placement: 'var(--brand)' };
 
   return (
     <div className="calendar-widget">
@@ -362,7 +365,7 @@ export function CalendarWidget({ events = [], onDateClick, selectedDate }) {
 // ── TIMETABLE GRID ──────────────────────────────────────────────────────────
 export function TimetableGrid({ slots, days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], periods = 6 }) {
   const periodTimes = ['09:00 - 09:50', '10:00 - 10:50', '11:00 - 11:50', '12:00 - 12:50', '02:00 - 02:50', '03:00 - 03:50'];
-  const typeColors = { lecture: 'var(--accent)', lab: 'var(--secondary)', tutorial: 'var(--info)', seminar: '#8B5CF6' };
+  const typeColors = { lecture: 'var(--accent)', lab: 'var(--secondary)', tutorial: 'var(--info)', seminar: 'var(--brand)' };
 
   return (
     <div className="timetable-container">
@@ -616,7 +619,7 @@ export function AIChatInterface({ title = 'AI Assistant', placeholder = 'Ask me 
   return (
     <div className="ai-chat-container">
       <div className="ai-chat-header">
-        <div className="ai-chat-avatar">🤖</div>
+        <div className="ai-chat-avatar"><Bot size={18} /></div>
         <div>
           <div className="ai-chat-title">{title}</div>
           <div className="ai-chat-status">{isTyping ? 'Typing...' : 'Online'}</div>
@@ -672,7 +675,20 @@ function getDefaultResponse(query) {
 export function NotificationCenter({ notifications, onMarkRead, onMarkAllRead, onNavigate }) {
   const [filter, setFilter] = useState('all');
   const types = ['all', 'assignment', 'quiz', 'attendance', 'certificate', 'announcement', 'grade', 'system'];
-  const typeIcons = { assignment: '📝', quiz: '⚡', attendance: '📅', certificate: '🏆', announcement: '📢', grade: '🎯', system: '⚙️' };
+  
+  const TypeIcon = ({ type, size = 16 }) => {
+    switch(type) {
+      case 'assignment': return <FileText size={size} />;
+      case 'quiz': return <Zap size={size} />;
+      case 'attendance': return <Calendar size={size} />;
+      case 'certificate': return <Award size={size} />;
+      case 'announcement': return <Megaphone size={size} />;
+      case 'grade': return <Target size={size} />;
+      case 'system': return <Settings size={size} />;
+      case 'all': return <Bell size={size} />;
+      default: return <FileText size={size} />;
+    }
+  };
 
   const filtered = filter === 'all' ? notifications : notifications.filter(n => n.type === filter);
   const unread = notifications.filter(n => !n.read).length;
@@ -685,17 +701,20 @@ export function NotificationCenter({ notifications, onMarkRead, onMarkAllRead, o
       <div className="tabs" style={{ marginBottom: 20 }}>
         {types.map(t => (
           <div key={t} className={`tab ${filter === t ? 'active' : ''}`} onClick={() => setFilter(t)}>
-            {t === 'all' ? '📬 All' : `${typeIcons[t] || '📄'} ${t.charAt(0).toUpperCase() + t.slice(1)}`}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <TypeIcon type={t} size={14} />
+              <span>{t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}</span>
+            </div>
           </div>
         ))}
       </div>
       {filtered.length === 0 ? (
-        <EmptyState icon="🔔" message="No notifications" description={filter !== 'all' ? `No ${filter} notifications found.` : 'You\'re all caught up!'} />
+        <EmptyState icon={<Bell size={32} color="var(--text-3)" />} message="No notifications" description={filter !== 'all' ? `No ${filter} notifications found.` : 'You\'re all caught up!'} />
       ) : (
         <div className="notification-list">
           {filtered.map(n => (
             <div key={n.id} className={`notification-card ${!n.read ? 'unread' : ''}`} onClick={() => onMarkRead?.(n.id)}>
-              <div className="notification-icon">{typeIcons[n.type] || '📄'}</div>
+              <div className="notification-icon"><TypeIcon type={n.type} size={16} /></div>
               <div className="notification-content">
                 <div className="notification-title">{n.title}</div>
                 <div className="notification-desc">{n.description}</div>

@@ -1,5 +1,9 @@
 const Attendance = require('../models/Attendance');
 const QRSession  = require('../models/QRSession');
+const ClassSession = require('../models/ClassSession');
+const AttendanceSession = require('../models/AttendanceSession');
+const AttendanceParticipant = require('../models/AttendanceParticipant');
+const AttendanceEvent = require('../models/AttendanceEvent');
 const { publishEvent } = require('../config/rabbitmq');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
@@ -357,6 +361,120 @@ exports.getWeeklySummary = async (req, res) => {
     const summary = days.map(d => grouped[d]);
     res.json({ summary, days: days.length, courseId: courseId || 'all' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Class Sessions ─────────────────────────────────────────────────────────
+
+exports.resolveTodaysClasses = async (req, res) => {
+  try {
+    const { dateStr } = req.body; // e.g., '2023-10-25'
+    if (!dateStr) return res.status(400).json({ error: 'dateStr is required' });
+
+    const targetDate = new Date(dateStr);
+    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][targetDate.getDay()];
+
+    // Fetch timetable slots for the day
+    const TIMETABLE_URL = process.env.TIMETABLE_SERVICE_URL || 'http://localhost:3009';
+    const resp = await fetch(`${TIMETABLE_URL}/timetable`, {
+      headers: { Authorization: req.headers.authorization }
+    });
+    if (!resp.ok) return res.status(500).json({ error: 'Failed to fetch timetable' });
+    
+    const allSlots = await resp.json();
+    const todaysSlots = allSlots.filter(s => s.day === dayOfWeek);
+
+    const createdSessions = [];
+    
+    for (const slot of todaysSlots) {
+      // Check if session exists
+      const existing = await ClassSession.findOne({
+        courseId: slot.courseId,
+        date: {
+          $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
+          $lte: new Date(targetDate.setHours(23, 59, 59, 999))
+        },
+        slotId: slot._id
+      });
+
+      if (!existing) {
+        const newSession = await ClassSession.create({
+          date: targetDate,
+          courseId: slot.courseId,
+          facultyId: slot.instructorId,
+          slotId: slot._id,
+          room: slot.room,
+          status: 'scheduled'
+        });
+        createdSessions.push(newSession);
+      }
+    }
+
+    res.json({ message: 'Resolved todays classes', newSessions: createdSessions.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getClassSessions = async (req, res) => {
+  try {
+    const { dateStr, courseId, facultyId } = req.query;
+    let filter = {};
+    
+    if (dateStr) {
+      const targetDate = new Date(dateStr);
+      filter.date = {
+        $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
+        $lte: new Date(targetDate.setHours(23, 59, 59, 999))
+      };
+    }
+    if (courseId) filter.courseId = courseId;
+    if (facultyId) filter.facultyId = facultyId;
+
+    const sessions = await ClassSession.find(filter);
+    res.json(sessions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Manual Corrections (New Architecture) ──────────────────────────────────
+
+exports.manualAddParticipant = async (req, res) => {
+  try {
+    if (req.user.role !== 'faculty' && req.user.role !== 'admin') return res.status(403).json({ error: 'Access forbidden' });
+    const { sessionId } = req.params;
+    const { studentId, studentName, status = 'PRESENT', reason } = req.body;
+    
+    if (!reason) return res.status(400).json({ error: 'Reason is required for manual addition' });
+
+    const session = await AttendanceSession.findById(sessionId);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    
+    const participant = await AttendanceParticipant.create({
+      attendanceSessionId: sessionId,
+      classSessionId: session.classSessionId,
+      courseId: session.courseId,
+      studentId: studentId,
+      studentNameSnapshot: studentName,
+      status: status,
+      checkInMethod: 'MANUAL',
+      checkOutMethod: 'MANUAL' // Defaulting to complete presence
+    });
+
+    await AttendanceEvent.create({
+      sessionId,
+      studentId,
+      actorId: req.user.userId,
+      actorRole: req.user.role,
+      eventType: 'PARTICIPANT_MANUALLY_ADDED',
+      metadata: { reason, status }
+    });
+
+    res.status(201).json({ message: 'Participant manually added', participant });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ error: 'Participant already exists in this session' });
     res.status(500).json({ error: error.message });
   }
 };

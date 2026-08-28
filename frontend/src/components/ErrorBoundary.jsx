@@ -29,21 +29,35 @@ export default class ErrorBoundary extends React.Component {
           textAlign: 'center',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--r-md)',
+          borderRadius: 'var(--r-lg)',
           margin: '40px auto',
           maxWidth: '480px',
           boxShadow: 'var(--shadow-md)'
         }}>
-          <span style={{ fontSize: 48, display: 'block', marginBottom: 16 }}>⚠️</span>
-          <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', marginBottom: 8, fontSize: 20 }}>
-            Portal Error Detected
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'var(--danger-bg, #FEE2E2)', color: 'var(--danger, #DC2626)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px auto'
+          }}>
+            <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-1)', marginBottom: 12, fontSize: 24, fontWeight: 700 }}>
+            Something went wrong
           </h2>
-          <p style={{ color: 'var(--text-2)', fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
-            {this.state.error?.message || 'An unexpected error occurred while rendering this page.'}
+          <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 32, lineHeight: 1.6 }}>
+            We couldn't load this page. {this.state.error?.message}
           </p>
-          <button className="btn btn-primary btn-sm" onClick={this.handleRetry}>
-            🔄 Reload Portal
-          </button>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button className="btn btn-outline" onClick={() => window.location.href = '/'}>
+              Go to Dashboard
+            </button>
+            <button className="btn btn-primary" onClick={this.handleRetry}>
+              Try Again
+            </button>
+          </div>
         </div>
       );
     }

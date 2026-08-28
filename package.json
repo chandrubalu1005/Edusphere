@@ -32,7 +32,11 @@
     "smoke-test":         "node backend/scripts/smoke-test.js",
     "docker:up":          "docker compose -f infra/docker-compose.yml up --build -d",
     "docker:down":        "docker compose -f infra/docker-compose.yml down",
-    "docker:logs":        "docker compose -f infra/docker-compose.yml logs -f"
+    "docker:logs":        "docker compose -f infra/docker-compose.yml logs -f",
+    "lan:up":             "dotenv -e infra/.env.lan -- docker compose -f infra/compose.lan.yml up --build -d",
+    "lan:down":           "dotenv -e infra/.env.lan -- docker compose -f infra/compose.lan.yml down",
+    "lan:status":         "dotenv -e infra/.env.lan -- docker compose -f infra/compose.lan.yml ps",
+    "lan:logs":           "dotenv -e infra/.env.lan -- docker compose -f infra/compose.lan.yml logs -f"
   },
   "devDependencies": {
     "concurrently": "^10.0.4",

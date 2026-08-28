@@ -11,19 +11,22 @@ import {
   ProgressRing, MiniSparkline, AIChatInterface, NotificationCenter,
   EmptyState, Modal, CommandPalette, WorkflowTimeline, ApprovalCard
 } from '../../components/shared/index.jsx';
+import { 
+  Trophy, TrendingUp, Briefcase, BookOpen, Microscope, BarChart2, Coins, LineChart, PieChart, UploadCloud, RefreshCw, HandCoins, AlertTriangle, MessageSquare, Download, Zap
+} from 'lucide-react';
 import {
-  TIMETABLE as MOCK_TIMETABLE, CALENDAR_EVENTS as MOCK_CALENDAR_EVENTS,
-  DISCUSSIONS as MOCK_DISCUSSIONS, DISCUSSION_REPLIES as MOCK_DISCUSSION_REPLIES,
-  TRANSCRIPTS as MOCK_TRANSCRIPTS, FEE_RECORDS as MOCK_FEE_RECORDS,
-  DOWNLOADS as MOCK_DOWNLOADS, ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
-  LIBRARY_RESOURCES as MOCK_LIBRARY_RESOURCES, PLACEMENT_DRIVES as MOCK_PLACEMENT_DRIVES,
-  ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS, NOTIFICATIONS as MOCK_NOTIFICATIONS,
-  ENROLLMENTS as MOCK_ENROLLMENTS, ATTENDANCE_RECORDS as MOCK_ATTENDANCE_RECORDS,
-  COURSES as MOCK_COURSES, ASSIGNMENTS as MOCK_ASSIGNMENTS,
-  USERS as MOCK_USERS, DEPT_PERFORMANCE as MOCK_DEPT_PERFORMANCE,
-  INSTITUTIONAL_KPIS as MOCK_INSTITUTIONAL_KPIS, BUDGET_DATA as MOCK_BUDGET_DATA,
-  RESEARCH_STATS as MOCK_RESEARCH_STATS, RISK_ALERTS as MOCK_RISK_ALERTS,
-  APPROVAL_QUEUE as MOCK_APPROVAL_QUEUE, PREDICTIVE_DATA as MOCK_PREDICTIVE_DATA
+  TIMETABLE, CALENDAR_EVENTS,
+  DISCUSSIONS, DISCUSSION_REPLIES,
+  TRANSCRIPTS, FEE_RECORDS,
+  DOWNLOADS, ACTIVITY_LOG,
+  LIBRARY_RESOURCES, PLACEMENT_DRIVES,
+  ANNOUNCEMENTS, NOTIFICATIONS,
+  ENROLLMENTS, ATTENDANCE_RECORDS,
+  COURSES, ASSIGNMENTS,
+  USERS, DEPT_PERFORMANCE,
+  INSTITUTIONAL_KPIS, BUDGET_DATA,
+  RESEARCH_STATS, RISK_ALERTS,
+  APPROVAL_QUEUE, PREDICTIVE_DATA
 } from '../../mockData.js';
 import {
   useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs,
@@ -43,9 +46,9 @@ export function InstitutionalKPIs({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="NAAC Rating" value={kpi.naacGrade} trend="✓ Accredited" trendType="up" icon="🏆" />
-        <StatCard label="Success Rate" value={`${kpi.studentSuccessRate}%`} trend="Overall student clearance" icon="📈" />
-        <StatCard label="Placement Rate" value={`${kpi.placementRate}%`} trend="Target: 90%" trendType="neutral" icon="💼" />
+        <StatCard label="NAAC Rating" value={kpi.naacGrade} trend="Accredited" trendType="up" icon={<Trophy size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Success Rate" value={`${kpi.studentSuccessRate}%`} trend="Overall student clearance" icon={<TrendingUp size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Placement Rate" value={`${kpi.placementRate}%`} trend="Target: 90%" trendType="neutral" icon={<Briefcase size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <div className="card" style={{ padding: 20 }}>
@@ -141,9 +144,9 @@ export function PlacementAnalytics({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Overall Placement" value={`${INSTITUTIONAL_KPIS.overall.placementRate}%`} icon="💼" />
-        <StatCard label="Active Drives" value={activeDrives} icon="🏢" />
-        <StatCard label="Highest Package" value="₹45 LPA" icon="💵" />
+        <StatCard label="Overall Placement" value={`${INSTITUTIONAL_KPIS.overall.placementRate}%`} icon={<Briefcase size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Active Drives" value={activeDrives} icon={<Briefcase size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Highest Package" value="₹45 LPA" icon={<HandCoins size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <DataTable
@@ -173,10 +176,10 @@ export function ResearchStats({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Total Publications" value={RESEARCH_STATS.totalPublications} icon="📚" />
-        <StatCard label="Total Citations" value={RESEARCH_STATS.totalCitations} icon="🔬" />
-        <StatCard label="h-index" value={RESEARCH_STATS.hIndex} icon="📊" />
-        <StatCard label="Total Funding" value={`₹${(RESEARCH_STATS.totalFunding / 10000000).toFixed(1)} Cr`} icon="💰" />
+        <StatCard label="Total Publications" value={RESEARCH_STATS.totalPublications} icon={<BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Total Citations" value={RESEARCH_STATS.totalCitations} icon={<Microscope size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="h-index" value={RESEARCH_STATS.hIndex} icon={<BarChart2 size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Total Funding" value={`₹${(RESEARCH_STATS.totalFunding / 10000000).toFixed(1)} Cr`} icon={<Coins size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <div className="card" style={{ padding: 20 }}>
@@ -198,7 +201,7 @@ export function ResearchStats({ user }) {
 
 // ── BUDGET OVERVIEW ─────────────────────────────────────────────────────────
 export function BudgetOverview({ user }) {
-  const [data, setData] = useState(MOCK_BUDGET_DATA);
+  const [data, setData] = useState(BUDGET_DATA);
   const [modalOpen, setModalOpen] = useState(false);
   const [fromSector, setFromSector] = useState('');
   const [toSector, setToSector] = useState('');
@@ -257,13 +260,13 @@ export function BudgetOverview({ user }) {
             setToSector(data.categories[1].name);
           }
           setModalOpen(true);
-        }}>🔄 Reallocate Funds</button>
+        }}><RefreshCw size={14} style={{ marginRight: 4 }} /> Reallocate Funds</button>
       </PageHeader>
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="Total Allocated" value={`₹${(totalAllocated / 10000000).toFixed(2)} Cr`} icon="💰" />
-        <StatCard label="Total Spent" value={`₹${(totalSpent / 10000000).toFixed(2)} Cr`} icon="📉" />
-        <StatCard label="Remaining Budget" value={`₹${(totalRemaining / 10000000).toFixed(2)} Cr`} icon="📊" />
+        <StatCard label="Total Allocated" value={`₹${(totalAllocated / 10000000).toFixed(2)} Cr`} icon={<Coins size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Total Spent" value={`₹${(totalSpent / 10000000).toFixed(2)} Cr`} icon={<LineChart size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Remaining Budget" value={`₹${(totalRemaining / 10000000).toFixed(2)} Cr`} icon={<PieChart size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -272,7 +275,7 @@ export function BudgetOverview({ user }) {
           {data.categories.map(cat => (
             <div key={cat.name} style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                <span>{cat.icon} {cat.name}</span>
+                <span>{cat.name}</span>
                 <strong>₹{(cat.spent / 100000).toFixed(1)}L / ₹{(cat.allocated / 100000).toFixed(1)}L</strong>
               </div>
               <div style={{ background: 'var(--surface-2)', borderRadius: 4, height: 8 }}>
@@ -292,13 +295,13 @@ export function BudgetOverview({ user }) {
           <div className="form-group">
             <label className="form-label">Source Sector (From)</label>
             <select className="form-select" value={fromSector} onChange={e => setFromSector(e.target.value)} disabled={transferring}>
-              {data.categories.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name} (Remaining: ₹{(c.allocated - c.spent).toLocaleString()})</option>)}
+              {data.categories.map(c => <option key={c.name} value={c.name}>{c.name} (Remaining: ₹{(c.allocated - c.spent).toLocaleString()})</option>)}
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Target Sector (To)</label>
             <select className="form-select" value={toSector} onChange={e => setToSector(e.target.value)} disabled={transferring}>
-              {data.categories.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+              {data.categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -308,7 +311,7 @@ export function BudgetOverview({ user }) {
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)} disabled={transferring}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={transferring}>
-              {transferring ? '🔄 Processing Transfer...' : '🔄 Confirm Reallocation'}
+              {transferring ? <><RefreshCw size={14} style={{ marginRight: 4 }} /> Processing Transfer...</> : <><RefreshCw size={14} style={{ marginRight: 4 }} /> Confirm Reallocation</>}
             </button>
           </div>
         </form>
@@ -379,7 +382,7 @@ export function Accreditation({ user }) {
         subtitle="Manage and build NAAC, NBA and international ranking self-study documentation parameters"
         breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Accreditation' }]}
       />
-      <EmptyState icon="🏆" message="Accreditation Center Ready" description="Review metrics, pass percentages and department records required for official accreditation." />
+      <EmptyState icon={<Trophy size={32} color="var(--text-3)" />} message="Accreditation Center Ready" description="Review metrics, pass percentages and department records required for official accreditation." />
     </div>
   );
 }
@@ -395,12 +398,12 @@ export function AIInsights({ user }) {
 
   return (
     <div>
-      <PageHeader title="AI Insights" subtitle="Powered by EduSphere AI — Get boardroom summaries and strategic metrics"
+      <PageHeader title="AI Insights" subtitle="Powered by CampusSphere AI — Get boardroom summaries and strategic metrics"
         breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'AI Insights' }]}
       />
 
       <AIChatInterface
-        title="EduSphere Boardroom AI"
+        title="CampusSphere Boardroom AI"
         placeholder="Ask for strategic analysis, budget reports, or department rankings..."
         suggestions={suggestions}
         messages={[
@@ -548,7 +551,7 @@ export function ExecutiveReports({ user }) {
         </div>
 
         <button className="btn btn-primary" onClick={handleCompile} disabled={loading}>
-          {loading ? '🔍 Compiling Strategic Indicators...' : '⚡ Compile Strategic Review'}
+          {loading ? 'Compiling Strategic Indicators...' : <><Zap size={14} style={{ marginRight: 4 }} /> Compile Strategic Review</>}
         </button>
       </div>
 
@@ -556,7 +559,7 @@ export function ExecutiveReports({ user }) {
         <div className="card" style={{ padding: 20, borderLeft: '4px solid var(--accent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{report.title}</h4>
-            <button className="btn btn-outline btn-sm">⬇ Download PDF</button>
+            <button className="btn btn-outline btn-sm"><Download size={14} style={{ marginRight: 4 }} /> Download PDF</button>
           </div>
 
           <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, marginBottom: 20 }}>{report.summary}</p>
@@ -578,3 +581,5 @@ export function ExecutiveReports({ user }) {
     </div>
   );
 }
+
+

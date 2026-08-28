@@ -29,10 +29,10 @@ export default function SplashScreen({ onComplete }) {
   return (
     <div className={`splash-overlay ${phase === 'fadeout' ? 'splash-fadeout' : ''}`}>
       <div className={`splash-logo-container ${phase === 'snap' ? 'thanos-snap' : ''}`}>
-        <div className="splash-logo-mark">E</div>
+        <div className="splash-logo-mark">C</div>
         <div className="splash-logo-text">
-          <span className="splash-title">EduSphere</span>
-          <span className="splash-tagline">ENTERPRISE UNIVERSITY PLATFORM</span>
+          <span className="splash-title">CampusSphere</span>
+          <span className="splash-tagline">ACADEMIC PLATFORM</span>
         </div>
       </div>
     </div>

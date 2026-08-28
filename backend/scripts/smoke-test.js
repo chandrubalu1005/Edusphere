@@ -104,6 +104,20 @@ async function runSmokeTest() {
     process.exit(1);
   }
 
+  const rabbitCheck = await checkInfrastructure('127.0.0.1', 5672, 'RabbitMQ');
+  if (rabbitCheck.status === 'UP') {
+    console.log('✅ [RabbitMQ] port 5672: UP');
+  } else {
+    console.log(`❌ [RabbitMQ] port 5672: DOWN (${rabbitCheck.error})`);
+  }
+
+  const redisCheck = await checkInfrastructure('127.0.0.1', 6379, 'Redis');
+  if (redisCheck.status === 'UP') {
+    console.log('✅ [Redis] port 6379: UP');
+  } else {
+    console.log(`❌ [Redis] port 6379: DOWN (${redisCheck.error})`);
+  }
+
   console.log('\n--- Checking Microservices ---');
   const results = await Promise.all(SERVICES.map(checkService));
 

@@ -116,7 +116,8 @@ $backendServices = @(
     @{ Name = "discussion-service";   Path = ".\backend\services\discussion-service";   Script = "run start"; Port = 3013 },
     @{ Name = "library-service";      Path = ".\backend\services\library-service";      Script = "run start"; Port = 3011 },
     @{ Name = "placement-service";    Path = ".\backend\services\placement-service";    Script = "run start"; Port = 3012 },
-    @{ Name = "timetable-service";    Path = ".\backend\services\timetable-service";    Script = "run start"; Port = 3009 }
+    @{ Name = "timetable-service";    Path = ".\backend\services\timetable-service";    Script = "run start"; Port = 3009 },
+    @{ Name = "finance-service";      Path = ".\backend\services\finance-service";      Script = "run start"; Port = 3016 }
 )
 
 foreach ($svc in $backendServices) {

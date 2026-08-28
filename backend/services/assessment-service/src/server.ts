@@ -200,7 +200,7 @@ app.get('/assessments', auth, async (req, res) => {
       .select('-questions.correct -questions.explanation') // hide answers by default
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit), 1000));
     const total = await Assessment.countDocuments(filter);
     res.json({ assessments, total });
   } catch (err) {
@@ -503,4 +503,5 @@ bootstrap().catch(err => {
 
 process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
 process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
+
 

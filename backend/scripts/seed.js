@@ -6,6 +6,7 @@ const MONGO_HOST = process.env.MONGO_HOST || 'localhost';
 const MONGO_PORT = process.env.MONGO_PORT || '27017';
 
 function uri(db) {
+  if (process.env.MONGO_URI) return process.env.MONGO_URI;
   return process.env[`MONGO_URI_${db.toUpperCase()}`] || `mongodb://${MONGO_HOST}:${MONGO_PORT}/edusphere_${db}`;
 }
 

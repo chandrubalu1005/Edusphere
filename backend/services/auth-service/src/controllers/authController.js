@@ -4,6 +4,19 @@ const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const User = require('../models/User');
 const { publishEvent } = require('../config/rabbitmq');
+const crypto = require('crypto');
+
+const roleHierarchy = {
+  super_admin: ['student', 'faculty', 'management', 'admin', 'super_admin'],
+  admin: ['student', 'faculty', 'management'],
+  management: ['student', 'faculty'],
+  faculty: ['student'],
+  student: []
+};
+
+function canManageRole(creatorRole, targetRole) {
+  return roleHierarchy[creatorRole]?.includes(targetRole) || false;
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey123';
 
@@ -12,6 +25,27 @@ exports.register = async (req, res) => {
     const { username, email, password, role } = req.body;
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'Username, email and password are required' });
+    }
+
+    const requestedRole = role || 'student';
+
+    // RBAC Check
+    const userCount = await User.countDocuments();
+    if (userCount > 0) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Access denied. No token provided for user creation.' });
+      }
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        if (!canManageRole(decoded.role, requestedRole)) {
+          return res.status(403).json({ error: `Access denied. Role '${decoded.role}' cannot create user with role '${requestedRole}'.` });
+        }
+      } catch (err) {
+        return res.status(401).json({ error: 'Invalid token for user creation.' });
+      }
     }
 
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -24,7 +58,7 @@ exports.register = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      role: role || 'student'
+      role: requestedRole
     });
 
     await newUser.save();
@@ -40,7 +74,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId: newUser._id, role: newUser.role, email: newUser.email, username: newUser.username },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: process.env.JWT_ACCESS_EXPIRY || '15m' }
     );
 
     res.status(201).json({
@@ -97,7 +131,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, role: user.role, email: user.email, username: user.username },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: process.env.JWT_ACCESS_EXPIRY || '15m' }
     );
 
     publishEvent('user.login', {
@@ -231,6 +265,44 @@ exports.me = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const targetUserId = req.params.id;
+    const requesterRole = req.user.role;
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!canManageRole(requesterRole, targetUser.role)) {
+      return res.status(403).json({ error: `Access denied. Role '${requesterRole}' cannot reset password for role '${targetUser.role}'.` });
+    }
+
+    // Generate a secure temporary password
+    const tempPassword = crypto.randomBytes(8).toString('hex');
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    targetUser.password = hashedPassword;
+    // Optional: flag the user to reset password on next login, if we had such a field.
+    await targetUser.save();
+
+    publishEvent('user.password_reset', {
+      userId: targetUser._id,
+      username: targetUser.username,
+      role: targetUser.role,
+      resetBy: req.user.userId
+    });
+
+    res.json({ 
+      message: 'Password reset successfully',
+      temporaryPassword: tempPassword // Provide exactly once to the admin
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

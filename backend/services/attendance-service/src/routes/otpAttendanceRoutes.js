@@ -1,21 +1,19 @@
 const express = require('express');
-const otpController = require('../controllers/otpAttendanceController');
+const liveController = require('../controllers/liveController');
+const sessionController = require('../controllers/sessionController');
 const { authMiddleware, requireRole } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 // Session Management (Faculty)
-router.post('/sessions', authMiddleware, requireRole('faculty'), otpController.createSession);
-router.get('/sessions', authMiddleware, requireRole('faculty', 'student'), otpController.getActiveSessions);
-router.patch('/sessions/:sessionId/end', authMiddleware, requireRole('faculty'), otpController.endSession);
+router.post('/sessions/start', authMiddleware, requireRole('faculty', 'admin'), sessionController.startSession);
+router.patch('/sessions/:sessionId/status', authMiddleware, requireRole('faculty', 'admin'), sessionController.changeStatus);
 
-// OTP Generation & Display (Faculty)
-router.get('/sessions/:sessionId/current-otp', authMiddleware, requireRole('faculty'), otpController.getCurrentOtp);
+// Live OTP Generation (Faculty)
+router.get('/sessions/:sessionId/current-otp', authMiddleware, requireRole('faculty', 'admin'), liveController.getCurrentOtp);
 
-// Session Submissions (Faculty)
-router.get('/sessions/:sessionId/submissions', authMiddleware, requireRole('faculty'), otpController.getSessionSubmissions);
-
-// OTP Submission (Student)
-router.post('/submit', authMiddleware, requireRole('student'), otpController.submitOtp);
+// Participant Join & Checkout (Student)
+router.post('/sessions/:sessionId/join', authMiddleware, requireRole('student'), liveController.joinSession);
+router.post('/sessions/:sessionId/checkout', authMiddleware, requireRole('student'), liveController.checkoutSession);
 
 module.exports = router;

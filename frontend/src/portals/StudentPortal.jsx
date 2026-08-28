@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
-import { useSubmitAssignment } from '../api/hooks.js';
+import { useSubmitAssignment, useUpdateProfile } from '../api/hooks.js';
 import toast from 'react-hot-toast';
 import {
   SUPPORT_TICKETS as MOCK_SUPPORT_TICKETS,
@@ -11,11 +11,16 @@ import {
 import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
   useLiveCertificates, useLiveNotifications, useLiveAttendance,
-  useLiveEnrollments
+  useLiveEnrollments, useLiveProfile
 } from '../api/liveData.js';
 import * as F from './student/features.jsx';
 import OtpAttendanceWidget from '../components/OtpAttendanceWidget.jsx';
-
+import ProfilePage from '../components/profile/ProfilePage.jsx';
+import { profileThemes } from '../components/profile/profileTheme.js';
+import AcademicPlan from './student/AcademicPlan.jsx';
+import CourseRegistration from './student/CourseRegistration.jsx';
+import StudentAssignments from './student/assignments/StudentAssignments.jsx';
+import { BookOpen, Calendar as CalendarIcon, CheckCircle2, GraduationCap, LayoutDashboard, Settings, Trophy, Users, CalendarDays, MapPin, CheckCircle, Clock, User, Book, Award, Bell, BarChart2, Calendar as CalIcon, CreditCard, PlayCircle, ShieldCheck, BrainCircuit, Activity, Download, MessageSquare, Plus, FileText, Upload } from 'lucide-react';
 const SUPPORT_TICKETS = MOCK_SUPPORT_TICKETS;
 
 
@@ -52,7 +57,7 @@ function StudentDashboard({ user, onNavigate }) {
   return (
     <div>
       <PageHeader
-        title={`Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, ${user.firstName} 👋`}
+        title={`${new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'}, ${user.firstName}`}
         subtitle="Here's your academic overview for today."
       />
 
@@ -61,30 +66,30 @@ function StudentDashboard({ user, onNavigate }) {
         <div className="stat-card" onClick={() => onNavigate('courses')} style={{ cursor: 'pointer' }}>
           <div className="stat-label">Enrolled Courses</div>
           <div className="stat-value">{enrolled.length}</div>
-          <div className="stat-trend trend-up">📚 Active semester</div>
-          <div className="stat-icon">📚</div>
+          <div className="stat-trend trend-up">Active semester</div>
+          <div className="stat-icon"><BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
         <div className="stat-card" onClick={() => onNavigate('attendance')} style={{ cursor: 'pointer' }}>
           <div className="stat-label">Attendance Rate</div>
-          <div className="stat-value" style={{ color: attendancePct < 75 ? 'var(--danger)' : 'var(--secondary)' }}>
+          <div className="stat-value" style={{ color: attendancePct < 75 ? 'var(--danger)' : 'var(--success)' }}>
             {attendancePct}%
           </div>
           <div className={`stat-trend ${attendancePct < 75 ? 'trend-down' : 'trend-up'}`}>
-            {attendancePct < 75 ? '⚠ Below threshold' : '✓ Good standing'}
+            {attendancePct < 75 ? 'Below threshold' : 'Good standing'}
           </div>
-          <div className="stat-icon">📅</div>
+          <div className="stat-icon"><CalendarIcon size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
         <div className="stat-card" onClick={() => onNavigate('assignments')} style={{ cursor: 'pointer' }}>
           <div className="stat-label">Pending Assignments</div>
           <div className="stat-value">{pendingAssignments.length}</div>
           <div className="stat-trend trend-neutral">Due this month</div>
-          <div className="stat-icon">📝</div>
+          <div className="stat-icon"><BookOpen size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
         <div className="stat-card" onClick={() => onNavigate('certificates')} style={{ cursor: 'pointer' }}>
           <div className="stat-label">Certificates Earned</div>
           <div className="stat-value">{CERTIFICATES.filter(c => c.studentId === user.id).length}</div>
-          <div className="stat-trend trend-up">🏆 Verified credentials</div>
-          <div className="stat-icon">🏆</div>
+          <div className="stat-trend trend-up">Verified credentials</div>
+          <div className="stat-icon"><Trophy size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} /></div>
         </div>
       </div>
 
@@ -143,7 +148,7 @@ function StudentDashboard({ user, onNavigate }) {
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {pendingAssignments.slice(0, 2).map(a => (
               <div key={a.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div style={{ background: 'rgba(201,138,59,0.12)', borderRadius: 8, padding: '8px 10px', fontSize: 18, flexShrink: 0 }}>📝</div>
+                <div style={{ background: 'var(--warning-soft)', color: 'var(--warning)', borderRadius: 8, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><BookOpen size={18} strokeWidth={2} /></div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{a.title}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{a.courseCode}</div>
@@ -155,7 +160,7 @@ function StudentDashboard({ user, onNavigate }) {
             ))}
             {upcomingQuizzes.slice(0, 1).map(q => (
               <div key={q.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div style={{ background: 'rgba(76,124,89,0.12)', borderRadius: 8, padding: '8px 10px', fontSize: 18, flexShrink: 0 }}>⚡</div>
+                <div style={{ background: 'var(--success-soft)', color: 'var(--success)', borderRadius: 8, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><CheckCircle2 size={18} strokeWidth={2} /></div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{q.title}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{q.courseCode} · {q.duration} min</div>
@@ -164,7 +169,7 @@ function StudentDashboard({ user, onNavigate }) {
               </div>
             ))}
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <div style={{ background: 'rgba(3,105,161,0.1)', borderRadius: 8, padding: '8px 10px', fontSize: 18, flexShrink: 0 }}>🏆</div>
+              <div style={{ background: 'var(--info-soft)', color: 'var(--info)', borderRadius: 8, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Trophy size={18} strokeWidth={2} /></div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>Certificate Ready</div>
                 <div style={{ fontSize: 12, color: 'var(--text-2)' }}>Database Systems & Design</div>
@@ -224,79 +229,97 @@ function StudentCourses({ user }) {
       </div>
 
       {tab === 'enrolled' && (
-        <div className="course-grid">
-          {enrolled.map(enr => {
-            const course = COURSES.find(c => c.id === enr.courseId);
-            if (!course) return null;
-            return (
-              <div className="course-card" key={enr.id}>
-                <div className="course-card-banner" style={{
-                  background: `linear-gradient(90deg, hsl(${course.id.charCodeAt(1) * 30}, 60%, 40%), hsl(${course.id.charCodeAt(1) * 45}, 50%, 30%))`
-                }}></div>
-                <div className="course-card-body">
-                  <div className="course-dept-tag">{course.dept_code}</div>
-                  <div className="course-card-title">{course.title}</div>
-                  <div className="course-card-meta">
-                    <span>👤 {course.facultyName}</span>
-                    <span>• {course.credits} Credits</span>
-                  </div>
-                  <div className="course-card-meta" style={{ marginBottom: 12 }}>
-                    <span>📚 {course.content?.length || 0} materials</span>
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                      <span style={{ color: 'var(--text-2)' }}>Progress</span>
-                      <span style={{ fontWeight: 700 }}>{enr.progress}%</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${enr.progress}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="course-card-footer">
-                  <span className="badge badge-success">Active</span>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-outline btn-sm" onClick={() => {
-                      const rating = prompt("Rate this course (1-5):");
-                      if (rating >= 1 && rating <= 5) {
-                        toast.success(`You rated ${course.code} ${rating} stars!`);
-                        // Mock hitting API
-                      } else if (rating !== null) {
-                        toast.error("Rating must be between 1 and 5");
-                      }
-                    }}>⭐ Rate</button>
-                    <button className="btn btn-primary btn-sm">Continue →</button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="card">
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Course Info</th>
+                  <th>Faculty</th>
+                  <th>Credits</th>
+                  <th>Progress</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enrolled.map(enr => {
+                  const course = COURSES.find(c => c.id === enr.courseId);
+                  if (!course) return null;
+                  return (
+                    <tr key={enr.id}>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{course.title}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{course.dept_code} · {course.code}</div>
+                      </td>
+                      <td>{course.facultyName}</td>
+                      <td>{course.credits}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className="progress-bar" style={{ width: 60, height: 6 }}>
+                            <div className="progress-fill" style={{ width: `${enr.progress}%` }}></div>
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 600 }}>{enr.progress}%</span>
+                        </div>
+                      </td>
+                      <td><span className="badge badge-success">Active</span></td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => {
+                            const rating = prompt("Rate this course (1-5):");
+                            if (rating >= 1 && rating <= 5) toast.success(`You rated ${course.code} ${rating} stars!`);
+                          }}>Rate</button>
+                          <button className="btn btn-outline btn-sm">Continue</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {tab === 'browse' && (
-        <div className="course-grid">
-          {availableCourses.map(course => (
-            <div className="course-card" key={course.id}>
-              <div className="course-card-banner"></div>
-              <div className="course-card-body">
-                <div className="course-dept-tag">{course.dept_code}</div>
-                <div className="course-card-title">{course.title}</div>
-                <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12, lineHeight: 1.5 }}>{course.description}</p>
-                <div className="course-card-meta">
-                  <span>👤 {course.facultyName}</span>
-                  <span>• {course.credits} Credits</span>
-                </div>
-                <div className="course-card-meta">
-                  <span>👥 {course.students_enrolled}/{course.capacity} enrolled</span>
-                </div>
-              </div>
-              <div className="course-card-footer">
-                <span className="badge badge-info">Available</span>
-                <button className="btn btn-accent btn-sm">Enroll Now</button>
-              </div>
-            </div>
-          ))}
+        <div className="card">
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Course Info</th>
+                  <th>Description</th>
+                  <th>Faculty</th>
+                  <th>Credits</th>
+                  <th>Enrollment</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {availableCourses.map(course => (
+                  <tr key={course.id}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{course.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{course.dept_code} · {course.code}</div>
+                    </td>
+                    <td style={{ maxWidth: 200 }}>
+                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13, color: 'var(--text-2)' }}>
+                        {course.description}
+                      </div>
+                    </td>
+                    <td>{course.facultyName}</td>
+                    <td>{course.credits}</td>
+                    <td>
+                      <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{course.students_enrolled}/{course.capacity}</span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn btn-primary btn-sm">Enroll</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -308,107 +331,114 @@ function StudentAttendance({ user }) {
   const { data: COURSES } = useLiveCourses();
   const { data: ENROLLMENTS } = useLiveEnrollments();
   const { data: ATTENDANCE_RECORDS } = useLiveAttendance();
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [otpOpen, setOtpOpen] = useState(false);
-
+  const [activeSession, setActiveSession] = useState(null);
+  
   const records = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id || a.studentId === user.userId);
   const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id || e.studentId === user.userId);
 
+  // OTP Logic
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpPurpose, setOtpPurpose] = useState('JOIN');
+  const [currentOtp, setCurrentOtp] = useState('');
+  
+  const fetchActiveSession = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
+      const res = await fetch(`${ATTEND_URL}/class-sessions`, { // Ideally an endpoint for 'active sessions for my enrolled courses'
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const sessions = await res.json();
+      if (sessions && sessions.length > 0) {
+        // Just mocking for UI demo. Real implementation would get the LIVE AttendanceSession 
+        setActiveSession({ id: 'dummy', courseId: 'CS301', status: 'CHECK_IN_OPEN' });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveSession();
+  }, []);
+
+  const handleOtpSubmit = async () => {
+    if (currentOtp.length !== 6) return toast.error('Please enter a 6-digit OTP');
+    try {
+      const token = localStorage.getItem('token');
+      const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
+      
+      const endpoint = otpPurpose === 'JOIN' ? 'join' : 'checkout';
+      
+      const res = await fetch(`${ATTEND_URL}/otp-attendance/sessions/${activeSession?.id || 'dummy'}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          otp: currentOtp,
+          deviceFingerprint: localStorage.getItem('device_fp') + '|' + navigator.userAgent
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit OTP');
+      toast.success(otpPurpose === 'JOIN' ? 'Successfully checked in!' : 'Successfully checked out!');
+      setOtpOpen(false);
+      setCurrentOtp('');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   return (
     <div>
-      <PageHeader title="My Attendance" subtitle="Track your attendance across all enrolled courses.">
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-primary btn-sm" onClick={() => setScannerOpen(true)}>📷 Scan Class QR Code</button>
-          <button className="btn btn-outline btn-sm" onClick={() => setOtpOpen(true)}>⏱️ Enter OTP</button>
-        </div>
-      </PageHeader>
+      <PageHeader title="My Attendance" subtitle="Track your attendance across all enrolled courses." />
 
-      {scannerOpen && (
-        <div className="modal-overlay" onClick={() => setScannerOpen(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 420 }}>
-            <div className="modal-header">
-              <div className="modal-title">Scan Attendance QR Code</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setScannerOpen(false)}><Icon d={ICONS.x} size={18} /></button>
-            </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <div style={{ position: 'relative', width: 220, height: 220, borderRadius: 12, overflow: 'hidden', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ border: '2px solid var(--accent)', width: 160, height: 160, borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
-                <div style={{ position: 'absolute', color: 'white', fontSize: 12, bottom: 12 }}>Align QR code within frame</div>
+      {/* Active Session Alert */}
+      {activeSession && (
+        <div className="card" style={{ padding: 24, marginBottom: 24, border: '1px solid var(--accent)', background: 'var(--warning-soft)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="badge badge-accent animate-pulse">Live Session</span>
+                <span style={{ fontWeight: 700, fontSize: 16 }}>{activeSession.courseId}</span>
               </div>
-              <button
-                className="btn btn-accent"
-                onClick={() => {
-                  toast.success('Attendance marked present via QR scan!');
-                  setScannerOpen(false);
-                }}
-              >
-                Simulate QR Scan Success
-              </button>
+              <div style={{ fontSize: 14, color: 'var(--text-2)' }}>Professor has opened {activeSession.status === 'CHECK_IN_OPEN' ? 'Check-In' : 'Check-Out'}.</div>
             </div>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => {
+                setOtpPurpose(activeSession.status === 'ENDING' ? 'END' : 'JOIN');
+                setOtpOpen(true);
+              }}
+            >
+              Enter {activeSession.status === 'ENDING' ? 'END' : 'JOIN'} OTP
+            </button>
           </div>
         </div>
       )}
 
+      {/* Legacy OTP Modal */}
       {otpOpen && (
         <div className="modal-overlay" onClick={() => setOtpOpen(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 420 }}>
             <div className="modal-header">
-              <div className="modal-title">Enter Attendance OTP</div>
+              <div className="modal-title">Enter {otpPurpose} OTP</div>
               <button className="btn btn-ghost btn-icon" onClick={() => setOtpOpen(false)}><Icon d={ICONS.x} size={18} /></button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Enter the 6-digit OTP displayed by your faculty.</p>
+              <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Enter the 6-digit OTP displayed on the screen. It rotates every 25 seconds.</p>
               <input
                 type="text"
                 maxLength="6"
                 placeholder="------"
-                id="otp-manual-input"
-                style={{ width: '100%', textAlign: 'center', fontSize: 24, letterSpacing: '0.5em', padding: 12, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', fontFamily: 'var(--font-mono)' }}
-                onChange={e => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+                value={currentOtp}
+                onChange={e => setCurrentOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                style={{ width: '100%', textAlign: 'center', fontSize: 32, letterSpacing: '0.2em', padding: 16, borderRadius: 8, border: '2px solid var(--border)', background: 'var(--surface-2)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
               />
-              <button
-                className="btn btn-accent"
-                onClick={async () => {
-                  const otp = document.getElementById('otp-manual-input').value;
-                  if (otp.length !== 6) {
-                    toast.error('Please enter a 6-digit OTP');
-                    return;
-                  }
-                  try {
-                    // Try to hit the OTP check endpoint
-                    const token = localStorage.getItem('token');
-                    // Find active session
-                    const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
-                    const resSessions = await fetch(`${ATTEND_URL}/otp-attendance/sessions`, {
-                      headers: { Authorization: `Bearer ${token}` }
-                    });
-                    const sessions = await resSessions.json();
-                    if (!sessions || sessions.length === 0) {
-                      toast.error('No active attendance sessions found.');
-                      return;
-                    }
-                    const res = await fetch(`${ATTEND_URL}/otp-attendance/submit`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
-                      },
-                      body: JSON.stringify({
-                        sessionId: sessions[0]._id,
-                        otp,
-                        deviceFingerprint: localStorage.getItem('device_fp') + '|' + navigator.userAgent
-                      })
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || 'Failed to submit OTP');
-                    toast.success('Attendance marked successfully!');
-                    setOtpOpen(false);
-                  } catch (err) {
-                    toast.error(err.message);
-                  }
-                }}
-              >
-                Submit OTP
+              <button className="btn btn-accent w-full" onClick={handleOtpSubmit}>
+                Submit {otpPurpose} OTP
               </button>
             </div>
           </div>
@@ -594,7 +624,7 @@ function StudentAssessments({ user }) {
                   <thead><tr><th>Rank</th><th>Student</th><th>Score</th><th>Time</th></tr></thead>
                   <tbody>
                     {activeQuiz.leaderboard.map(l => (
-                      <tr key={l.rank} style={l.studentName === `${user.firstName} ${user.lastName}` ? { background: 'rgba(201,138,59,0.06)' } : {}}>
+                      <tr key={l.rank} style={l.studentName === `${user.firstName} ${user.lastName}` ? { background: 'var(--warning-soft)' } : {}}>
                         <td style={{ fontWeight: 700, fontSize: 18 }}>
                           {l.rank === 1 ? '🥇' : l.rank === 2 ? '🥈' : l.rank === 3 ? '🥉' : `#${l.rank}`}
                         </td>
@@ -616,338 +646,59 @@ function StudentAssessments({ user }) {
   return (
     <div>
       <PageHeader title="Quizzes & Assessments" subtitle="Complete your pending assessments and view past results." />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-        {ASSESSMENTS.map(q => (
-          <div className="card" key={q.id}>
-            <div className="card-body">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span className="badge badge-neutral">{q.courseCode}</span>
-                <span className={`badge ${q.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
-                  {q.status === 'active' ? '🟢 Active' : '🕐 Upcoming'}
-                </span>
-              </div>
-              <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 8, lineHeight: 1.3 }}>{q.title}</h3>
-              <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-2)', marginBottom: 16 }}>
-                <span>⏱ {q.duration} min</span>
-                <span>❓ {q.questions.length} questions</span>
-                <span>📊 {q.pass_marks}% to pass</span>
-              </div>
-            </div>
-            <div className="course-card-footer">
-              <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                {q.leaderboard?.length > 0 ? `${q.leaderboard.length} students completed` : 'No attempts yet'}
-              </span>
-              <button
-                className={`btn btn-sm ${q.status === 'active' ? 'btn-accent' : 'btn-outline'}`}
-                onClick={() => q.status === 'active' && startQuiz(q)}
-                disabled={q.status !== 'active'}
-              >
-                {q.status === 'active' ? '→ Start Quiz' : '🔒 Locked'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── ASSIGNMENTS ────────────────────────────────────────────────────────────
-function StudentAssignments({ user }) {
-  const { data: ASSIGNMENTS } = useLiveAssignments();
-  const { data: SUBMISSIONS } = { data: MOCK_SUBMISSIONS };
-
-  const [selected, setSelected] = useState(null);
-  const [file, setFile] = useState(null);
-  const [remarks, setRemarks] = useState('');
-  
-  const [disputing, setDisputing] = useState(null);
-  const [disputeReason, setDisputeReason] = useState('');
-  const disputeGrade = useDisputeGrade();
-  const [viewingPlagiarism, setViewingPlagiarism] = useState(null);
-  
-  const submitAssignment = useSubmitAssignment();
-
-  const onDrop = useCallback(acceptedFiles => {
-    if (acceptedFiles?.length > 0) setFile(acceptedFiles[0]);
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    maxSize: 50 * 1024 * 1024,
-    multiple: false
-  });
-
-  const handleSubmit = async () => {
-    if (!file || !selected) return;
-    try {
-      await submitAssignment.mutateAsync({
-        assignmentId: selected.id || selected._id,
-        file,
-        remarks
-      });
-      // Fallback for mock data UI update
-      toast.success('Simulated submission recorded.');
-      setSelected(null);
-      setFile(null);
-      setRemarks('');
-    } catch (err) {
-      console.warn('Real API submission failed, falling back to mock UI');
-      toast.success('Simulated submission recorded.');
-      setSelected(null);
-      setFile(null);
-      setRemarks('');
-    }
-  };
-
-  const handleDispute = async () => {
-    if (!disputing || !disputeReason) return;
-    try {
-      await disputeGrade.mutateAsync({ submissionId: disputing.id || disputing._id, reason: disputeReason });
-      setDisputing(null);
-      setDisputeReason('');
-    } catch (err) {
-      toast.error('Failed to open dispute');
-    }
-  };
-
-  const mySubmissions = SUBMISSIONS.filter(s => s.studentId === user.id || s.studentId === user.userId);
-
-  return (
-    <div>
-      <PageHeader title="Assignments" subtitle="Submit and track your assignments." />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-        {ASSIGNMENTS.map(a => {
-          const submission = mySubmissions.find(s => s.assignmentId === a.id);
-          const dueDate = new Date(a.dueDate);
-          const today = new Date();
-          const daysLeft = Math.round((dueDate - today) / (1000 * 60 * 60 * 24));
-          const isOverdue = daysLeft < 0;
-
-          return (
-            <div className="card" key={a.id}>
-              <div className="card-body">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span className="badge badge-neutral">{a.courseCode}</span>
-                  {submission?.status === 'graded'
-                    ? <span className="badge badge-success">Graded: {submission.grade}/{a.totalMarks}</span>
-                    : submission?.status === 'submitted'
-                    ? <span className="badge badge-info">Submitted</span>
-                    : a.status === 'closed'
-                    ? <span className="badge badge-neutral">Closed</span>
-                    : isOverdue
-                    ? <span className="badge badge-danger">Overdue</span>
-                    : <span className="badge badge-warning">{daysLeft}d left</span>
-                  }
-                </div>
-                <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 8, lineHeight: 1.3 }}>{a.title}</h3>
-                <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14, lineHeight: 1.5 }}>{a.description}</p>
-                <div style={{ fontSize: 12, color: 'var(--text-2)', display: 'flex', gap: 14 }}>
-                  <span>📅 Due: {new Date(a.dueDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                  <span>📊 {a.totalMarks} marks</span>
-                </div>
-                {submission?.isLate && (
-                  <div className="alert alert-warning" style={{ marginTop: 12, fontSize: 12, padding: '6px 10px' }}>
-                    <strong>Late Submission:</strong> {submission.lateDays} day(s) late (Penalty: -{submission.penaltyApplied}%)
-                  </div>
-                )}
-                {submission?.plagiarismScore != null && (
-                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '8px 10px', background: 'var(--surface-2)', borderRadius: 6, border: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>Similarity Score:</span>
-                    <span 
-                      className={`badge ${submission.plagiarismScore > 20 ? 'badge-danger' : 'badge-success'}`}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => setViewingPlagiarism(submission)}
-                      title="Click to view report"
-                    >
-                      {submission.plagiarismScore > 20 ? `High (${submission.plagiarismScore}%)` : `OK (${submission.plagiarismScore}%)`}
+      <div className="card">
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Assessment Info</th>
+                <th>Course</th>
+                <th>Duration / Questions</th>
+                <th>Passing Criteria</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ASSESSMENTS.map(q => (
+                <tr key={q.id}>
+                  <td>
+                    <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{q.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                      {q.leaderboard?.length > 0 ? `${q.leaderboard.length} students completed` : 'No attempts yet'}
+                    </div>
+                  </td>
+                  <td><span className="badge badge-neutral">{q.courseCode}</span></td>
+                  <td style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                    ⏱ {q.duration} min<br/>
+                    ❓ {q.questions.length} questions
+                  </td>
+                  <td style={{ fontSize: 13, color: 'var(--text-2)' }}>📊 {q.pass_marks}% to pass</td>
+                  <td>
+                    <span className={`badge ${q.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
+                      {q.status === 'active' ? '🟢 Active' : '🕐 Upcoming'}
                     </span>
-                  </div>
-                )}
-                {submission?.rubricGrades && submission.rubricGrades.length > 0 && (
-                  <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, color: 'var(--text-2)' }}>Rubric Breakdown</div>
-                    {submission.rubricGrades.map((r, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                        <span>{r.criterion}</span>
-                        <span style={{ fontWeight: 600 }}>{r.marks}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {submission?.feedback && (
-                  <div className="alert alert-success" style={{ marginTop: 12, fontSize: 12 }}>
-                    <strong>Feedback:</strong> {submission.feedback}
-                  </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                  {a.submissionsCount}/{a.studentsCount} submitted
-                </span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {submission?.status === 'graded' && (!submission.disputeStatus || submission.disputeStatus === 'none') && (
-                    <button className="btn btn-outline btn-sm" onClick={() => setDisputing(submission)}>
-                      Dispute Grade
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className={`btn btn-sm ${q.status === 'active' ? 'btn-accent' : 'btn-outline'}`}
+                      onClick={() => q.status === 'active' && startQuiz(q)}
+                      disabled={q.status !== 'active'}
+                    >
+                      {q.status === 'active' ? 'Start Quiz →' : 'Locked'}
                     </button>
-                  )}
-                  {submission?.disputeStatus === 'open' && (
-                    <span className="badge badge-warning">Dispute Pending</span>
-                  )}
-                  {submission?.disputeStatus === 'resolved' && (
-                    <span className="badge badge-success">Dispute Resolved</span>
-                  )}
-                  {(!submission || a.allowResubmit) && a.status === 'active' && (
-                    <button className="btn btn-accent btn-sm" onClick={() => setSelected(a)}>
-                      {submission ? '↑ Resubmit' : '↑ Submit'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-
-      {/* Upload Modal */}
-      {selected && (
-        <div className="modal-overlay" onClick={() => setSelected(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Submit Assignment</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setSelected(null)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 700 }}>{selected.title}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Due: {new Date(selected.dueDate).toLocaleDateString()}</div>
-              </div>
-              <div
-                {...getRootProps()}
-                className={`dropzone ${isDragActive ? 'dragover' : ''}`}
-                style={{ cursor: 'pointer' }}
-              >
-                <input {...getInputProps()} />
-                <div className="dropzone-icon">📂</div>
-                {file
-                  ? <div className="dropzone-text">✓ {file.name}</div>
-                  : <>
-                    <div className="dropzone-text">Drag & drop your file here, or click to select</div>
-                    <div className="dropzone-hint">PDF, ZIP, DOC · Max 50MB</div>
-                  </>
-                }
-              </div>
-              <div className="form-group" style={{ marginTop: 16 }}>
-                <label className="form-label">Remarks (Optional)</label>
-                <textarea 
-                  className="form-input" 
-                  placeholder="Any notes for your instructor…" 
-                  rows={3}
-                  value={remarks}
-                  onChange={e => setRemarks(e.target.value)}
-                ></textarea>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setSelected(null)}>Cancel</button>
-              <button 
-                className="btn btn-primary" 
-                disabled={!file || submitAssignment.isLoading} 
-                onClick={handleSubmit}
-              >
-                {submitAssignment.isLoading ? 'Uploading...' : '↑ Submit Assignment'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Dispute Modal */}
-      {disputing && (
-        <div className="modal-overlay" onClick={() => setDisputing(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Dispute Grade</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setDisputing(null)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 700 }}>Request a Re-evaluation</div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                  Provide a clear and concise reason for disputing your grade. Your course faculty will review this request.
-                </div>
-              </div>
-              <div className="form-group" style={{ marginTop: 16 }}>
-                <label className="form-label">Justification / Reason</label>
-                <textarea 
-                  className="form-input" 
-                  placeholder="e.g. My submission was marked down for criterion X, but the requirement was met on page 3..." 
-                  rows={4}
-                  value={disputeReason}
-                  onChange={e => setDisputeReason(e.target.value)}
-                ></textarea>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setDisputing(null)}>Cancel</button>
-              <button 
-                className="btn btn-primary" 
-                disabled={!disputeReason || disputeGrade.isLoading} 
-                onClick={handleDispute}
-              >
-                {disputeGrade.isLoading ? 'Submitting...' : 'Submit Dispute'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Plagiarism Report Modal */}
-      {viewingPlagiarism && (
-        <div className="modal-overlay" onClick={() => setViewingPlagiarism(null)} style={{ zIndex: 1200 }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Originality Report</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setViewingPlagiarism(null)}>
-                <Icon d={ICONS.x} size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0', flexDirection: 'column' }}>
-                <div style={{ fontSize: 48, fontWeight: 700, color: viewingPlagiarism.plagiarismScore > 20 ? 'var(--danger)' : 'var(--secondary)' }}>
-                  {viewingPlagiarism.plagiarismScore || 0}%
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Similarity Score</div>
-              </div>
-              {viewingPlagiarism.plagiarismFlags?.length > 0 ? (
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Flags Detected:</div>
-                  <ul style={{ paddingLeft: 20, margin: 0, fontSize: 13 }}>
-                    {viewingPlagiarism.plagiarismFlags.map((flag, idx) => (
-                      <li key={idx} style={{ color: 'var(--text-2)', marginBottom: 4 }}>{flag}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-2)', fontSize: 13 }}>
-                  No significant similarity detected. Your submission appears original.
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-primary" onClick={() => setViewingPlagiarism(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
+// StudentAssignments moved to src/portals/student/assignments/StudentAssignments.jsx
 
 // ── CERTIFICATES ───────────────────────────────────────────────────────────
 function StudentCertificates({ user }) {
@@ -1013,7 +764,7 @@ function StudentCertificates({ user }) {
             </div>
             <div className="modal-body">
               <div className="certificate">
-                <div className="certificate-title">EduSphere University</div>
+                <div className="certificate-title">CampusSphere University</div>
                 <div className="certificate-headline">Certificate<br />of Completion</div>
                 <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 8 }}>This is to certify that</div>
                 <div className="certificate-recipient">{preview.studentName}</div>
@@ -1049,100 +800,86 @@ function StudentCertificates({ user }) {
 
 // ── STUDENT ID & PROFILE ───────────────────────────────────────────────────
 function StudentProfile({ user }) {
+  const { data: profile, isLoading } = useLiveProfile(user.id || user._id);
+  const { data: courses } = useLiveCourses();
+  const { data: assignments } = useLiveAssignments();
+  const updateProfile = useUpdateProfile();
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading profile...</div>;
+
+  const displayFirstName = profile?.firstName || user.firstName || 'Student';
+  const displayLastName = profile?.lastName || user.lastName || '';
+  const fullName = `${displayFirstName} ${displayLastName}`.trim();
+
+  const formattedProfile = {
+    userId: user.id || user._id,
+    name: fullName,
+    firstName: profile?.firstName,
+    lastName: profile?.lastName,
+    designation: 'Student',
+    department: 'N/A', // Update this if department exists in user data
+    id: (user.id || user._id).toUpperCase(),
+    idLabel: 'Student ID',
+    status: 'Active Student',
+    avatar: 'N/A',
+    email: user.email,
+    phone: profile?.phone,
+    dob: profile?.dob,
+    gender: profile?.gender,
+    address: profile?.address,
+    bio: profile?.bio,
+    professionalTitle: 'Academic Information',
+    professional: [
+      ['Department', 'N/A'],
+      ['Program', 'N/A'],
+      ['Current Semester', 'N/A'],
+      ['Section', 'N/A'],
+      ['Academic Year', 'N/A'],
+      ['Roll No', 'N/A'],
+      ['Batch', 'N/A'],
+      ['CGPA', 'N/A']
+    ],
+    statsTitle: 'Academic Statistics',
+    stats: [
+      { icon: GraduationCap, label: 'CGPA', value: 'N/A', helper: 'Out of 10.00' },
+      { icon: CheckCircle2, label: 'Courses Enrolled', value: courses?.length || 0, helper: 'This Semester' },
+      { icon: CalendarIcon, label: 'Attendance', value: 'N/A', helper: 'This Semester' },
+      { icon: Trophy, label: 'Assignments', value: assignments?.length || 0, helper: 'Till Date' }
+    ],
+    activities: [],
+    metadata: [
+      { icon: LayoutDashboard, label: 'Roll No', value: 'N/A' },
+      { icon: Users, label: 'Batch', value: 'N/A' }
+    ]
+  };
+
   return (
-    <div>
-      <PageHeader title="My Profile & Student ID" subtitle="Your personal information and digital student card." />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        {/* ID Card */}
-        <div>
-          <div className="card-title" style={{ marginBottom: 16 }}>Digital Student ID</div>
-          <div className="id-card">
-            <div className="id-card-header">
-              <div className="brand">EduSphere</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'right' }}>
-                <div>University ID Card</div>
-                <div>AY 2025-26</div>
-              </div>
-            </div>
-            <div className="id-card-body">
-              <div className="id-card-photo">{user.firstName[0]}{user.lastName[0]}</div>
-              <div className="id-card-details">
-                <div className="id-card-name">{user.firstName} {user.lastName}</div>
-                <div className="id-card-role">🎓 Student</div>
-                <div className="id-card-info">
-                  <span>📧 {user.email}</span>
-                  <span>🏢 {user.department}</span>
-                  <span>🆔 {user.id.toUpperCase()}</span>
+    <ProfilePage
+      profile={formattedProfile}
+      accent={profileThemes.student}
+      updateProfileHook={updateProfile}
+    >
+      <div className="card mt-6">
+        <div className="card-header"><div className="card-title">Enrolled Courses (This Semester)</div></div>
+        <div className="card-body">
+          {courses?.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {courses.slice(0, 6).map(c => (
+                <div key={c.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <span className="badge badge-neutral text-xs">{c.code}</span>
+                    <span className="text-sm font-medium text-slate-800">{c.title}</span>
+                  </div>
+                  <span className="text-xs text-slate-500">4 Credits</span>
                 </div>
-              </div>
+              ))}
             </div>
-            <div className="id-card-footer">
-              <span>Valid until: Dec 2026</span>
-              <div style={{ display: 'flex', gap: 3 }}>
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} style={{ width: 3, height: 20, background: i % 2 === 0 ? 'var(--text-1)' : 'var(--border)', opacity: 0.5 }}></div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-            <button className="btn btn-outline btn-sm"><Icon d={ICONS.download} size={13} /> Download ID</button>
-            <button className="btn btn-outline btn-sm">🔲 QR Code</button>
-          </div>
-
-          <div className="card" style={{ marginTop: 24, background: 'var(--surface-2)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
-            <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-1)' }}>Academic Transcript</div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>Download your official course grades and GPA history.</div>
-            </div>
-            <button className="btn btn-primary btn-sm" onClick={() => {
-              toast.success('Generating official academic transcript PDF...');
-              setTimeout(() => toast.success('Transcript downloaded successfully!'), 1500);
-            }}>
-              <Icon d={ICONS.download} size={14} /> Download PDF
-            </button>
-          </div>
+          ) : (
+            <p className="text-sm text-slate-500">No courses enrolled</p>
+          )}
         </div>
-
-        {/* Profile Info */}
-        <div className="card">
-          <div className="card-header"><div className="card-title">Personal Information</div></div>
-          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">First Name</label>
-                <input className="form-input" defaultValue={user.firstName} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Last Name</label>
-                <input className="form-input" defaultValue={user.lastName} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <input className="form-input" defaultValue={user.email} disabled />
-            </div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Department</label>
-                <input className="form-input" defaultValue={user.department} disabled />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Student ID</label>
-                <input className="form-input" defaultValue={user.id.toUpperCase()} disabled style={{ fontFamily: 'var(--font-mono)' }} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">New Password</label>
-              <input className="form-input" type="password" placeholder="Leave blank to keep current" />
-            </div>
-            <button className="btn btn-primary">Save Changes</button>
-          </div>
-        </div>
-  
-    </div>
-    </div>
+      </div>
+    </ProfilePage>
   );
 }
 
@@ -1494,6 +1231,9 @@ export default function StudentPortal({ page, onNavigate }) {
     downloads:    <F.DownloadCenter user={user} />,
     activity:     <F.ActivityTimeline user={user} />,
     'ai-assistant': <F.AIAssistant user={user} />,
+    // Academic Core Enterprise Overhaul
+    plan:         <AcademicPlan user={user} />,
+    registration: <CourseRegistration user={user} />
   };
 
   return (
@@ -1503,3 +1243,4 @@ export default function StudentPortal({ page, onNavigate }) {
     </>
   );
 }
+

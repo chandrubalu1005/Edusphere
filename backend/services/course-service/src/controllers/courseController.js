@@ -31,7 +31,7 @@ exports.listCourses = async (req, res) => {
     const courses = await Course.find(filter)
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit), 1000));
     const total = await Course.countDocuments(filter);
     res.json({ courses, total, page: Number(page), limit: Number(limit) });
   } catch (error) {
@@ -64,7 +64,7 @@ exports.searchCourses = async (req, res) => {
       ]
     };
     if (req.user.role === 'student') filter.status = 'published';
-    const courses = await Course.find(filter).limit(Number(limit));
+    const courses = await Course.find(filter).limit(Math.min(Number(limit), 1000));
     res.json({ courses, total: courses.length, source: 'mongo' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -481,3 +481,4 @@ exports.rateCourse = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
