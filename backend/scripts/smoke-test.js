@@ -94,28 +94,69 @@ async function runSmokeTest() {
   console.log('═══════════════════════════════════════════════════════\n');
 
   console.log('--- Checking Core Infrastructure ---');
-  const mongoCheck = await checkInfrastructure('127.0.0.1', 27017, 'MongoDB');
-  if (mongoCheck.status === 'UP') {
-    console.log('✅ [MongoDB] port 27017: UP');
+
+  // 1. MongoDB Check
+  let mongoCheck;
+  if (process.env.MONGO_URI) {
+    try {
+      const mongoose = require('mongoose');
+      await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 4000 });
+      await mongoose.disconnect();
+      mongoCheck = { status: 'UP' };
+    } catch (err) {
+      mongoCheck = { status: 'DOWN', error: err.message };
+    }
   } else {
-    console.log(`❌ [MongoDB] port 27017: DOWN (${mongoCheck.error})`);
+    mongoCheck = await checkInfrastructure('127.0.0.1', 27017, 'MongoDB');
+  }
+
+  if (mongoCheck.status === 'UP') {
+    console.log('✅ [MongoDB]: UP');
+  } else {
+    console.log(`❌ [MongoDB]: DOWN (${mongoCheck.error || 'Connection failed'})`);
     console.log('\nFATAL: MongoDB is unreachable. The microservices will crash instantly.');
-    console.log('Please start MongoDB (e.g. docker run -d -p 27017:27017 mongo) before proceeding.');
+    console.log('Please start MongoDB or configure MONGO_URI in .env.');
     process.exit(1);
   }
 
-  const rabbitCheck = await checkInfrastructure('127.0.0.1', 5672, 'RabbitMQ');
-  if (rabbitCheck.status === 'UP') {
-    console.log('✅ [RabbitMQ] port 5672: UP');
+  // 2. RabbitMQ Check
+  let rabbitCheck;
+  if (process.env.RABBITMQ_URL) {
+    try {
+      const url = new URL(process.env.RABBITMQ_URL);
+      const port = url.port || (url.protocol === 'amqps:' ? 5671 : 5672);
+      rabbitCheck = await checkInfrastructure(url.hostname, parseInt(port, 10), 'RabbitMQ');
+    } catch (err) {
+      rabbitCheck = { status: 'DOWN', error: err.message };
+    }
   } else {
-    console.log(`❌ [RabbitMQ] port 5672: DOWN (${rabbitCheck.error})`);
+    rabbitCheck = await checkInfrastructure('127.0.0.1', 5672, 'RabbitMQ');
   }
 
-  const redisCheck = await checkInfrastructure('127.0.0.1', 6379, 'Redis');
-  if (redisCheck.status === 'UP') {
-    console.log('✅ [Redis] port 6379: UP');
+  if (rabbitCheck.status === 'UP') {
+    console.log('✅ [RabbitMQ]: UP');
   } else {
-    console.log(`❌ [Redis] port 6379: DOWN (${redisCheck.error})`);
+    console.log(`❌ [RabbitMQ]: DOWN (${rabbitCheck.error || 'Connection failed'})`);
+  }
+
+  // 3. Redis Check
+  let redisCheck;
+  if (process.env.REDIS_URL) {
+    try {
+      const url = new URL(process.env.REDIS_URL);
+      const port = url.port || (url.protocol === 'rediss:' ? 6380 : 6379);
+      redisCheck = await checkInfrastructure(url.hostname, parseInt(port, 10), 'Redis');
+    } catch (err) {
+      redisCheck = { status: 'DOWN', error: err.message };
+    }
+  } else {
+    redisCheck = await checkInfrastructure('127.0.0.1', 6379, 'Redis');
+  }
+
+  if (redisCheck.status === 'UP') {
+    console.log('✅ [Redis]: UP');
+  } else {
+    console.log(`❌ [Redis]: DOWN (${redisCheck.error || 'Connection failed'})`);
   }
 
   console.log('\n--- Checking Microservices ---');
