@@ -18,10 +18,7 @@ import {
   ProgressRing, MiniSparkline, AIChatInterface, NotificationCenter,
   EmptyState, Modal, CommandPalette, WorkflowTimeline
 } from '../../components/shared/index.jsx';
-import {
-  FEE_RECORDS,
-  ACTIVITY_LOG,
-} from '../../mockData.js';
+
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
   useLivePlacementDrives, useLivePlacementApplications, useLiveNotifications,
@@ -519,29 +516,7 @@ export function FeePayment({ user }) {
   const totalDue = fees.reduce((s, f) => s + (f.total - f.paid), 0);
 
   function handleProcessPayment() {
-    setIsPaying(true);
-    setTimeout(() => {
-      setIsPaying(false);
-      setFees(prev => prev.map(f => {
-        if (f.id === selectedFee.id) {
-          return {
-            ...f,
-            status: 'paid',
-            paid: f.total,
-            method: 'Card',
-            receiptNo: `TXN-${Math.floor(100000 + Math.random() * 900000)}`
-          };
-        }
-        return f;
-      }));
-      setIsModalOpen(false);
-      toast.success(`Payment of ₹${selectedFee.total.toLocaleString()} processed successfully!`);
-      // Reset inputs
-      setCardNumber('');
-      setCardExpiry('');
-      setCardCvv('');
-      setCardName('');
-    }, 1500);
+    toast.error('Service unavailable (Payment Gateway Not Connected)');
   }
 
   return (
@@ -799,7 +774,7 @@ export function StudentLibrary({ user }) {
   };
 
   const handleRequest = (bookId) => {
-    toast.success('Book requested. Please collect from the circulation desk.');
+    toast.error('Service unavailable (Book reservation API not connected)');
   };
 
   const handleAccess = (resourceId, action = 'VIEW') => {

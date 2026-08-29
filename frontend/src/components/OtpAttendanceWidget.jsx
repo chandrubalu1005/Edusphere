@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
-const ATTENDANCE_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
+const ATTENDANCE_URL = import.meta.env.VITE_ATTENDANCE_URL || '/api/attendance';
 
 export default function OtpAttendanceWidget({ token }) {
   const [activeSessions, setActiveSessions] = useState([]);

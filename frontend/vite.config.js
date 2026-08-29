@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: '127.0.0.1',
+    host: true,
     proxy: USE_GATEWAY ? {
       '/api': {
         target: GATEWAY_URL,
@@ -37,7 +37,9 @@ export default defineConfig({
       '/api/discussion': { target: 'http://localhost:3013', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/discussion/, '') },
       '/api/analytics': { target: 'http://localhost:3014', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/analytics/, '') },
       '/api/admin': { target: 'http://localhost:3015', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/admin/, '') },
-      '/socket.io': { target: 'http://localhost:3004', changeOrigin: true, ws: true }
+      '/api/finance': { target: 'http://localhost:3016', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/finance/, '') },
+      '/socket.io': { target: 'http://localhost:3004', changeOrigin: true, ws: true },
+      '/attendance-socket': { target: 'http://localhost:3008', changeOrigin: true, ws: true, rewrite: (p) => p.replace(/^\/attendance-socket/, '/socket.io') }
     }
   }
 });

@@ -14,19 +14,7 @@ import {
 import { 
   Users, UsersRound, Calendar, BookOpen, Star, AlertTriangle, AlertCircle, TrendingUp, CheckCircle2, Megaphone, Target, Settings, Zap, Award, Inbox, Clock, MapPin, Briefcase, Building, FileText, Download, MessageSquare, Pin, HelpCircle, GraduationCap, Copy, Share2, Printer, Activity, ClipboardCheck, MessageCircle, BarChart2, ListOrdered, CheckSquare, BrainCircuit, NotebookPen, PenTool, LayoutTemplate, MessageSquareMore, UploadCloud
 } from 'lucide-react';
-import {
-  TIMETABLE as MOCK_TIMETABLE, CALENDAR_EVENTS as MOCK_CALENDAR_EVENTS,
-  DISCUSSIONS as MOCK_DISCUSSIONS, DISCUSSION_REPLIES as MOCK_DISCUSSION_REPLIES,
-  TRANSCRIPTS as MOCK_TRANSCRIPTS, FEE_RECORDS as MOCK_FEE_RECORDS,
-  DOWNLOADS as MOCK_DOWNLOADS, ACTIVITY_LOG as MOCK_ACTIVITY_LOG,
-  LIBRARY_RESOURCES as MOCK_LIBRARY_RESOURCES, PLACEMENT_DRIVES as MOCK_PLACEMENT_DRIVES,
-  ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS, NOTIFICATIONS as MOCK_NOTIFICATIONS,
-  ENROLLMENTS as MOCK_ENROLLMENTS, ATTENDANCE_RECORDS as MOCK_ATTENDANCE_RECORDS,
-  COURSES as MOCK_COURSES, ASSIGNMENTS as MOCK_ASSIGNMENTS,
-  USERS as MOCK_USERS, LEAVE_RECORDS as MOCK_LEAVE_RECORDS,
-  LEAVE_BALANCE as MOCK_LEAVE_BALANCE, FEEDBACK_SURVEYS as MOCK_FEEDBACK_SURVEYS,
-  GRADE_SUBMISSIONS as MOCK_GRADE_SUBMISSIONS
-} from '../../mockData.js';
+
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveCourses,
   useLiveAssignments, useLiveAssessments, useLiveAttendance,
@@ -386,7 +374,7 @@ export function GradeSubmission({ user }) {
   const [selectedCourse, setSelectedCourse] = useState(myCourses[0]?.id || null);
   const [gradesData, setGradesData] = useState([]);
   const [saving, setSaving] = useState(false);
-  const records = MOCK_GRADE_SUBMISSIONS.filter(g => g.courseId === selectedCourse);
+  const records = [].filter(g => g.courseId === selectedCourse);
 
   const initialStudents = [
     { id: 'st1', name: 'Alice Vance', attendance: '92%', a1: 18, a2: 19, exam: 45 },
@@ -415,12 +403,7 @@ export function GradeSubmission({ user }) {
   }
 
   async function handleSave() {
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      toast.success('Grades saved and published successfully!');
-      setSelectedCourse(null);
-    }, 1200);
+    toast.error('Service unavailable (Grade submission API not connected)');
   }
 
   if (selectedCourse) {
@@ -529,7 +512,7 @@ export function GradeSubmission({ user }) {
             </button>
           ), sortable: false }
         ]}
-        data={MOCK_GRADE_SUBMISSIONS}
+        data={[]}
       />
     </div>
   );
@@ -609,16 +592,8 @@ export function AITools({ user }) {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      if (activeTool === 'paper') {
-        setOutput(`📝 **Generated Question Paper: Data Structures (CS201)**\n**Total Marks: 50 | Duration: 2 Hours**\n\n**Part A (Answer all questions - 2 Marks each)**\n1. Explain the differences between an Array and a Linked List.\n2. Define collision resolution in Hash Tables.\n3. What is the height of a balanced Binary Search Tree with N nodes?\n\n**Part B (Answer any three - 10 Marks each)**\n4. Write the algorithm for Merge Sort and derive its time complexity.\n5. Explain DFS and BFS traversal with clean trace tables.\n6. Implement a stack using queues from scratch.`);
-      } else if (activeTool === 'rubric') {
-        setOutput(`📊 **Generated Evaluation Rubric: DBMS Project**\n\n| Evaluation Criteria | Excellent (5-4 pts) | Good (3-2 pts) | Needs Work (1-0 pts) |\n|---|---|---|---|\n| **Schema Design** | Schema normalized to 3NF/BCNF. All relations correctly modeled. | Schema in 2NF. Slight errors in relation mapping. | No normalization. Massive redundancies. |\n| **Queries & Triggers** | All complex queries optimize indexes. Correct trigger execution. | Simple queries correct. Minor indexing errors. | Queries fail. Triggers cause database deadlock. |\n| **Presentation** | Professional slides, clean diagrams, clear voice. | Slides complete. Unclear voice or delivery. | Poor slides. No team coordination. |`);
-      } else if (activeTool === 'evaluator') {
-        setOutput(`🎓 **AI Essay Evaluation & Grading Report**\n\n• **Suggested Score:** **8.5 / 10** (Grade: **A-**)\n• **Detected Plagiarism:** **3.2%** (Excellent - Safe to accept)\n• **Readability Index:** **74.5** (Gunning Fog: 10.8 - Advanced)\n\n### Core Strength Analysis:\n1. **Concept Mastery:** The student shows a clear grasp of transaction ACID properties and distributed scaling.\n2. **Argument Flow:** Introduction and thesis statement transition smoothly to implementation benchmarks.\n\n### Suggested Improvements:\n- **Technical Depth:** Could expand further on two-phase commit protocols (2PC) and partition failures.\n- **Style Reference:** Include explicit bibliographic entries at the footer.`);
-      } else {
-        setOutput(`📈 **AI Attendance & Academic Summary**\n\n• **Total Active Batches:** 2\n• **Avg Attendance Rate:** 81.3%\n• **Alerts Raised:** 2 Students under 75% attendance in CS302.\n• **Performance Index:** Pass rate predicted to be 88% based on recent assessment trends.\n• **Recommendations:** Schedule an extra tutorial slot for CS302 to help struggling cohorts before mid-sem.`);
-      }
-    }, 1500);
+      toast.error('Service unavailable (AI Engine not connected)');
+    }, 500);
   }
 
   return (
@@ -711,7 +686,7 @@ export function AITools({ user }) {
 
 // ── STUDENT FEEDBACK ────────────────────────────────────────────────────────
 export function StudentFeedback({ user }) {
-  const mySurveys = MOCK_FEEDBACK_SURVEYS.filter(s => s.instructorId === user.id);
+  const mySurveys = [].filter(s => s.instructorId === user.id);
 
   return (
     <div>
@@ -751,7 +726,7 @@ export function StudentFeedback({ user }) {
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const ATTENDANCE_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
+const ATTENDANCE_URL = import.meta.env.VITE_ATTENDANCE_URL || '/api/attendance';
 
 export function FacultyOtpAttendance({ user }) {
   const { data: COURSES } = useLiveCourses();
@@ -819,7 +794,7 @@ export function FacultyOtpAttendance({ user }) {
     let socket;
     let interval;
     if (activeSession && (activeSession.status === 'CHECK_IN_OPEN' || activeSession.status === 'ENDING' || activeSession.status === 'LIVE' || activeSession.status === 'CHECK_IN_CLOSED')) {
-      socket = io(ATTENDANCE_URL);
+      socket = io({ path: '/attendance-socket' });
       
       socket.on('participant_joined', (data) => {
         setSubmissions(prev => [data, ...prev]);

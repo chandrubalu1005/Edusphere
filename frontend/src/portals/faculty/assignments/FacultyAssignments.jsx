@@ -42,7 +42,9 @@ export default function FacultyAssignments({ user }) {
 
   // Socket.IO Reactivity
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_NOTIFICATION_URL || 'http://localhost:3005', {
+    const socket = io('/', {
+      path: '/socket.io',
+      transports: ['websocket'],
       auth: { token: localStorage.getItem('token') }
     });
 
@@ -384,7 +386,7 @@ export default function FacultyAssignments({ user }) {
                     <div style={{ display: 'flex', gap: 8 }}>
                       {[0, 10, 20, 30, (i === 0 ? 40 : null)].filter(v => v !== null).map(mark => (
                         <button key={mark} className="btn btn-outline btn-sm" onClick={() => {
-                            toast.success(`Assigned ${mark} marks for ${crit.split(' ')[0]}`);
+                            toast.error(`Service unavailable`);
                         }}>{mark} pts</button>
                       ))}
                     </div>
@@ -394,7 +396,7 @@ export default function FacultyAssignments({ user }) {
             </div>
             <div className="modal-footer">
               <button className="btn btn-primary" onClick={() => {
-                toast.success('Rubric grades saved and totaled.');
+                toast.error('Service unavailable');
                 setGradingRubric(null);
               }}>Save & Total Grades</button>
             </div>
@@ -432,7 +434,7 @@ export default function FacultyAssignments({ user }) {
             <div className="modal-footer">
               <button className="btn btn-outline" onClick={() => setExtendingAssignment(null)}>Cancel</button>
               <button className="btn btn-primary" onClick={() => {
-                 toast.success(`Extension granted for student!`);
+                 toast.error(`Service unavailable`);
                  setExtendingAssignment(null);
               }}>Grant Extension</button>
             </div>
@@ -479,7 +481,7 @@ export default function FacultyAssignments({ user }) {
             <div className="modal-footer">
               <button className="btn btn-outline" onClick={() => setShowCreate(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={() => {
-                toast.success('Assignment created!');
+                toast.error('Service unavailable');
                 setShowCreate(false);
               }}>Publish Assignment</button>
             </div>

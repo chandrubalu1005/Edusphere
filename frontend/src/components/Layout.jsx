@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../api/hooks.js';
@@ -64,140 +65,141 @@ const THEME_SWATCHES = {
 const NAV_CONFIG = {
   student: [
     { section: 'My Learning', items: [
-      { id: 'dashboard',    label: 'Dashboard',           icon: 'home' },
-      { id: 'courses',      label: 'My Courses',          icon: 'book' },
-      { id: 'assignments',  label: 'Assignments',         icon: 'clipboard', badge: 2 },
-      { id: 'assessments',  label: 'Quizzes & Tests',     icon: 'zap' },
-      { id: 'attendance',   label: 'My Attendance',        icon: 'calendar' },
-      { id: 'timetable',    label: 'Weekly Timetable',     icon: 'calendar' },
-      { id: 'progress',     label: 'Learning Progress',    icon: 'chart' },
+      { id: 'dashboard',    label: 'Dashboard',           icon: 'home', path: '/student/dashboard' },
+      { id: 'courses',      label: 'My Courses',          icon: 'book', path: '/student/courses' },
+      { id: 'assignments',  label: 'Assignments',         icon: 'clipboard', badge: 2, path: '/student/assignments' },
+      { id: 'assessments',  label: 'Quizzes & Tests',     icon: 'zap', path: '/student/assessments' },
+      { id: 'attendance',   label: 'My Attendance',        icon: 'calendar', path: '/student/attendance' },
+      { id: 'timetable',    label: 'Weekly Timetable',     icon: 'calendar', path: '/student/timetable' },
+      { id: 'progress',     label: 'Learning Progress',    icon: 'chart', path: '/student/progress' },
     ]},
     { section: 'Academic', items: [
-      { id: 'plan',         label: 'Degree Plan',          icon: 'check' },
-      { id: 'registration', label: 'Course Registration',  icon: 'plus' },
-      { id: 'transcript',   label: 'Grades & Transcript',  icon: 'file' },
-      { id: 'certificates', label: 'Certificates',         icon: 'award' },
-      { id: 'acad-calendar',label: 'Academic Calendar',     icon: 'calendar' },
-      { id: 'downloads',    label: 'Download Center',       icon: 'download' },
+      { id: 'plan',         label: 'Degree Plan',          icon: 'check', path: '/student/plan' },
+      { id: 'registration', label: 'Course Registration',  icon: 'plus', path: '/student/registration' },
+      { id: 'transcript',   label: 'Grades & Transcript',  icon: 'file', path: '/student/transcript' },
+      { id: 'certificates', label: 'Certificates',         icon: 'award', path: '/student/certificates' },
+      { id: 'acad-calendar',label: 'Academic Calendar',     icon: 'calendar', path: '/student/acad-calendar' },
+      { id: 'downloads',    label: 'Download Center',       icon: 'download', path: '/student/downloads' },
     ]},
     { section: 'Services', items: [
-      { id: 'library',      label: 'Digital Library',       icon: 'library' },
-      { id: 'placement',    label: 'Placement Portal',      icon: 'briefcase' },
-      { id: 'discussions',  label: 'Communication Hub',     icon: 'mail' },
-      { id: 'fees',         label: 'Fee & Payments',        icon: 'shield' },
-      { id: 'helpdesk',     label: 'Help Desk',             icon: 'headphones', badge: 1 },
+      { id: 'library',      label: 'Digital Library',       icon: 'library', path: '/student/library' },
+      { id: 'placement',    label: 'Placement Portal',      icon: 'briefcase', path: '/student/placement' },
+      { id: 'discussions',  label: 'Communication Hub',     icon: 'mail', path: '/student/discussions' },
+      { id: 'fees',         label: 'Fee & Payments',        icon: 'shield', path: '/student/fees' },
+      { id: 'helpdesk',     label: 'Help Desk',             icon: 'headphones', badge: 1, path: '/student/helpdesk' },
     ]},
     { section: 'AI & Account', items: [
-      { id: 'ai-assistant', label: 'AI Assistant',          icon: 'cpu' },
-      { id: 'activity',     label: 'Activity Timeline',     icon: 'eye' },
-      { id: 'profile',      label: 'My Profile & ID',       icon: 'shield' },
-      { id: 'notifications',label: 'Notifications',         icon: 'bell', badge: 3 },
+      { id: 'ai-assistant', label: 'AI Assistant',          icon: 'cpu', path: '/student/ai-assistant' },
+      { id: 'activity',     label: 'Activity Timeline',     icon: 'eye', path: '/student/activity' },
+      { id: 'profile',      label: 'My Profile & ID',       icon: 'shield', path: '/student/profile' },
+      { id: 'notifications',label: 'Notifications',         icon: 'bell', badge: 3, path: '/student/notifications' },
     ]},
   ],
   faculty: [
     { section: 'Teaching', items: [
-      { id: 'dashboard',    label: 'Dashboard',             icon: 'home' },
-      { id: 'courses',      label: 'My Courses',            icon: 'book' },
-      { id: 'content',      label: 'Course Content',        icon: 'file' },
-      { id: 'assessments',  label: 'Assessments',           icon: 'zap' },
-      { id: 'assignments',  label: 'Assignments',           icon: 'clipboard' },
-      { id: 'attendance',   label: 'Mark Attendance',        icon: 'calendar' },
-      { id: 'timetable',    label: 'My Timetable',           icon: 'calendar' },
+      { id: 'dashboard',    label: 'Dashboard',             icon: 'home', path: '/faculty/dashboard' },
+      { id: 'courses',      label: 'My Courses',            icon: 'book', path: '/faculty/courses' },
+      { id: 'content',      label: 'Course Content',        icon: 'file', path: '/faculty/content' },
+      { id: 'assessments',  label: 'Assessments',           icon: 'zap', path: '/faculty/assessments' },
+      { id: 'assignments',  label: 'Assignments',           icon: 'clipboard', path: '/faculty/assignments' },
+      { id: 'attendance',   label: 'Mark Attendance',        icon: 'calendar', path: '/faculty/attendance' },
+      { id: 'timetable',    label: 'My Timetable',           icon: 'calendar', path: '/faculty/timetable' },
     ]},
     { section: 'Student Management', items: [
-      { id: 'users',        label: 'User Management',        icon: 'users' },
-      { id: 'performance',  label: 'Student Performance',    icon: 'chart' },
-      { id: 'grades',       label: 'Grade Submission',       icon: 'edit' },
-      { id: 'completion',   label: 'Course Completion',      icon: 'check' },
-      { id: 'feedback',     label: 'Student Feedback',       icon: 'mail' },
+      { id: 'users',        label: 'User Management',        icon: 'users', path: '/faculty/users' },
+      { id: 'performance',  label: 'Student Performance',    icon: 'chart', path: '/faculty/performance' },
+      { id: 'grades',       label: 'Grade Submission',       icon: 'edit', path: '/faculty/grades' },
+      { id: 'completion',   label: 'Course Completion',      icon: 'check', path: '/faculty/completion' },
+      { id: 'feedback',     label: 'Student Feedback',       icon: 'mail', path: '/faculty/feedback' },
     ]},
     { section: 'Communication', items: [
-      { id: 'discussions',  label: 'Communication Hub',      icon: 'mail' },
-      { id: 'announcements',label: 'Announcements',          icon: 'bell' },
-      { id: 'analytics',    label: 'Analytics',              icon: 'chart' },
+      { id: 'discussions',  label: 'Communication Hub',      icon: 'mail', path: '/faculty/discussions' },
+      { id: 'announcements',label: 'Announcements',          icon: 'bell', path: '/faculty/announcements' },
+      { id: 'analytics',    label: 'Analytics',              icon: 'chart', path: '/faculty/analytics' },
     ]},
     { section: 'Account', items: [
-      { id: 'leave',        label: 'Leave Management',       icon: 'calendar' },
-      { id: 'ai-tools',     label: 'AI Teaching Tools',      icon: 'cpu' },
-      { id: 'profile',      label: 'Profile',                icon: 'shield' },
-      { id: 'notifications',label: 'Notifications',          icon: 'bell' },
+      { id: 'leave',        label: 'Leave Management',       icon: 'calendar', path: '/faculty/leave' },
+      { id: 'ai-tools',     label: 'AI Teaching Tools',      icon: 'cpu', path: '/faculty/ai-tools' },
+      { id: 'profile',      label: 'Profile',                icon: 'shield', path: '/faculty/profile' },
+      { id: 'notifications',label: 'Notifications',          icon: 'bell', path: '/faculty/notifications' },
     ]},
   ],
   admin: [
     { section: 'Management', items: [
-      { id: 'dashboard',    label: 'Dashboard',              icon: 'home' },
-      { id: 'users',        label: 'User Management',        icon: 'users' },
-      { id: 'courses',      label: 'Course Catalog',         icon: 'book' },
-      { id: 'departments',  label: 'Departments',            icon: 'building' },
-      { id: 'semesters',    label: 'Semesters',              icon: 'calendar' },
-      { id: 'enrollments',  label: 'Enrollments',            icon: 'clipboard' },
-      { id: 'timetable-mgmt',label: 'Timetable Mgmt',       icon: 'calendar' },
+      { id: 'dashboard',    label: 'Dashboard',              icon: 'home', path: '/admin/dashboard' },
+      { id: 'users',        label: 'User Management',        icon: 'users', path: '/admin/users' },
+      { id: 'courses',      label: 'Course Catalog',         icon: 'book', path: '/admin/courses' },
+      { id: 'departments',  label: 'Departments',            icon: 'building', path: '/admin/departments' },
+      { id: 'semesters',    label: 'Semesters',              icon: 'calendar', path: '/admin/semesters' },
+      { id: 'enrollments',  label: 'Enrollments',            icon: 'clipboard', path: '/admin/enrollments' },
+      { id: 'timetable-mgmt',label: 'Timetable Mgmt',       icon: 'calendar', path: '/admin/timetable-mgmt' },
     ]},
     { section: 'Enterprise', items: [
-      { id: 'academic-core',label: 'Academic Core',          icon: 'building' },
-      { id: 'curriculum',   label: 'Curriculum Builder',     icon: 'edit' },
-      { id: 'catalog',      label: 'Central Catalog',        icon: 'book' },
-      { id: 'cert-approval',label: 'Certificate Approval',   icon: 'award' },
-      { id: 'roles',        label: 'Roles & Permissions',    icon: 'shield' },
-      { id: 'announcements',label: 'Announcements',          icon: 'bell' },
-      { id: 'library-mgmt', label: 'Library Management',     icon: 'library' },
-      { id: 'placement-mgmt',label: 'Placement Management',  icon: 'briefcase' },
-      { id: 'calendar-mgmt',label: 'Academic Calendar',      icon: 'calendar' },
+      { id: 'academic-core',label: 'Academic Core',          icon: 'building', path: '/admin/academic-core' },
+      { id: 'curriculum',   label: 'Curriculum Builder',     icon: 'edit', path: '/admin/curriculum' },
+      { id: 'catalog',      label: 'Central Catalog',        icon: 'book', path: '/admin/catalog' },
+      { id: 'cert-approval',label: 'Certificate Approval',   icon: 'award', path: '/admin/cert-approval' },
+      { id: 'roles',        label: 'Roles & Permissions',    icon: 'shield', path: '/admin/roles' },
+      { id: 'announcements',label: 'Announcements',          icon: 'bell', path: '/admin/announcements' },
+      { id: 'library-mgmt', label: 'Library Management',     icon: 'library', path: '/admin/library-mgmt' },
+      { id: 'placement-mgmt',label: 'Placement Management',  icon: 'briefcase', path: '/admin/placement-mgmt' },
+      { id: 'calendar-mgmt',label: 'Academic Calendar',      icon: 'calendar', path: '/admin/calendar-mgmt' },
     ]},
     { section: 'System', items: [
-      { id: 'system-health',label: 'System Health',           icon: 'cpu' },
-      { id: 'audit',        label: 'Audit & Logs',            icon: 'shield' },
-      { id: 'file-mgmt',    label: 'File Management',         icon: 'file' },
-      { id: 'email',        label: 'Email Broadcast',         icon: 'mail' },
-      { id: 'backup',       label: 'Backup & Restore',        icon: 'download' },
-      { id: 'settings',     label: 'Configuration',           icon: 'settings' },
-      { id: 'helpdesk',     label: 'Help Desk',               icon: 'headphones' },
+      { id: 'system-health',label: 'System Health',           icon: 'cpu', path: '/admin/system-health' },
+      { id: 'audit',        label: 'Audit & Logs',            icon: 'shield', path: '/admin/audit' },
+      { id: 'file-mgmt',    label: 'File Management',         icon: 'file', path: '/admin/file-mgmt' },
+      { id: 'email',        label: 'Email Broadcast',         icon: 'mail', path: '/admin/email' },
+      { id: 'backup',       label: 'Backup & Restore',        icon: 'download', path: '/admin/backup' },
+      { id: 'settings',     label: 'Configuration',           icon: 'settings', path: '/admin/settings' },
+      { id: 'helpdesk',     label: 'Help Desk',               icon: 'headphones', path: '/admin/helpdesk' },
     ]},
     { section: 'Account', items: [
-      { id: 'reports',      label: 'Reports Center',          icon: 'chart' },
-      { id: 'profile',      label: 'Profile',                 icon: 'shield' },
-      { id: 'notifications',label: 'Notifications',           icon: 'bell' },
+      { id: 'reports',      label: 'Reports Center',          icon: 'chart', path: '/admin/reports' },
+      { id: 'profile',      label: 'Profile',                 icon: 'shield', path: '/admin/profile' },
+      { id: 'notifications',label: 'Notifications',           icon: 'bell', path: '/admin/notifications' },
     ]},
   ],
   management: [
     { section: 'Executive View', items: [
-      { id: 'dashboard',    label: 'Executive Dashboard',     icon: 'home' },
-      { id: 'users',        label: 'User Management',         icon: 'users' },
-      { id: 'analytics',    label: 'Analytics & Reports',     icon: 'chart' },
-      { id: 'kpis',         label: 'Institutional KPIs',      icon: 'chart' },
-      { id: 'departments',  label: 'Dept Comparison',         icon: 'building' },
+      { id: 'dashboard',    label: 'Executive Dashboard',     icon: 'home', path: '/management/dashboard' },
+      { id: 'users',        label: 'User Management',         icon: 'users', path: '/management/users' },
+      { id: 'analytics',    label: 'Analytics & Reports',     icon: 'chart', path: '/management/analytics' },
+      { id: 'kpis',         label: 'Institutional KPIs',      icon: 'chart', path: '/management/kpis' },
+      { id: 'departments',  label: 'Dept Comparison',         icon: 'building', path: '/management/departments' },
     ]},
     { section: 'Performance', items: [
-      { id: 'faculty-perf', label: 'Faculty Performance',     icon: 'users' },
-      { id: 'student-perf', label: 'Student Performance',     icon: 'users' },
-      { id: 'placement-analytics',label: 'Placement Analytics',icon: 'briefcase' },
-      { id: 'research',     label: 'Research Statistics',     icon: 'file' },
+      { id: 'faculty-perf', label: 'Faculty Performance',     icon: 'users', path: '/management/faculty-perf' },
+      { id: 'student-perf', label: 'Student Performance',     icon: 'users', path: '/management/student-perf' },
+      { id: 'placement-analytics',label: 'Placement Analytics',icon: 'briefcase', path: '/management/placement-analytics' },
+      { id: 'research',     label: 'Research Statistics',     icon: 'file', path: '/management/research' },
     ]},
     { section: 'Governance', items: [
-      { id: 'academic-core',label: 'Academic Operations',    icon: 'building' },
-      { id: 'curriculum',   label: 'Curriculum Strategy',    icon: 'award' },
-      { id: 'approvals',    label: 'Approval Center',         icon: 'check', badge: 4 },
-      { id: 'courses',      label: 'Course Approvals',        icon: 'book', badge: 1 },
-      { id: 'budget',       label: 'Budget Overview',          icon: 'chart' },
-      { id: 'risk-alerts',  label: 'Risk Alerts',             icon: 'bell' },
-      { id: 'accreditation',label: 'Accreditation',            icon: 'award' },
-      { id: 'audit',        label: 'Compliance Logs',          icon: 'shield' },
+      { id: 'academic-core',label: 'Academic Operations',    icon: 'building', path: '/management/academic-core' },
+      { id: 'curriculum',   label: 'Curriculum Strategy',    icon: 'award', path: '/management/curriculum' },
+      { id: 'approvals',    label: 'Approval Center',         icon: 'check', badge: 4, path: '/management/approvals' },
+      { id: 'courses',      label: 'Course Approvals',        icon: 'book', badge: 1, path: '/management/courses' },
+      { id: 'budget',       label: 'Budget Overview',          icon: 'chart', path: '/management/budget' },
+      { id: 'risk-alerts',  label: 'Risk Alerts',             icon: 'bell', path: '/management/risk-alerts' },
+      { id: 'accreditation',label: 'Accreditation',            icon: 'award', path: '/management/accreditation' },
+      { id: 'audit',        label: 'Compliance Logs',          icon: 'shield', path: '/management/audit' },
     ]},
     { section: 'AI & Account', items: [
-      { id: 'ai-insights',  label: 'AI Insights',             icon: 'cpu' },
-      { id: 'predictive',   label: 'Predictive Analytics',    icon: 'zap' },
-      { id: 'executive-reports',label: 'Executive Reports',    icon: 'download' },
-      { id: 'placement',    label: 'Placement Stats',          icon: 'briefcase' },
-      { id: 'profile',      label: 'Profile',                 icon: 'shield' },
-      { id: 'notifications',label: 'Notifications',            icon: 'bell' },
+      { id: 'ai-insights',  label: 'AI Insights',             icon: 'cpu', path: '/management/ai-insights' },
+      { id: 'predictive',   label: 'Predictive Analytics',    icon: 'zap', path: '/management/predictive' },
+      { id: 'executive-reports',label: 'Executive Reports',    icon: 'download', path: '/management/executive-reports' },
+      { id: 'placement',    label: 'Placement Stats',          icon: 'briefcase', path: '/management/placement' },
+      { id: 'profile',      label: 'Profile',                 icon: 'shield', path: '/management/profile' },
+      { id: 'notifications',label: 'Notifications',            icon: 'bell', path: '/management/notifications' },
     ]},
   ],
 };
 
 // ── SIDEBAR ───────────────────────────────────────────────────────────────
-function Sidebar({ currentPage, onNavigate, user, onLogout, onClose }) {
+function Sidebar({ user, onLogout, onClose }) {
   const { theme, setTheme, dark, setDark } = useTheme();
   const navSections = NAV_CONFIG[user?.role] || [];
+  const location = useLocation();
 
   return (
     <aside className="sidebar">
@@ -228,21 +230,25 @@ function Sidebar({ currentPage, onNavigate, user, onLogout, onClose }) {
         {navSections.map(section => (
           <div key={section.section}>
             <div className="sidebar-section-label">{section.section}</div>
-            {section.items.map(item => (
-              <div
-                key={item.id}
-                className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
-                onClick={() => { onNavigate(item.id); onClose?.(); }}
-                role="button"
-                aria-current={currentPage === item.id ? 'page' : undefined}
-              >
-                <span className="nav-icon">
-                  <Icon d={ICONS[item.icon] || ICONS.home} size={16} />
-                </span>
-                {item.label}
-                {item.badge && <span className="nav-badge">{item.badge}</span>}
-              </div>
-            ))}
+            {section.items.map(item => {
+              const isActive = location.pathname.startsWith(item.path);
+              return (
+                <Link
+                  key={item.id}
+                  to={item.path}
+                  className={`nav-item ${isActive ? 'active' : ''}`}
+                  onClick={() => onClose?.()}
+                  role="button"
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <span className="nav-icon">
+                    <Icon d={ICONS[item.icon] || ICONS.home} size={16} />
+                  </span>
+                  {item.label}
+                  {item.badge && <span className="nav-badge">{item.badge}</span>}
+                </Link>
+              );
+            })}
           </div>
         ))}
       </nav>
@@ -287,12 +293,13 @@ function Sidebar({ currentPage, onNavigate, user, onLogout, onClose }) {
 }
 
 // ── TOPBAR ────────────────────────────────────────────────────────────────
-function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchClick, onMenuClick }) {
+function Topbar({ user, onSearchChange, searchQuery, onSearchClick, onMenuClick }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
   const { data: notifData } = useNotifications();
   const notifications = notifData?.notifications || notifData || [];
   const unread = Array.isArray(notifications) ? notifications.filter(n => !n.read).length : 0;
+  const location = useLocation();
 
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllNotificationsRead();
@@ -314,14 +321,12 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchC
   const rolePill = { student: 'Student', faculty: 'Faculty', admin: 'Admin', management: 'Management' };
 
   let breadcrumb = 'Dashboard';
-  if (currentPageLabel !== 'Dashboard') {
-    const navSections = NAV_CONFIG[user?.role] || [];
-    for (const sec of navSections) {
-      const item = sec.items.find(i => i.label === currentPageLabel);
-      if (item) {
-        breadcrumb = `${sec.section} / ${item.label}`;
-        break;
-      }
+  const navSections = NAV_CONFIG[user?.role] || [];
+  for (const sec of navSections) {
+    const item = sec.items.find(i => location.pathname.startsWith(i.path));
+    if (item) {
+      breadcrumb = `${sec.section} / ${item.label}`;
+      break;
     }
   }
 
@@ -347,7 +352,7 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchC
           type="text"
           placeholder="Search courses, users, assignments…"
           value={searchQuery}
-          onChange={e => onSearchChange(e.target.value)}
+          onChange={e => onSearchChange && onSearchChange(e.target.value)}
           readOnly
           aria-label="Open search"
         />
@@ -417,10 +422,11 @@ function Topbar({ user, currentPageLabel, onSearchChange, searchQuery, onSearchC
 }
 
 // ── APP SHELL LAYOUT ───────────────────────────────────────────────────────
-export default function Layout({ children, currentPage, onNavigate, searchQuery, onSearchChange }) {
+export default function Layout({ children, searchQuery, onSearchChange }) {
   const { user, logout } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -436,9 +442,6 @@ export default function Layout({ children, currentPage, onNavigate, searchQuery,
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const allNavItems = Object.values(NAV_CONFIG).flat().flatMap(s => s.items);
-  const currentLabel = allNavItems.find(i => i.id === currentPage)?.label || 'Dashboard';
-
   return (
     <div className="app-shell">
       {/* Mobile sidebar overlay */}
@@ -452,8 +455,6 @@ export default function Layout({ children, currentPage, onNavigate, searchQuery,
 
       <div className={`sidebar-wrapper ${sidebarOpen ? 'open' : ''}`}>
         <Sidebar
-          currentPage={currentPage}
-          onNavigate={onNavigate}
           user={user}
           onLogout={logout}
           onClose={() => setSidebarOpen(false)}
@@ -463,7 +464,6 @@ export default function Layout({ children, currentPage, onNavigate, searchQuery,
       <div className="main-area">
         <Topbar
           user={user}
-          currentPageLabel={currentLabel}
           searchQuery={searchQuery}
           onSearchChange={onSearchChange}
           onSearchClick={() => setIsSearchOpen(true)}
@@ -472,7 +472,7 @@ export default function Layout({ children, currentPage, onNavigate, searchQuery,
         <main className="page-body">{children}</main>
       </div>
 
-      <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onNavigate={onNavigate} />
+      <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onNavigate={(path) => navigate(path)} />
     </div>
   );
 }

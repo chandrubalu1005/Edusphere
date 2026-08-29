@@ -77,11 +77,11 @@ const PushSubscription = mongoose.model<IPushSubscription>('PushSubscription', P
 // ── App Setup ──────────────────────────────────────────────────────────────
 const app  = express();
 const http = createServer(app);
-const io   = new SocketIOServer(http, {
-  cors: { origin: process.env.CORS_ORIGIN || 'http://localhost:5173', methods: ['GET', 'POST'] },
+const io = new SocketIOServer(http, {
+  cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // ── In-memory room registry: userId → Set<socketId> ───────────────────────

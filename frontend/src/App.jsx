@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import Notifications from './components/Notifications.jsx';
@@ -13,19 +14,12 @@ import AdminPortal from './portals/AdminPortal.jsx';
 import ManagementPortal from './portals/ManagementPortal.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SplashScreen from './components/SplashScreen.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import Unauthorized from './pages/Unauthorized.jsx';
+import NotFound from './pages/NotFound.jsx';
 
-// Default page per role
-const ROLE_DEFAULTS = {
-  student:    'dashboard',
-  faculty:    'dashboard',
-  admin:      'dashboard',
-  management: 'dashboard',
-};
-
-function AppContent() {
+function AppRoutes() {
   const { user, loading } = useAuth();
-  const [page, setPage]       = useState('dashboard');
-  const [search, setSearch]   = useState('');
   const [authDomain, setAuthDomain] = useState(null);
 
   if (loading) {
@@ -48,44 +42,66 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    if (!authDomain) {
-      return <DomainSelection onSelectDomain={setAuthDomain} />;
-    }
-    return <DomainLogin domainId={authDomain} onBack={() => setAuthDomain(null)} />;
-  }
-
-  function handleNavigate(newPage) {
-    setPage(newPage);
-    setSearch('');
-  }
-
-  const portals = {
-    student:    <StudentPortal    page={page} onNavigate={handleNavigate} />,
-    faculty:    <FacultyPortal    page={page} onNavigate={handleNavigate} />,
-    admin:      <AdminPortal      page={page} onNavigate={handleNavigate} />,
-    management: <ManagementPortal page={page} onNavigate={handleNavigate} />,
-  };
-
-  const portal = portals[user.role];
-
   return (
-    <Layout
-      currentPage={page}
-      onNavigate={handleNavigate}
-      searchQuery={search}
-      onSearchChange={setSearch}
-    >
-      <ErrorBoundary key={`${user.role}-${page}`}>
-        {portal || (
-          <div style={{ padding: 40, textAlign: 'center' }}>
-            <h2 style={{ color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>
-              Unknown role: {user.role}
-            </h2>
-          </div>
-        )}
-      </ErrorBoundary>
-    </Layout>
+    <Routes>
+      <Route path="/" element={
+        user ? <Navigate to={`/${user.role}/dashboard`} replace /> : <Navigate to="/login" replace />
+      } />
+
+      <Route path="/login" element={
+        user ? <Navigate to={`/${user.role}/dashboard`} replace /> :
+        !authDomain ? <DomainSelection onSelectDomain={setAuthDomain} /> :
+        <DomainLogin domainId={authDomain} onBack={() => setAuthDomain(null)} />
+      } />
+
+      <Route path="/unauthorized" element={<Unauthorized />} />
+
+      {/* Student Portal */}
+      <Route path="/student/*" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <Layout>
+            <ErrorBoundary>
+              <StudentPortal />
+            </ErrorBoundary>
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Faculty Portal */}
+      <Route path="/faculty/*" element={
+        <ProtectedRoute allowedRoles={['faculty']}>
+          <Layout>
+            <ErrorBoundary>
+              <FacultyPortal />
+            </ErrorBoundary>
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Admin Portal */}
+      <Route path="/admin/*" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <Layout>
+            <ErrorBoundary>
+              <AdminPortal />
+            </ErrorBoundary>
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Management Portal */}
+      <Route path="/management/*" element={
+        <ProtectedRoute allowedRoles={['management']}>
+          <Layout>
+            <ErrorBoundary>
+              <ManagementPortal />
+            </ErrorBoundary>
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
@@ -98,13 +114,15 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
-          
-          <div style={{ visibility: showSplash ? 'hidden' : 'visible' }} className={!showSplash ? 'app-fade-in' : ''}>
-            <Notifications />
-            <AppContent />
-            <Toaster position="top-right" toastOptions={{ style: { background: 'var(--surface)', color: 'var(--text-1)', border: '1px solid var(--border)' } }} />
-          </div>
+          <BrowserRouter>
+            {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+            
+            <div style={{ visibility: showSplash ? 'hidden' : 'visible' }} className={!showSplash ? 'app-fade-in' : ''}>
+              <Notifications />
+              <AppRoutes />
+              <Toaster position="top-right" toastOptions={{ style: { background: 'var(--surface)', color: 'var(--text-1)', border: '1px solid var(--border)' } }} />
+            </div>
+          </BrowserRouter>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

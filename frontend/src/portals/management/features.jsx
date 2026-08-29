@@ -14,20 +14,7 @@ import {
 import { 
   Trophy, TrendingUp, Briefcase, BookOpen, Microscope, BarChart2, Coins, LineChart, PieChart, UploadCloud, RefreshCw, HandCoins, AlertTriangle, MessageSquare, Download, Zap
 } from 'lucide-react';
-import {
-  TIMETABLE, CALENDAR_EVENTS,
-  DISCUSSIONS, DISCUSSION_REPLIES,
-  TRANSCRIPTS, FEE_RECORDS,
-  DOWNLOADS, ACTIVITY_LOG,
-  LIBRARY_RESOURCES, PLACEMENT_DRIVES,
-  ANNOUNCEMENTS, NOTIFICATIONS,
-  ENROLLMENTS, ATTENDANCE_RECORDS,
-  COURSES, ASSIGNMENTS,
-  USERS, DEPT_PERFORMANCE,
-  INSTITUTIONAL_KPIS, BUDGET_DATA,
-  RESEARCH_STATS, RISK_ALERTS,
-  APPROVAL_QUEUE, PREDICTIVE_DATA
-} from '../../mockData.js';
+
 import {
   useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs,
   useLiveDepartmentPerformance, useLiveFacultyPerformance, useLivePlacementStats,
@@ -233,18 +220,10 @@ export function BudgetOverview({ user }) {
     setTransferring(true);
     setTimeout(() => {
       setTransferring(false);
-      setData(prev => ({
-        ...prev,
-        categories: prev.categories.map(c => {
-          if (c.name === fromSector) return { ...c, allocated: c.allocated - val };
-          if (c.name === toSector) return { ...c, allocated: c.allocated + val };
-          return c;
-        })
-      }));
       setModalOpen(false);
       setAmount('');
-      toast.success(`Successfully reallocated ₹${val.toLocaleString()} to ${toSector}!`);
-    }, 1200);
+      toast.error('Service unavailable (Budget reallocation API not connected)');
+    }, 500);
   }
 
   return (
@@ -474,50 +453,8 @@ export function ExecutiveReports({ user }) {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      if (sector === 'financials') {
-        const totalAllocated = (budgets || []).reduce((s, c) => s + c.allocated, 0);
-        const totalSpent = (budgets || []).reduce((s, c) => s + c.spent, 0);
-        const utilization = totalAllocated > 0 ? ((totalSpent / totalAllocated) * 100).toFixed(1) : 0;
-        
-        setReport({
-          title: `Executive Financial Audit — ${quarter}`,
-          summary: `The university budget utilization stands at **${utilization}%**. Overall Research funding has expanded by 14% year-over-year, while infrastructure upkeep costs are 2% below budget due to utility optimizations.`,
-          kpis: [
-            { label: 'Total Allocated', val: `₹${(totalAllocated / 100000).toFixed(1)} L` },
-            { label: 'Total Spent', val: `₹${(totalSpent / 100000).toFixed(1)} L` },
-            { label: 'Forecast', val: forecast ? forecast.message : '+4.2%' }
-          ],
-          risks: '⚠️ Tuition arrears from final year students (CS/EE) need immediate follow-up.'
-        });
-      } else if (sector === 'research') {
-        setReport({
-          title: `Strategic Research Index Report — ${quarter}`,
-          summary: `University publication velocity remains strong, indexing **1,245 papers** (h-index of 42). Total ongoing grants active stand at ₹14.5 Cr from national and international research foundations.`,
-          kpis: [
-            { label: 'Active Patents', val: '12 Filed' },
-            { label: 'Avg Citations', val: '18.4' },
-            { label: 'PhD Guides', val: '45 Active' }
-          ],
-          risks: '✓ All compliance reviews passed without exceptions.'
-        });
-      } else {
-        const totalApplied = (placementDrives || []).reduce((s, d) => s + d.appliedCount, 0);
-        const totalSelected = (placementDrives || []).reduce((s, d) => s + d.selectedCount, 0);
-        const placementRatio = kpis ? kpis.placementRatio : 'N/A';
-
-        setReport({
-          title: `Hiring & Placement Performance Report — ${quarter}`,
-          summary: `The seasonal placement rate has touched **${placementRatio}** across all disciplines. Computer Science leads at 92%, with Civil Engineering showing a 12% rise in infrastructure consultant hiring.`,
-          kpis: [
-            { label: 'Offers Released', val: `${totalSelected} Offers` },
-            { label: 'Students Applied', val: `${totalApplied} Applied` },
-            { label: 'Attendance Rate', val: kpis ? kpis.attendanceRate : 'N/A' }
-          ],
-          risks: '⚠️ Gap in mock DSA interview counts for 15% of the student batch.'
-        });
-      }
-      toast.success("Executive Strategic Review compiled successfully!");
-    }, 1500);
+      toast.error("Service unavailable (Executive Reports API not connected)");
+    }, 500);
   }
 
   return (

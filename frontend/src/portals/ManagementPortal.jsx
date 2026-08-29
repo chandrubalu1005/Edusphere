@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
-import {
-  COURSES, DEPARTMENTS, USERS, MONTHLY_ENROLLMENT, DEPT_PERFORMANCE, AUDIT_LOGS
-} from '../mockData.js';
+
 import {
   useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs, useLiveProfile
 } from '../api/liveData.js';
@@ -602,38 +601,40 @@ function ManagementProfile({ user }) {
 }
 
 // ── MANAGEMENT PORTAL ROUTER ─────────────────────────────────────────────
-export default function ManagementPortal({ page, onNavigate }) {
+export default function ManagementPortal() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const pages = {
-    dashboard:   <ExecutiveDashboard user={user} onNavigate={onNavigate} />,
-    users:       <UserManagement />,
-    analytics:   <AnalyticsReports />,
-    departments: <ManagementDepartments />,
-    courses:     <CourseApprovals />,
-    audit:       <ComplianceLogs />,
-    placement:   <F.PlacementAnalytics user={user} />,
-    profile:     <ManagementProfile user={user} />,
-    notifications: <div style={{ padding: 20 }}><h1 className="page-title">Notifications</h1></div>,
-    // New Enterprise Pages
-    kpis:         <F.InstitutionalKPIs user={user} />,
-    'faculty-perf': <F.FacultyPerformance user={user} />,
-    'student-perf': <F.MgmtStudentPerf user={user} />,
-    'placement-analytics': <F.PlacementAnalytics user={user} />,
-    research:     <F.ResearchStats user={user} />,
-    budget:       <F.BudgetOverview user={user} />,
-    'risk-alerts': <F.RiskAlerts user={user} />,
-    approvals:    <F.ApprovalCenter user={user} />,
-    accreditation: <F.Accreditation user={user} />,
-    'ai-insights': <F.AIInsights user={user} />,
-    predictive:   <F.PredictiveAnalytics user={user} />,
-    'executive-reports': <F.ExecutiveReports user={user} />,
-    // Academic Core Enterprise Overhaul
-    'academic-core':  <AcademicManagement />,
-    curriculum:       <CurriculumBuilder />,
-    catalog:          <CourseCatalog />
-  };
+  const handleNavigate = (path) => navigate(`/management/${path}`);
 
-  return pages[page] || pages.dashboard;
+  return (
+    <Routes>
+      <Route path="dashboard" element={<ExecutiveDashboard user={user} onNavigate={handleNavigate} />} />
+      <Route path="users" element={<UserManagement />} />
+      <Route path="analytics" element={<AnalyticsReports />} />
+      <Route path="departments" element={<ManagementDepartments />} />
+      <Route path="courses" element={<CourseApprovals />} />
+      <Route path="audit" element={<ComplianceLogs />} />
+      <Route path="placement" element={<F.PlacementAnalytics user={user} />} />
+      <Route path="profile" element={<ManagementProfile user={user} />} />
+      <Route path="notifications" element={<div style={{ padding: 20 }}><h1 className="page-title">Notifications</h1></div>} />
+      <Route path="kpis" element={<F.InstitutionalKPIs user={user} />} />
+      <Route path="faculty-perf" element={<F.FacultyPerformance user={user} />} />
+      <Route path="student-perf" element={<F.MgmtStudentPerf user={user} />} />
+      <Route path="placement-analytics" element={<F.PlacementAnalytics user={user} />} />
+      <Route path="research" element={<F.ResearchStats user={user} />} />
+      <Route path="budget" element={<F.BudgetOverview user={user} />} />
+      <Route path="risk-alerts" element={<F.RiskAlerts user={user} />} />
+      <Route path="approvals" element={<F.ApprovalCenter user={user} />} />
+      <Route path="accreditation" element={<F.Accreditation user={user} />} />
+      <Route path="ai-insights" element={<F.AIInsights user={user} />} />
+      <Route path="predictive" element={<F.PredictiveAnalytics user={user} />} />
+      <Route path="executive-reports" element={<F.ExecutiveReports user={user} />} />
+      <Route path="academic-core" element={<AcademicManagement />} />
+      <Route path="curriculum" element={<CurriculumBuilder />} />
+      <Route path="catalog" element={<CourseCatalog />} />
+      <Route path="*" element={<Navigate to="dashboard" replace />} />
+    </Routes>
+  );
 }
 

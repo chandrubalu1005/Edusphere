@@ -208,7 +208,7 @@ async function seedAll() {
       for (const sId of cData.students) {
         await Attempt.findOneAndUpdate(
           { assessmentId: assess._id.toString(), studentId: sId },
-          { assessmentId: assess._id.toString(), studentId: sId, score: Math.floor(Math.random() * 20) + 30, completedAt: randomDate(2) },
+          { assessmentId: assess._id.toString(), studentId: sId, score: Math.floor(Math.random() * 20) + 30, completedAt: randomDate(2), sessionId: 'sess_' + Math.random().toString(36).substr(2, 9) },
           { upsert: true }
         );
         attemptCount++;
@@ -230,7 +230,7 @@ async function seedAll() {
     const code = sName === 'student_3' ? 'EC101' : 'CS101';
     await Certificate.findOneAndUpdate(
       { studentId: sId, courseId: courseMap[code].id },
-      { studentId: sId, courseId: courseMap[code].id, issuedDate: randomDate(1), title: `Certificate of Completion - ${code}` },
+      { studentId: sId, courseId: courseMap[code].id, issuedDate: randomDate(1), title: `Certificate of Completion - ${code}`, certificateNo: 'CERT-' + Math.random().toString(36).substr(2, 9).toUpperCase(), verificationHash: 'HASH-' + Math.random().toString(36).substr(2, 9).toUpperCase() },
       { upsert: true }
     );
     certCount++;

@@ -1,15 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
 import { useUploadCourseContent } from '../api/hooks.js';
 import toast from 'react-hot-toast';
-import {
-  COURSES, ATTENDANCE_RECORDS,
-  ASSESSMENTS, ASSIGNMENTS,
-  USERS,
-  WEEKLY_ATTENDANCE
-} from '../mockData.js';
+
 import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
   useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions, useLiveProfile
@@ -46,7 +42,6 @@ function FacultyDashboard({ user, onNavigate }) {
   const totalAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId || c._id === a.courseId)).length;
   const pendingGrading = SUBMISSIONS.filter(s => s.status !== 'graded').length;
 
-  const dayAtt = WEEKLY_ATTENDANCE;
 
   return (
     <div>
@@ -506,7 +501,7 @@ function FacultyAnalytics({ user }) {
   const handleExport = async (courseId, courseCode) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3014/faculty/courses/${courseId}/export`, {
+      const res = await fetch(`/api/analytics/faculty/courses/${courseId}/export`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to export report');
@@ -877,33 +872,36 @@ function FacultyProfile({ user }) {
 }
 
 // ── FACULTY PORTAL ROUTER ─────────────────────────────────────────────────
-export default function FacultyPortal({ page, onNavigate }) {
+export default function FacultyPortal() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const pages = {
-    dashboard:   <FacultyDashboard user={user} onNavigate={onNavigate} />,
-    users:       <UserManagement />,
-    courses:     <FacultyCourses user={user} onNavigate={onNavigate} />,
-    content:     <F.ResourceUpload user={user} />,
-    attendance:  <FacultyAttendance user={user} />,
-    assignments: <FacultyAssignments user={user} />,
-    assessments: <FacultyDashboard user={user} onNavigate={onNavigate} />, // Placeholder uses dashboard
-    analytics:   <FacultyAnalytics user={user} />,
-    profile:      <FacultyProfile user={user} />,
-    notifications: <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}><h1 className="page-title">Notifications</h1><div className="card"><div className="card-body">You have no new notifications.</div></div></div>,
-    // New Enterprise Pages
-    timetable:    <F.FacultyTimetable user={user} />,
-    performance:  <F.StudentPerformance user={user} />,
-    leave:        <F.LeaveManagement user={user} />,
-    announcements:<F.AnnouncementMgmt user={user} />,
-    discussions:  <F.DiscussionModeration user={user} />,
-    grades:       <F.GradeSubmission user={user} />,
-    completion:   <F.CourseCompletionTracker user={user} />,
-    'ai-tools':   <F.AITools user={user} />,
-    feedback:     <F.StudentFeedback user={user} />,
-    'otp-attendance': <F.FacultyOtpAttendance user={user} />,
-  };
+  const handleNavigate = (path) => navigate(`/faculty/${path}`);
 
-  return pages[page] || pages.dashboard;
+  return (
+    <Routes>
+      <Route path="dashboard" element={<FacultyDashboard user={user} onNavigate={handleNavigate} />} />
+      <Route path="users" element={<UserManagement />} />
+      <Route path="courses" element={<FacultyCourses user={user} onNavigate={handleNavigate} />} />
+      <Route path="content" element={<F.ResourceUpload user={user} />} />
+      <Route path="attendance" element={<FacultyAttendance user={user} />} />
+      <Route path="assignments" element={<FacultyAssignments user={user} />} />
+      <Route path="assessments" element={<FacultyDashboard user={user} onNavigate={handleNavigate} />} />
+      <Route path="analytics" element={<FacultyAnalytics user={user} />} />
+      <Route path="profile" element={<FacultyProfile user={user} />} />
+      <Route path="notifications" element={<div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}><h1 className="page-title">Notifications</h1><div className="card"><div className="card-body">You have no new notifications.</div></div></div>} />
+      <Route path="timetable" element={<F.FacultyTimetable user={user} />} />
+      <Route path="performance" element={<F.StudentPerformance user={user} />} />
+      <Route path="leave" element={<F.LeaveManagement user={user} />} />
+      <Route path="announcements" element={<F.AnnouncementMgmt user={user} />} />
+      <Route path="discussions" element={<F.DiscussionModeration user={user} />} />
+      <Route path="grades" element={<F.GradeSubmission user={user} />} />
+      <Route path="completion" element={<F.CourseCompletionTracker user={user} />} />
+      <Route path="ai-tools" element={<F.AITools user={user} />} />
+      <Route path="feedback" element={<F.StudentFeedback user={user} />} />
+      <Route path="otp-attendance" element={<F.FacultyOtpAttendance user={user} />} />
+      <Route path="*" element={<Navigate to="dashboard" replace />} />
+    </Routes>
+  );
 }
 

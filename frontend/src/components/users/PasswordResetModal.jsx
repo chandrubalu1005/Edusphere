@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Icon, ICONS } from '../Layout.jsx';
 
-const ADMIN_API = import.meta.env.VITE_ADMIN_API || 'http://localhost:3015/api';
+const ADMIN_API = import.meta.env.VITE_ADMIN_API || '/api/admin';
 
 export default function PasswordResetModal({ userId, isOpen, onClose }) {
   const [temporaryPassword, setTemporaryPassword] = useState(null);

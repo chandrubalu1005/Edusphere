@@ -17,22 +17,7 @@ import {
   LayoutDashboard, Server, Download, Shield, HeartPulse, Ticket, Building, 
   Users, BookOpen, ClipboardCheck, MessageSquare, Briefcase, FileText, Archive
 } from 'lucide-react';
-import {
-  TIMETABLE, CALENDAR_EVENTS,
-  DISCUSSIONS, DISCUSSION_REPLIES,
-  TRANSCRIPTS, FEE_RECORDS,
-  DOWNLOADS, ACTIVITY_LOG,
-  LIBRARY_RESOURCES, PLACEMENT_DRIVES,
-  ANNOUNCEMENTS, NOTIFICATIONS,
-  ENROLLMENTS, ATTENDANCE_RECORDS,
-  COURSES, ASSIGNMENTS,
-  USERS, BACKUP_RECORDS,
-  SYSTEM_HEALTH, API_LOGS,
-  AUDIT_LOGS, ROLES,
-  SUPPORT_TICKETS, EMAIL_TEMPLATES,
-  SYSTEM_SETTINGS, APPROVAL_QUEUE,
-  FILE_RECORDS
-} from '../../mockData.js';
+
 import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
   useLivePlacementDrives, useLiveAuditLogs, useLiveCourses

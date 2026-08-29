@@ -1,13 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
 import { useSubmitAssignment, useUpdateProfile } from '../api/hooks.js';
 import toast from 'react-hot-toast';
-import {
-  SUPPORT_TICKETS as MOCK_SUPPORT_TICKETS,
-  SUBMISSIONS as MOCK_SUBMISSIONS
-} from '../mockData.js';
+
 import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
   useLiveCertificates, useLiveNotifications, useLiveAttendance,
@@ -21,7 +19,7 @@ import AcademicPlan from './student/AcademicPlan.jsx';
 import CourseRegistration from './student/CourseRegistration.jsx';
 import StudentAssignments from './student/assignments/StudentAssignments.jsx';
 import { BookOpen, Calendar as CalendarIcon, CheckCircle2, GraduationCap, LayoutDashboard, Settings, Trophy, Users, CalendarDays, MapPin, CheckCircle, Clock, User, Book, Award, Bell, BarChart2, Calendar as CalIcon, CreditCard, PlayCircle, ShieldCheck, BrainCircuit, Activity, Download, MessageSquare, Plus, FileText, Upload } from 'lucide-react';
-const SUPPORT_TICKETS = MOCK_SUPPORT_TICKETS;
+const SUPPORT_TICKETS = [];
 
 
 // ── Reusable Components ────────────────────────────────────────────────────
@@ -267,7 +265,7 @@ function StudentCourses({ user }) {
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => {
                             const rating = prompt("Rate this course (1-5):");
-                            if (rating >= 1 && rating <= 5) toast.success(`You rated ${course.code} ${rating} stars!`);
+                            if (rating >= 1 && rating <= 5) toast.error(`Service unavailable (Rating API not connected)`);
                           }}>Rate</button>
                           <button className="btn btn-outline btn-sm">Continue</button>
                         </div>
@@ -344,7 +342,7 @@ function StudentAttendance({ user }) {
   const fetchActiveSession = async () => {
     try {
       const token = localStorage.getItem('token');
-      const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
+      const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || '/api/attendance';
       const res = await fetch(`${ATTEND_URL}/class-sessions`, { // Ideally an endpoint for 'active sessions for my enrolled courses'
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -366,7 +364,7 @@ function StudentAttendance({ user }) {
     if (currentOtp.length !== 6) return toast.error('Please enter a 6-digit OTP');
     try {
       const token = localStorage.getItem('token');
-      const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || 'http://localhost:3008';
+      const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || '/api/attendance';
       
       const endpoint = otpPurpose === 'JOIN' ? 'join' : 'checkout';
       
@@ -744,7 +742,7 @@ function StudentCertificates({ user }) {
                   navigator.clipboard.writeText(link);
                   toast.success('Verification link copied to clipboard!');
                 }}>Share Link</button>
-                <button className="btn btn-primary btn-sm" onClick={() => toast.success('Certificate PDF download started.')}>
+                <button className="btn btn-primary btn-sm" onClick={() => toast.error('Service unavailable (Certificate generation API not connected)')}>
                   <Icon d={ICONS.download} size={13} /> Download PDF
                 </button>
               </div>
@@ -1206,39 +1204,39 @@ function NotificationsPage({ user }) {
 }
 
 // ── STUDENT PORTAL ROUTER ──────────────────────────────────────────────────
-export default function StudentPortal({ page, onNavigate }) {
+export default function StudentPortal() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const pages = {
-    dashboard:    <StudentDashboard user={user} onNavigate={onNavigate} />,
-    courses:      <StudentCourses user={user} onNavigate={onNavigate} />,
-    attendance:   <StudentAttendance user={user} />,
-    assessments:  <StudentAssessments user={user} />,
-    assignments:  <StudentAssignments user={user} />,
-    certificates: <StudentCertificates user={user} />,
-    library:      <F.StudentLibrary user={user} />,
-    placement:    <F.StudentPlacement user={user} />,
-    helpdesk:     <HelpDesk user={user} />,
-    profile:      <StudentProfile user={user} />,
-    notifications:<F.StudentNotifications user={user} />,
-    // New Enterprise Pages
-    timetable:    <F.StudentTimetable user={user} />,
-    'acad-calendar': <F.AcademicCalendar user={user} />,
-    progress:     <F.LearningProgress user={user} />,
-    discussions:  <F.CommunicationHub user={user} />,
-    transcript:   <F.TranscriptGrades user={user} />,
-    fees:         <F.FeePayment user={user} />,
-    downloads:    <F.DownloadCenter user={user} />,
-    activity:     <F.ActivityTimeline user={user} />,
-    'ai-assistant': <F.AIAssistant user={user} />,
-    // Academic Core Enterprise Overhaul
-    plan:         <AcademicPlan user={user} />,
-    registration: <CourseRegistration user={user} />
-  };
+  const handleNavigate = (path) => navigate(`/student/${path}`);
 
   return (
     <>
-      {pages[page] || pages.dashboard}
+      <Routes>
+        <Route path="dashboard" element={<StudentDashboard user={user} onNavigate={handleNavigate} />} />
+        <Route path="courses" element={<StudentCourses user={user} onNavigate={handleNavigate} />} />
+        <Route path="attendance" element={<StudentAttendance user={user} />} />
+        <Route path="assessments" element={<StudentAssessments user={user} />} />
+        <Route path="assignments" element={<StudentAssignments user={user} />} />
+        <Route path="certificates" element={<StudentCertificates user={user} />} />
+        <Route path="library" element={<F.StudentLibrary user={user} />} />
+        <Route path="placement" element={<F.StudentPlacement user={user} />} />
+        <Route path="helpdesk" element={<HelpDesk user={user} />} />
+        <Route path="profile" element={<StudentProfile user={user} />} />
+        <Route path="notifications" element={<F.StudentNotifications user={user} />} />
+        <Route path="timetable" element={<F.StudentTimetable user={user} />} />
+        <Route path="acad-calendar" element={<F.AcademicCalendar user={user} />} />
+        <Route path="progress" element={<F.LearningProgress user={user} />} />
+        <Route path="discussions" element={<F.CommunicationHub user={user} />} />
+        <Route path="transcript" element={<F.TranscriptGrades user={user} />} />
+        <Route path="fees" element={<F.FeePayment user={user} />} />
+        <Route path="downloads" element={<F.DownloadCenter user={user} />} />
+        <Route path="activity" element={<F.ActivityTimeline user={user} />} />
+        <Route path="ai-assistant" element={<F.AIAssistant user={user} />} />
+        <Route path="plan" element={<AcademicPlan user={user} />} />
+        <Route path="registration" element={<CourseRegistration user={user} />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
+      </Routes>
       {user?.token && <OtpAttendanceWidget token={user.token} />}
     </>
   );

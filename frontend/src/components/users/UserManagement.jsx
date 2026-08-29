@@ -11,7 +11,7 @@ import PasswordResetModal from "./PasswordResetModal";
 import api from '../../api/client';
 import { Icon, ICONS } from '../Layout.jsx';
 
-const ADMIN_API = import.meta.env.VITE_ADMIN_API || 'http://localhost:3015/api';
+const ADMIN_API = import.meta.env.VITE_ADMIN_API || '/api/admin';
 
 const ROLE_PERMISSIONS = {
   faculty: ["student"],

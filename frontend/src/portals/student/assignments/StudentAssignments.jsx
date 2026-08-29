@@ -30,7 +30,9 @@ export default function StudentAssignments({ user }) {
 
   // Socket.IO Reactivity
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_NOTIFICATION_URL || 'http://localhost:3005', {
+    const socket = io('/', {
+      path: '/socket.io',
+      transports: ['websocket'],
       auth: { token: localStorage.getItem('token') }
     });
 

@@ -9,7 +9,7 @@ Write-Host "  EduSphere Enterprise — Shutting Down" -ForegroundColor Cyan
 Write-Host "══════════════════════════════════════════`n" -ForegroundColor Cyan
 
 # Define all ports used by EduSphere
-$ports = @(5173, 5174) + (3001..3015)
+$ports = @(5173, 5174) + (3001..3016)
 
 $killedCount = 0
 

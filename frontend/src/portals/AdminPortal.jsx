@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
-import {
-  USERS, COURSES, DEPARTMENTS, SEMESTERS, ENROLLMENTS, AUDIT_LOGS, SUPPORT_TICKETS, MONTHLY_ENROLLMENT
-} from '../mockData.js';
+
 import {
   useLiveAdminUsers, useLiveCourses, useLiveDepartments,
   useLiveSemesters, useLiveEnrollments, useLiveAuditLogs, useLiveProfile
@@ -733,36 +732,39 @@ function AdminProfile({ user }) {
 }
 
 // ── ADMIN PORTAL ROUTER ────────────────────────────────────────────────────
-export default function AdminPortal({ page, onNavigate }) {
+export default function AdminPortal() {
   const { user } = useAuth();
-  const pages = {
-    dashboard:   <AdminDashboard onNavigate={onNavigate} />,
-    users:       <UserManagement />,
-    courses:     <AdminCourses />,
-    departments: <DepartmentManagement />,
-    semesters:   <SemesterManagement />,
-    enrollments: <EnrollmentManagement />,
-    audit:       <F.AuditLogsCenter />,
-    settings:    <F.ConfigurationCenter />,
-    helpdesk:    <AdminHelpDesk />,
-    notifications: <div style={{ padding: 20 }}><h1 className="page-title">Notifications</h1></div>,
-    profile:     <AdminProfile user={user} />,
-    // New Enterprise Pages
-    'timetable-mgmt': <F.TimetableMgmt />,
-    'cert-approval':  <F.CertificateApproval />,
-    roles:            <F.RolePermissions />,
-    'system-health':  <F.SystemHealth />,
-    backup:           <F.BackupRestore />,
-    'library-mgmt':   <F.LibraryManagement />,
-    'placement-mgmt': <F.PlacementManagement />,
-    email:            <F.EmailBroadcast />,
-    'file-mgmt':      <F.FileManager />,
-    // Academic Core Enterprise Overhaul
-    'academic-core':  <AcademicManagement />,
-    curriculum:       <CurriculumBuilder />,
-    catalog:          <CourseCatalog />
-  };
+  const navigate = useNavigate();
 
-  return pages[page] || pages.dashboard;
+  const handleNavigate = (path) => navigate(`/admin/${path}`);
+
+  return (
+    <Routes>
+      <Route path="dashboard" element={<AdminDashboard onNavigate={handleNavigate} />} />
+      <Route path="users" element={<UserManagement />} />
+      <Route path="courses" element={<AdminCourses />} />
+      <Route path="departments" element={<DepartmentManagement />} />
+      <Route path="semesters" element={<SemesterManagement />} />
+      <Route path="enrollments" element={<EnrollmentManagement />} />
+      <Route path="audit" element={<F.AuditLogsCenter />} />
+      <Route path="settings" element={<F.ConfigurationCenter />} />
+      <Route path="helpdesk" element={<AdminHelpDesk />} />
+      <Route path="notifications" element={<div style={{ padding: 20 }}><h1 className="page-title">Notifications</h1></div>} />
+      <Route path="profile" element={<AdminProfile user={user} />} />
+      <Route path="timetable-mgmt" element={<F.TimetableMgmt />} />
+      <Route path="cert-approval" element={<F.CertificateApproval />} />
+      <Route path="roles" element={<F.RolePermissions />} />
+      <Route path="system-health" element={<F.SystemHealth />} />
+      <Route path="backup" element={<F.BackupRestore />} />
+      <Route path="library-mgmt" element={<F.LibraryManagement />} />
+      <Route path="placement-mgmt" element={<F.PlacementManagement />} />
+      <Route path="email" element={<F.EmailBroadcast />} />
+      <Route path="file-mgmt" element={<F.FileManager />} />
+      <Route path="academic-core" element={<AcademicManagement />} />
+      <Route path="curriculum" element={<CurriculumBuilder />} />
+      <Route path="catalog" element={<CourseCatalog />} />
+      <Route path="*" element={<Navigate to="dashboard" replace />} />
+    </Routes>
+  );
 }
 

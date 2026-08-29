@@ -175,10 +175,10 @@ export default function DomainLogin({ domainId, onBack }) {
 
             <div style={{ marginTop: 32, padding: 20, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', fontSize: 13, color: 'var(--text-2)' }}>
               <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--text-1)' }}>Demo Credentials:</div>
-              {domain.id === 'student' && <div>Username: <b>john_doe</b> or <b>jane_smith</b></div>}
-              {domain.id === 'faculty' && <div>Username: <b>sarah_j</b> or <b>prof_kumar</b></div>}
-              {domain.id === 'admin' && <div>Username: <b>sys_admin</b></div>}
-              {domain.id === 'management' && <div>Username: <b>dean_academic</b></div>}
+              {domain.id === 'student' && <div>Username: <b>student_1</b> or <b>student_2</b></div>}
+              {domain.id === 'faculty' && <div>Username: <b>faculty_1</b> or <b>faculty_2</b></div>}
+              {domain.id === 'admin' && <div>Username: <b>admin_1</b></div>}
+              {domain.id === 'management' && <div>Username: <b>management_1</b></div>}
               <div style={{ marginTop: 4 }}>Password for all: <b>demo123</b></div>
             </div>
 
