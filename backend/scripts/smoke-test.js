@@ -50,6 +50,7 @@ const SERVICES = [
   { name: 'discussion-service',   port: 3013, gatewayPath: '/api/discussion/health' },
   { name: 'analytics-service',    port: 3014, gatewayPath: '/api/analytics/health' },
   { name: 'admin-service',        port: 3015, gatewayPath: '/api/admin/health' },
+  { name: 'finance-service',      port: 3016, gatewayPath: '/api/finance/health' },
 ];
 
 function checkService(service) {

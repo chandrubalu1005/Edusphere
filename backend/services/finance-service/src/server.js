@@ -17,7 +17,7 @@ app.use(express.json());
 app.use('/api/finance', financeRoutes);
 
 app.get('/health', (req, res) => {
-  res.json({ service: 'finance-service', status: 'OK' });
+  res.json({ service: 'finance-service', status: 'ok' });
 });
 
 const PORT = process.env.PORT || 3016;
