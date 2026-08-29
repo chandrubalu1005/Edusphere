@@ -199,43 +199,83 @@ if (-not $allHealthy) {
 
 Write-Header "EduSphere is Running!"
 
-Write-Host "  🌐  Frontend:            http://127.0.0.1:5173" -ForegroundColor Yellow
-Write-Host "  🔐  Auth API:            http://127.0.0.1:3001/health" -ForegroundColor Yellow
-Write-Host "  👥  User API:            http://127.0.0.1:3002/health" -ForegroundColor Yellow
-Write-Host "  📚  Course API:          http://127.0.0.1:3003/health" -ForegroundColor Yellow
-Write-Host "  🔔  Notification API:    http://127.0.0.1:3004/health" -ForegroundColor Yellow
-Write-Host "  ⚡  Assessment API:      http://127.0.0.1:3005/health" -ForegroundColor Yellow
-Write-Host "  📝  Assignment API:      http://127.0.0.1:3006/health" -ForegroundColor Yellow
-Write-Host "  🏆  Certificate API:     http://127.0.0.1:3007/health" -ForegroundColor Yellow
-Write-Host "  📅  Attendance API:      http://127.0.0.1:3008/health" -ForegroundColor Yellow
-Write-Host "  🗓️  Timetable API:       http://127.0.0.1:3009/health" -ForegroundColor Yellow
-Write-Host "  📆  Calendar API:        http://127.0.0.1:3010/health" -ForegroundColor Yellow
-Write-Host "  📖  Library API:         http://127.0.0.1:3011/health" -ForegroundColor Yellow
-Write-Host "  💼  Placement API:       http://127.0.0.1:3012/health" -ForegroundColor Yellow
-Write-Host "  💬  Discussion API:      http://127.0.0.1:3013/health" -ForegroundColor Yellow
-Write-Host "  📊  Analytics API:       http://127.0.0.1:3014/health" -ForegroundColor Yellow
-Write-Host "  🛡️  Admin API:           http://127.0.0.1:3015/health" -ForegroundColor Yellow
+# ── Detect LAN IP for network access ──────────────────────────────────
+# Prefer real routable IPs: 192.168.x.x, 10.x.x.x, 172.16-31.x.x
+# Skip loopback (127.x), link-local/APIPA (169.254.x), virtual adapters
+$lanIP = (Get-NetIPAddress -AddressFamily IPv4 |
+    Where-Object {
+        $_.InterfaceAlias -notmatch 'Loopback|vEthernet|WSL|Hyper|VirtualBox|VMware|Bluetooth' -and
+        $_.IPAddress -match '^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)'
+    } |
+    Sort-Object -Property PrefixLength -Descending |
+    Select-Object -First 1).IPAddress
+
+if (-not $lanIP) {
+    # Fallback: any non-loopback, non-APIPA address
+    $lanIP = (Get-NetIPAddress -AddressFamily IPv4 |
+        Where-Object { $_.IPAddress -notmatch '^(127\.|169\.254\.)' } |
+        Select-Object -First 1).IPAddress
+}
+if (-not $lanIP) { $lanIP = "127.0.0.1" }
+
 Write-Host ""
-Write-Host "  🎓  Demo Credentials:" -ForegroundColor Magenta
-Write-Host "      Student    : john_doe / demo123" -ForegroundColor White
-Write-Host "      Student    : jane_smith / demo123" -ForegroundColor White
-Write-Host "      Faculty    : sarah_j / demo123" -ForegroundColor White
-Write-Host "      Admin      : sys_admin / demo123" -ForegroundColor White
-Write-Host "      Management : dean_academic / demo123" -ForegroundColor White
+Write-Host "  ┌─────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
+Write-Host "  │  🖥️  LOCAL ACCESS (this machine)                        │" -ForegroundColor Cyan
+Write-Host "  │     http://127.0.0.1:5173                               │" -ForegroundColor Cyan
+Write-Host "  │                                                         │" -ForegroundColor Cyan
+Write-Host "  │  🌐  NETWORK ACCESS (other devices on same WiFi/LAN)   │" -ForegroundColor Green
+Write-Host "  │     http://${lanIP}:5173                                │" -ForegroundColor Green
+Write-Host "  └─────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+Write-Host ""
+
+Write-Host "  📡  Service Endpoints (Local):" -ForegroundColor Yellow
+Write-Host "  🔐  Auth API:            http://127.0.0.1:3001/health" -ForegroundColor DarkYellow
+Write-Host "  👥  User API:            http://127.0.0.1:3002/health" -ForegroundColor DarkYellow
+Write-Host "  📚  Course API:          http://127.0.0.1:3003/health" -ForegroundColor DarkYellow
+Write-Host "  🔔  Notification API:    http://127.0.0.1:3004/health" -ForegroundColor DarkYellow
+Write-Host "  ⚡  Assessment API:      http://127.0.0.1:3005/health" -ForegroundColor DarkYellow
+Write-Host "  📝  Assignment API:      http://127.0.0.1:3006/health" -ForegroundColor DarkYellow
+Write-Host "  🏆  Certificate API:     http://127.0.0.1:3007/health" -ForegroundColor DarkYellow
+Write-Host "  📅  Attendance API:      http://127.0.0.1:3008/health" -ForegroundColor DarkYellow
+Write-Host "  🗓️  Timetable API:       http://127.0.0.1:3009/health" -ForegroundColor DarkYellow
+Write-Host "  📆  Calendar API:        http://127.0.0.1:3010/health" -ForegroundColor DarkYellow
+Write-Host "  📖  Library API:         http://127.0.0.1:3011/health" -ForegroundColor DarkYellow
+Write-Host "  💼  Placement API:       http://127.0.0.1:3012/health" -ForegroundColor DarkYellow
+Write-Host "  💬  Discussion API:      http://127.0.0.1:3013/health" -ForegroundColor DarkYellow
+Write-Host "  📊  Analytics API:       http://127.0.0.1:3014/health" -ForegroundColor DarkYellow
+Write-Host "  🛡️  Admin API:           http://127.0.0.1:3015/health" -ForegroundColor DarkYellow
+Write-Host "  💰  Finance API:         http://127.0.0.1:3016/health" -ForegroundColor DarkYellow
+Write-Host ""
+
+Write-Host "  🎓  Demo Login Credentials:" -ForegroundColor Magenta
+Write-Host "  ┌──────────────┬────────────────┬──────────┬────────────────────────────────────┐" -ForegroundColor DarkGray
+Write-Host "  │ Role         │ Username       │ Password │ Network URL                        │" -ForegroundColor DarkGray
+Write-Host "  ├──────────────┼────────────────┼──────────┼────────────────────────────────────┤" -ForegroundColor DarkGray
+Write-Host "  │ Student      │ student_1      │ demo123  │ http://${lanIP}:5173/login/student  │" -ForegroundColor White
+Write-Host "  │ Student      │ student_2      │ demo123  │ http://${lanIP}:5173/login/student  │" -ForegroundColor White
+Write-Host "  │ Student      │ john_doe       │ demo123  │ http://${lanIP}:5173/login/student  │" -ForegroundColor White
+Write-Host "  │ Faculty      │ faculty_1      │ demo123  │ http://${lanIP}:5173/login/faculty  │" -ForegroundColor Cyan
+Write-Host "  │ Faculty      │ faculty_2      │ demo123  │ http://${lanIP}:5173/login/faculty  │" -ForegroundColor Cyan
+Write-Host "  │ Admin        │ admin_1        │ demo123  │ http://${lanIP}:5173/login/admin    │" -ForegroundColor Yellow
+Write-Host "  │ Management   │ management_1   │ demo123  │ http://${lanIP}:5173/login/mgmt     │" -ForegroundColor Green
+Write-Host "  └──────────────┴────────────────┴──────────┴────────────────────────────────────┘" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "  💡  Share  http://${lanIP}:5173  with teammates on the same WiFi/LAN" -ForegroundColor Green
 Write-Host ""
 Write-Host "  📊  Smoke test:  node backend/scripts/smoke-test.js" -ForegroundColor DarkCyan
-Write-Host "  🌱  Seed data:   node backend/scripts/seed.js" -ForegroundColor DarkCyan
+Write-Host "  🌱  Seed data:   node -r dotenv/config backend/scripts/seed.js" -ForegroundColor DarkCyan
 Write-Host ""
 
 # Open browser ONLY after frontend is fully verified
 try {
     Start-Process "http://127.0.0.1:5173"
-    Write-Step "🌍" "Opening browser..."
+    Write-Step "🌍" "Opening browser... (Local: http://127.0.0.1:5173 | Network: http://${lanIP}:5173)"
 } catch {
     Write-Host "  Please open http://127.0.0.1:5173 manually" -ForegroundColor Yellow
 }
 
 Write-Host "`n  Press Ctrl+C to stop all services`n" -ForegroundColor DarkGray
+
 
 # Handle Ctrl+C (SIGINT) gracefully without closing terminal
 try { [console]::TreatControlCAsInput = $true } catch {}
