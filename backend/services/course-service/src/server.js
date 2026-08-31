@@ -8,6 +8,11 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+const path = require('path');
+const fs = require('fs');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads', 'courses');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+app.use('/uploads/courses', express.static(UPLOAD_DIR));
 app.use(cors());
 
 const PORT = process.env.PORT || 3003;

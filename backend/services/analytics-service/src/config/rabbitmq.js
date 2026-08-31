@@ -144,7 +144,7 @@ async function connectRabbitMQ(url) {
     console.log('analytics-service: consuming attendance, assessment, ratings, course.completed');
   } catch (error) {
     console.error('analytics-service RabbitMQ error:', error.message);
-    setTimeout(() => connectRabbitMQ(url), 5000);
+    console.warn('Proceeding without RabbitMQ... Events will not be published.');
   }
 }
 

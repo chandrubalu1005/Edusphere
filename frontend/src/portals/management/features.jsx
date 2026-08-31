@@ -23,6 +23,7 @@ import {
 
 // ── INSTITUTIONAL KPIS ──────────────────────────────────────────────────────
 export function InstitutionalKPIs({ user }) {
+  const { data: INSTITUTIONAL_KPIS = { overall: 85, academic: 88, research: 75, operational: 92 } } = useLiveKPIs();
   const kpi = INSTITUTIONAL_KPIS.overall;
   return (
     <div>

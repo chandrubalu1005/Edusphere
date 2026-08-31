@@ -22,4 +22,8 @@ router.get('/class-sessions',                 authMiddleware, attendanceControll
 // Manual Operations
 router.post('/sessions/:sessionId/manual-add', authMiddleware, attendanceController.manualAddParticipant);
 
+// OTP Attendance
+router.get('/otp-attendance/sessions',        authMiddleware, attendanceController.getOtpSessions);
+router.post('/otp-attendance/submit',         authMiddleware, attendanceController.submitOtp);
+
 module.exports = router;

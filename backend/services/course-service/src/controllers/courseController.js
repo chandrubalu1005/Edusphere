@@ -233,9 +233,13 @@ exports.addContent = async (req, res) => {
       return res.status(403).json({ error: 'Access forbidden. Only the course owner or co-instructor can add materials.' });
     }
 
-    const { title, type, url, unlockDate } = req.body;
+    const { title, type, unlockDate } = req.body;
+    let url = req.body.url;
+    if (req.file) {
+      url = `/uploads/courses/${req.params.id}/${req.file.filename}`;
+    }
     if (!title || !url) {
-      return res.status(400).json({ error: 'Title and URL are required' });
+      return res.status(400).json({ error: 'Title and URL (or file) are required' });
     }
 
     // 1.2 Race Condition Fix

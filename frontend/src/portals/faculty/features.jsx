@@ -1,3 +1,4 @@
+import { useLiveDiscussionThreads as useLiveDiscussionThreadsHook } from '../../api/liveData.js';
 // ══════════════════════════════════════════════════════════════════════════════
 // EduSphere Enterprise — Faculty Portal Feature Modules
 // New enterprise features split into separate file for maintainability

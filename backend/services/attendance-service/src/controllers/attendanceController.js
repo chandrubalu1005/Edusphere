@@ -229,17 +229,18 @@ exports.createQRSession = async (req, res) => {
     }
 
     const sessionId = uuidv4();
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + windowMins * 60 * 1000);
 
     // Persist to Mongo (TTL fallback)
-    await QRSession.create({ sessionId, courseId, date, facultyId: req.user.userId, windowMins, expiresAt, latitude, longitude, radius });
+    await QRSession.create({ sessionId, courseId, date, facultyId: req.user.userId, windowMins, expiresAt, latitude, longitude, radius, pin });
 
     // Store in Redis with TTL (primary)
     if (redisClient) {
       await redisClient.setEx(
         `qrsession:${sessionId}`,
         windowMins * 60,
-        JSON.stringify({ courseId, date, facultyId: req.user.userId, expiresAt, latitude, longitude, radius })
+        JSON.stringify({ courseId, date, facultyId: req.user.userId, expiresAt, latitude, longitude, radius, pin })
       );
     }
 
@@ -247,7 +248,7 @@ exports.createQRSession = async (req, res) => {
     const qrPayload = JSON.stringify({ sessionId, courseId, date });
     const qrBase64  = await QRCode.toDataURL(qrPayload, { width: 300, margin: 2 });
 
-    res.status(201).json({ sessionId, expiresAt, qrBase64, courseId, date, windowMins });
+    res.status(201).json({ sessionId, expiresAt, qrBase64, courseId, date, windowMins, pin });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -480,3 +481,33 @@ exports.manualAddParticipant = async (req, res) => {
 };
 
 exports.setRedisClient = setRedisClient;
+exports.getOtpSessions = async (req, res) => {
+  try {
+    const sessions = await QRSession.find({ active: true, expiresAt: { $gt: new Date() } }).select('_id courseId');
+    res.json(sessions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.submitOtp = async (req, res) => {
+  try {
+    const { sessionId, otp } = req.body;
+    const session = await QRSession.findOne({ _id: sessionId, active: true });
+    if (!session || session.expiresAt < new Date()) {
+      return res.status(400).json({ error: 'Session expired or not found' });
+    }
+    if (session.pin !== otp) {
+      return res.status(400).json({ error: 'Invalid PIN' });
+    }
+    
+    await Attendance.findOneAndUpdate(
+      { studentId: req.user.userId, courseId: session.courseId, date: session.date },
+      { status: 'present', method: 'otp' },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

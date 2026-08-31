@@ -10,7 +10,7 @@ async function connectRabbitMQ(url) {
     console.log('Connected to RabbitMQ successfully');
   } catch (error) {
     console.error('RabbitMQ connection error:', error.message);
-    setTimeout(() => connectRabbitMQ(url), 5000);
+    console.warn('Proceeding without RabbitMQ... Events will not be published.');
   }
 }
 
@@ -24,3 +24,4 @@ function publishEvent(routingKey, data) {
 }
 
 module.exports = { connectRabbitMQ, publishEvent };
+

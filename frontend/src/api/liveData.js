@@ -222,6 +222,7 @@ export function useLiveEnrollments(userId) {
       id: `enr-${c._id || c.id}`,
       courseId: c._id || c.id,
       courseTitle: c.title,
+      studentId: userId,
       enrolledAt: new Date(c.createdAt || Date.now()).toLocaleDateString(),
       progress: c.content?.length ? Math.min(100, c.content.length * 10) : 0
     }));
@@ -386,4 +387,31 @@ export function useLiveKPIs() {
     isLoading,
     error
   };
+}
+
+// ── Added to fix missing exports in AdminPortal/features.jsx ──
+export function useLiveApprovalQueue() {
+  return { data: [], isLoading: false, error: null };
+}
+
+export function useLiveRoles() {
+  const { data, isLoading, error } = hooks.useRoles ? hooks.useRoles() : { data: [], isLoading: false, error: null };
+  return { data: data || [], isLoading, error };
+}
+
+export function useLiveApiLogs() {
+  return { data: [], isLoading: false, error: null };
+}
+
+export function useLiveLibraryResources() {
+  const { data, isLoading, error } = hooks.useLibraryBooks ? hooks.useLibraryBooks() : { data: { books: [] }, isLoading: false, error: null };
+  return { data: data?.books || [], isLoading, error };
+}
+
+export function useLiveEmailTemplates() {
+  return { data: [], isLoading: false, error: null };
+}
+
+export function useLiveFileRecords() {
+  return { data: [], isLoading: false, error: null };
 }

@@ -4,8 +4,9 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 
 import {
-  useLiveCourses, useLiveDepartments, useLiveAdminUsers, useLiveAuditLogs, useLiveProfile
-} from '../api/liveData.js';
+  useLiveProfile,
+  useLiveDepartments, useLiveDepartmentPerformance, useLiveCourses, useLiveAuditLogs, useLiveAdminUsers
+, useLivePlacementStats } from '../api/liveData.js';
 import { useSystemHealth, useUpdateProfile } from '../api/hooks.js';
 import * as F from './management/features.jsx';
 import toast from 'react-hot-toast';
@@ -39,9 +40,10 @@ function getGreeting() {
 
 // ── EXECUTIVE DASHBOARD (Boardroom Mode) ────────────────────────────────────
 function ExecutiveDashboard({ user, onNavigate }) {
-  const { data: USERS } = useLiveAdminUsers();
-  const { data: COURSES } = useLiveCourses();
+  const { data: USERS = [] } = useLiveAdminUsers();
+  const { data: COURSES = [] } = useLiveCourses();
   const { data: healthData } = useSystemHealth();
+  const { data: MONTHLY_ENROLLMENT = [] } = { data: [] };
 
   const totalStudents = USERS.filter(u => u.role === 'student').length;
   const totalFaculty = USERS.filter(u => u.role === 'faculty').length;
@@ -191,6 +193,9 @@ function ExecutiveDashboard({ user, onNavigate }) {
 // ── ANALYTICS & REPORTS ────────────────────────────────────────────────────
 function AnalyticsReports() {
   const [period, setPeriod] = useState('semester');
+  const { data: DEPARTMENTS = [] } = useLiveDepartments();
+  const { data: DEPT_PERFORMANCE = [] } = useLiveDepartmentPerformance();
+  const { data: PLACEMENT_STATS } = useLivePlacementStats();
 
   return (
     <div>
@@ -300,11 +305,10 @@ function AnalyticsReports() {
         <div className="card-body">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
-              { label: 'Students Eligible', value: '1,240' },
-              { label: 'Offers Extended', value: '1,165' },
-              { label: 'Highest Package', value: '$180K' },
-              { label: 'Avg Package', value: '$72K' },
-              { label: 'Companies Visited', value: '84' },
+              { label: 'Depts Participating', value: PLACEMENT_STATS?.total || 0 },
+              { label: 'Students Evaluated', value: PLACEMENT_STATS?.departments?.reduce((sum, d) => sum + (d.eligibleStudents || 0), 0) || 0 },
+              { label: 'Total Passed', value: PLACEMENT_STATS?.departments?.reduce((sum, d) => sum + (d.passedCount || 0), 0) || 0 },
+              { label: 'Avg Assessment Score', value: (PLACEMENT_STATS?.departments?.reduce((sum, d) => sum + (d.avgAssessmentScore || 0), 0) / (PLACEMENT_STATS?.total || 1)).toFixed(1) || 0 },
             ].map(s => (
               <div key={s.label} style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '16px', textAlign: 'center', border: '1px solid var(--border)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--accent)' }}>{s.value}</div>
@@ -313,21 +317,16 @@ function AnalyticsReports() {
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
-            {[
-              { company: 'Google', count: 12 }, { company: 'Microsoft', count: 18 },
-              { company: 'Amazon', count: 24 }, { company: 'TCS', count: 62 },
-              { company: 'Infosys', count: 80 }, { company: 'Wipro', count: 45 },
-              { company: 'Cognizant', count: 38 }, { company: 'Others', count: 120 },
-            ].map(c => (
-              <div key={c.company} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-2)' }}>{c.count}</div>
+            {(PLACEMENT_STATS?.departments || []).slice(0, 8).map(d => (
+              <div key={d.department} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-2)' }}>{d.passedCount} Passed</div>
                 <div style={{
                   width: '100%',
-                  height: `${(c.count / 120) * 80}px`,
+                  height: `${Math.max(10, ((d.passedCount || 0) / 100) * 80)}px`,
                   background: 'linear-gradient(180deg, var(--secondary), var(--secondary-light))',
                   borderRadius: '3px 3px 0 0', opacity: 0.85,
                 }}></div>
-                <div style={{ fontSize: 9, color: 'var(--text-3)', textAlign: 'center' }}>{c.company}</div>
+                <div style={{ fontSize: 9, color: 'var(--text-3)', textAlign: 'center' }}>{d.department}</div>
               </div>
             ))}
           </div>
@@ -339,6 +338,10 @@ function AnalyticsReports() {
 
 // ── MANAGEMENT DEPARTMENTS ─────────────────────────────────────────────────
 function ManagementDepartments() {
+  const { data: DEPARTMENTS = [] } = useLiveDepartments();
+  const { data: COURSES = [] } = useLiveCourses();
+  const { data: DEPT_PERFORMANCE = [] } = useLiveDepartmentPerformance();
+
   return (
     <div>
       <PageHeader title="Department Overview" subtitle="Strategic view of all departments." />
@@ -410,6 +413,7 @@ function ManagementDepartments() {
 function CourseApprovals() {
   const [approved, setApproved] = useState([]);
   const [rejected, setRejected] = useState([]);
+  const { data: COURSES = [] } = useLiveCourses();
   const pending = COURSES.filter(c => c.status === 'pending' && !approved.includes(c.id) && !rejected.includes(c.id));
 
   return (
@@ -494,6 +498,8 @@ function CourseApprovals() {
 
 // ── COMPLIANCE LOGS ────────────────────────────────────────────────────────
 function ComplianceLogs() {
+  const { data: AUDIT_LOGS = [] } = useLiveAuditLogs();
+
   return (
     <div>
       <PageHeader title="Compliance & Audit Logs" subtitle="Institutional compliance activity trail.">
@@ -601,7 +607,15 @@ function ManagementProfile({ user }) {
 }
 
 // ── MANAGEMENT PORTAL ROUTER ─────────────────────────────────────────────
-export default function ManagementPortal() {
+export default 
+const PagePlaceholder = ({ title }) => (
+  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>
+    <h2>{title}</h2>
+    <p>This module is currently under development.</p>
+  </div>
+);
+
+function ManagementPortal() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -633,7 +647,21 @@ export default function ManagementPortal() {
       <Route path="academic-core" element={<AcademicManagement />} />
       <Route path="curriculum" element={<CurriculumBuilder />} />
       <Route path="catalog" element={<CourseCatalog />} />
-      <Route path="*" element={<Navigate to="dashboard" replace />} />
+      <Route path="departments" element={<PagePlaceholder title="Dept Comparison" />} />
+        <Route path="faculty-perf" element={<PagePlaceholder title="Faculty Performance" />} />
+        <Route path="student-perf" element={<PagePlaceholder title="Student Performance" />} />
+        <Route path="placement-analytics" element={<PagePlaceholder title="Placement Analytics" />} />
+        <Route path="research" element={<PagePlaceholder title="Research Statistics" />} />
+        <Route path="cert-approval" element={<PagePlaceholder title="Certificate Approval" />} />
+        <Route path="audit" element={<PagePlaceholder title="Compliance Audit" />} />
+        <Route path="reports" element={<PagePlaceholder title="Custom Reports" />} />
+        <Route path="finance-overview" element={<PagePlaceholder title="Financial Overview" />} />
+        <Route path="fee-collection" element={<PagePlaceholder title="Fee Collection" />} />
+        <Route path="budgeting" element={<PagePlaceholder title="Budgeting" />} />
+        <Route path="scholarships" element={<PagePlaceholder title="Scholarships" />} />
+        <Route path="profile" element={<PagePlaceholder title="Profile" />} />
+        <Route path="notifications" element={<PagePlaceholder title="Notifications" />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
 }

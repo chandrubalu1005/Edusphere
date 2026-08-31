@@ -522,4 +522,5 @@ services:
       discussion-service:   { condition: service_healthy }
       analytics-service:    { condition: service_healthy }
       admin-service:        { condition: service_healthy }
+        finance-service:      { condition: service_healthy }
     networks: [edusphere_net]

@@ -3,14 +3,10 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
-import { useSubmitAssignment, useUpdateProfile } from '../api/hooks.js';
+import { useSubmitAssignment, useUpdateProfile, useScanQRSession, useRateCourse } from '../api/hooks.js';
 import toast from 'react-hot-toast';
 
-import {
-  useLiveCourses, useLiveAssignments, useLiveAssessments,
-  useLiveCertificates, useLiveNotifications, useLiveAttendance,
-  useLiveEnrollments, useLiveProfile
-} from '../api/liveData.js';
+import { useLiveAssignments, useLiveCourses, useLiveSubmissions, useLiveAttendance, useLiveProfile, useLiveNotifications, useLiveAssessments, useLiveCertificates, useLiveEnrollments, useLivePlacementDrives } from '../api/liveData.js';
 import * as F from './student/features.jsx';
 import OtpAttendanceWidget from '../components/OtpAttendanceWidget.jsx';
 import ProfilePage from '../components/profile/ProfilePage.jsx';
@@ -37,13 +33,14 @@ function PageHeader({ title, subtitle, children }) {
 
 // ── STUDENT DASHBOARD ─────────────────────────────────────────────────────
 function StudentDashboard({ user, onNavigate }) {
-  const { data: COURSES } = useLiveCourses();
-  const { data: ENROLLMENTS } = useLiveEnrollments(user.id || user.userId);
-  const { data: ATTENDANCE_RECORDS } = useLiveAttendance();
-  const { data: ASSIGNMENTS } = useLiveAssignments();
-  const { data: ASSESSMENTS } = useLiveAssessments();
-  const { data: CERTIFICATES } = useLiveCertificates();
-  const { data: NOTIFICATIONS } = useLiveNotifications();
+  const { data: NOTIFICATIONS = [] } = useLiveNotifications();
+  const { data: COURSES = [] } = useLiveCourses();
+  const { data: ENROLLMENTS = [] } = useLiveEnrollments(user.id || user.userId);
+  const { data: ATTENDANCE_RECORDS = [] } = useLiveAttendance();
+  const { data: ASSIGNMENTS = [] } = useLiveAssignments();
+  const { data: ASSESSMENTS = [] } = useLiveAssessments();
+  const { data: CERTIFICATES = [] } = useLiveCertificates();
+
 
   const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id || e.studentId === user.userId);
   const myAttendance = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id || a.studentId === user.userId);
@@ -55,7 +52,7 @@ function StudentDashboard({ user, onNavigate }) {
   return (
     <div>
       <PageHeader
-        title={`${new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'}, ${user.firstName}`}
+        title={`${new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'}, ${user.firstName || user.username}`}
         subtitle="Here's your academic overview for today."
       />
 
@@ -265,7 +262,7 @@ function StudentCourses({ user }) {
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => {
                             const rating = prompt("Rate this course (1-5):");
-                            if (rating >= 1 && rating <= 5) toast.error(`Service unavailable (Rating API not connected)`);
+                              if (rating >= 1 && rating <= 5) rateCourse.mutate({ courseId: c.id, rating: parseInt(rating, 10), comment: '' });
                           }}>Rate</button>
                           <button className="btn btn-outline btn-sm">Continue</button>
                         </div>
@@ -360,33 +357,20 @@ function StudentAttendance({ user }) {
     fetchActiveSession();
   }, []);
 
-  const handleOtpSubmit = async () => {
-    if (currentOtp.length !== 6) return toast.error('Please enter a 6-digit OTP');
-    try {
-      const token = localStorage.getItem('token');
-      const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || '/api/attendance';
-      
-      const endpoint = otpPurpose === 'JOIN' ? 'join' : 'checkout';
-      
-      const res = await fetch(`${ATTEND_URL}/otp-attendance/sessions/${activeSession?.id || 'dummy'}/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          otp: currentOtp,
-          deviceFingerprint: localStorage.getItem('device_fp') + '|' + navigator.userAgent
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to submit OTP');
-      toast.success(otpPurpose === 'JOIN' ? 'Successfully checked in!' : 'Successfully checked out!');
-      setOtpOpen(false);
-      setCurrentOtp('');
-    } catch (err) {
-      toast.error(err.message);
-    }
+  const scanQRSession = useScanQRSession();
+  
+  const handleOtpSubmit = () => {
+    if (currentOtp.length < 5) return toast.error('Please enter a valid PIN');
+    
+    // We pass the PIN to the API (or full sessionId if scanned). The backend should be updated to resolve PINs to sessions.
+    scanQRSession.mutate(currentOtp, {
+      onSuccess: () => {
+        setOtpOpen(false);
+        setCurrentOtp('');
+        // Remove active session badge since we checked in
+        setActiveSession(null); 
+      }
+    });
   };
 
   return (
@@ -1059,10 +1043,10 @@ function PlacementPortal({ user }) {
             <div className="card-header"><div className="card-title">My Profile</div></div>
             <div className="card-body" style={{ fontSize: 13 }}>
               <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-                <div className="user-avatar" style={{ width: 48, height: 48, fontSize: 20 }}>{user.firstName[0]}{user.lastName[0]}</div>
+                <div className="user-avatar" style={{ width: 48, height: 48, fontSize: 20 }}>{(user.firstName || user.username || 'S')[0]}{(user.lastName || 'T')[0]}</div>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{user.firstName} {user.lastName}</div>
-                  <div style={{ color: 'var(--text-2)' }}>{user.department}</div>
+                  <div style={{ fontWeight: 700 }}>{user.firstName || user.username} {user.lastName || ''}</div>
+                  <div style={{ color: 'var(--text-2)' }}>{user.department || 'Student'}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1160,6 +1144,7 @@ function Library({ user }) {
 
 // ── NOTIFICATIONS PAGE ─────────────────────────────────────────────────────
 function NotificationsPage({ user }) {
+  const { data: NOTIFICATIONS = [] } = useLiveNotifications();
   const [filter, setFilter] = useState('all');
   const my = NOTIFICATIONS.filter(n => n.userId === user.id);
   const filtered = filter === 'all' ? my : filter === 'unread' ? my.filter(n => !n.read) : my.filter(n => n.type === filter);

@@ -1,3 +1,17 @@
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads', 'courses');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(UPLOAD_DIR, req.params.id || 'misc');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+const upload = multer({ storage });
 const express = require('express');
 const courseController = require('../controllers/courseController');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -10,7 +24,7 @@ router.post('/',      authMiddleware, courseController.createCourse);
 router.get('/search', authMiddleware, courseController.searchCourses);
 router.get('/:id',    authMiddleware, courseController.getCourse);
 router.put('/:id',    authMiddleware, courseController.updateCourse);
-router.post('/:id/content',  authMiddleware, courseController.addContent);
+router.post('/:id/content',  authMiddleware, upload.single('file'), courseController.addContent);
 router.post('/:id/syllabus', authMiddleware, courseController.updateSyllabus);
 router.post('/:id/approve',  authMiddleware, courseController.approveCourse);
 router.post('/:id/reject',   authMiddleware, courseController.rejectCourse);

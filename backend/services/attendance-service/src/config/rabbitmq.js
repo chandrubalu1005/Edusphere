@@ -8,7 +8,7 @@ async function connectRabbitMQ(url) {
     console.log('Connected to RabbitMQ in Attendance Service');
   } catch (error) {
     console.error('RabbitMQ connection error in Attendance Service:', error.message);
-    setTimeout(() => connectRabbitMQ(url), 5000);
+    console.warn('Proceeding without RabbitMQ... Events will not be published.');
   }
 }
 function publishEvent(routingKey, data) {

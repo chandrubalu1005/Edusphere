@@ -14,10 +14,6 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('edu_token');
     
-    // If using mock offline token, don't hit real backend (which would return 401)
-    if (token && token.startsWith('mock_jwt_token')) {
-      return Promise.reject({ isMockFallback: true, message: 'Offline mode active' });
-    }
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

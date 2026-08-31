@@ -5,10 +5,10 @@ import { Icon, ICONS } from '../components/Layout.jsx';
 
 import {
   useLiveAdminUsers, useLiveCourses, useLiveDepartments,
-  useLiveSemesters, useLiveEnrollments, useLiveAuditLogs, useLiveProfile
+  useLiveSemesters, useLiveEnrollments, useLiveAuditLogs, useLiveProfile, useLiveUsers
 } from '../api/liveData.js';
 import * as F from './admin/features.jsx';
-import { useBulkUpdateUsers, useApproveCourse, useRejectCourse, useCreateCourse, useUpdateProfile } from '../api/hooks.js';
+import { useBulkUpdateUsers, useApproveCourse, useRejectCourse, useCreateCourse, useUpdateProfile , useSystemHealth, useSupportTickets } from '../api/hooks.js';
 import toast from 'react-hot-toast';
 
 import ProfilePage from '../components/profile/ProfilePage.jsx';
@@ -43,9 +43,11 @@ function AdminDashboard({ onNavigate }) {
   const { data: SEMESTERS } = useLiveSemesters();
   const { data: ENROLLMENTS } = useLiveEnrollments();
   const { data: AUDIT_LOGS } = useLiveAuditLogs();
+  const { data: SUPPORT_TICKETS = [] } = { data: [] };
+  const { data: MONTHLY_ENROLLMENT = [] } = { data: [] };
 
   const totalUsers = totalUsersCount || USERS.length;
-  const activeUsers = USERS.filter(u => u.status === 'active' || u.active !== false).length; // Note: if paginated, this active users count will still be wrong! But the total is fixed.
+  const activeUsers = USERS.filter(u => u.status === 'active' || u.active !== false).length; 
   const totalCourses = totalCoursesCount || COURSES.length;
 
   return (
@@ -58,7 +60,7 @@ function AdminDashboard({ onNavigate }) {
 
       <div className="alert alert-info" style={{ marginBottom: 24 }}>
         <Icon d={ICONS.shield} size={15} />
-        <div><strong>System Health:</strong> All services operational · Last sync: 2 minutes ago · DB status: Connected · Redis: OK</div>
+        <div><strong>System Health:</strong> {healthData?.overall === 'healthy' ? 'All services operational' : 'Degraded performance detected'} · DB status: {healthData?.database?.status === 'connected' ? 'Connected' : 'Error'}</div>
       </div>
 
       <div className="stat-grid">
@@ -69,7 +71,7 @@ function AdminDashboard({ onNavigate }) {
           { label: 'Active Semester', value: SEMESTERS.filter(s => s.status === 'active').length, sub: 'Running semesters', icon: <Calendar size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'semesters' },
           { label: 'Enrollments', value: ENROLLMENTS.length, sub: 'This semester', icon: <ClipboardCheck size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'enrollments' },
           { label: 'Open Tickets', value: SUPPORT_TICKETS.filter(t => t.status === 'open').length, sub: 'Awaiting response', icon: <Ticket size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'helpdesk' },
-          { label: 'System Health', value: 'Operational', sub: 'Metrics Dashboard', icon: <HeartPulse size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />, page: 'system-health' },
+          { label: 'System Health', value: healthData?.overall === 'healthy' ? 'Operational' : 'Degraded', sub: 'Metrics Dashboard', icon: <HeartPulse size={24} color={healthData?.overall === 'healthy' ? 'var(--success)' : 'var(--danger)'} strokeWidth={1.5} />, page: 'system-health' },
         ].map(s => (
           <div className="stat-card" key={s.label} onClick={() => onNavigate(s.page)} style={{ cursor: 'pointer' }}>
             <div className="stat-label">{s.label}</div>
@@ -133,6 +135,8 @@ function AdminDashboard({ onNavigate }) {
 
 // ── DEPARTMENTS ─────────────────────────────────────────────────────────────
 function DepartmentManagement() {
+  const { data: DEPARTMENTS = [] } = useLiveDepartments();
+  const { data: COURSES = [] } = useLiveCourses();
   const [showAdd, setShowAdd] = useState(false);
 
   return (
@@ -184,6 +188,7 @@ function DepartmentManagement() {
 function AdminCourses() {
   const [filter, setFilter] = useState('all');
   const { data: USERS } = useLiveAdminUsers();
+  const { data: COURSES = [] } = useLiveCourses();
   const approveCourse = useApproveCourse();
   const rejectCourse = useRejectCourse();
   const createCourse = useCreateCourse();
@@ -349,6 +354,7 @@ function AdminCourses() {
 
 // ── SEMESTERS ──────────────────────────────────────────────────────────────
 function SemesterManagement() {
+  const { data: SEMESTERS = [] } = useLiveSemesters();
   return (
     <div>
       <PageHeader title="Academic Calendar & Semesters" subtitle="Manage academic periods and key dates.">
@@ -402,6 +408,7 @@ function SemesterManagement() {
 
 // ── AUDIT LOGS ─────────────────────────────────────────────────────────────
 function AuditLogs() {
+  const { data: AUDIT_LOGS = [] } = useLiveAuditLogs();
   return (
     <div>
       <PageHeader title="Audit Logs" subtitle="Complete system activity trail for compliance and security.">
@@ -566,6 +573,10 @@ function SystemSettings() {
 
 // ── ENROLLMENTS ────────────────────────────────────────────────────────────
 function EnrollmentManagement() {
+  const { data: ENROLLMENTS = [] } = useLiveEnrollments();
+  const { data: USERS = [] } = useLiveUsers();
+  const { data: COURSES = [] } = useLiveCourses();
+
   return (
     <div>
       <PageHeader title="Enrollment Management" subtitle="View and manage student course enrollments.">
@@ -613,6 +624,7 @@ function EnrollmentManagement() {
 
 // ── ADMIN HELP DESK ────────────────────────────────────────────────────────
 function AdminHelpDesk() {
+  const { data: SUPPORT_TICKETS = [] } = { data: [] };
   return (
     <div>
       <PageHeader title="Help Desk" subtitle="Manage all student support tickets." />
@@ -732,7 +744,15 @@ function AdminProfile({ user }) {
 }
 
 // ── ADMIN PORTAL ROUTER ────────────────────────────────────────────────────
-export default function AdminPortal() {
+export default 
+const PagePlaceholder = ({ title }) => (
+  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>
+    <h2>{title}</h2>
+    <p>This module is currently under development.</p>
+  </div>
+);
+
+function AdminPortal() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -763,7 +783,28 @@ export default function AdminPortal() {
       <Route path="academic-core" element={<AcademicManagement />} />
       <Route path="curriculum" element={<CurriculumBuilder />} />
       <Route path="catalog" element={<CourseCatalog />} />
-      <Route path="*" element={<Navigate to="dashboard" replace />} />
+      <Route path="departments" element={<PagePlaceholder title="Departments" />} />
+        <Route path="semesters" element={<PagePlaceholder title="Semesters" />} />
+        <Route path="enrollments" element={<PagePlaceholder title="Enrollments" />} />
+        <Route path="timetable-mgmt" element={<PagePlaceholder title="Timetable Management" />} />
+        <Route path="academic-core" element={<PagePlaceholder title="Academic Core" />} />
+        <Route path="cert-approval" element={<PagePlaceholder title="Certificate Approval" />} />
+        <Route path="roles" element={<PagePlaceholder title="Roles & Permissions" />} />
+        <Route path="announcements" element={<PagePlaceholder title="Announcements" />} />
+        <Route path="library-mgmt" element={<PagePlaceholder title="Library Management" />} />
+        <Route path="placement-mgmt" element={<PagePlaceholder title="Placement Management" />} />
+        <Route path="calendar-mgmt" element={<PagePlaceholder title="Academic Calendar" />} />
+        <Route path="system-health" element={<PagePlaceholder title="System Health" />} />
+        <Route path="audit" element={<PagePlaceholder title="Audit & Logs" />} />
+        <Route path="file-mgmt" element={<PagePlaceholder title="File Management" />} />
+        <Route path="email" element={<PagePlaceholder title="Email Broadcast" />} />
+        <Route path="backup" element={<PagePlaceholder title="Backup & Restore" />} />
+        <Route path="settings" element={<PagePlaceholder title="Configuration" />} />
+        <Route path="helpdesk" element={<PagePlaceholder title="Help Desk" />} />
+        <Route path="reports" element={<PagePlaceholder title="Reports Center" />} />
+        <Route path="profile" element={<PagePlaceholder title="Profile" />} />
+        <Route path="notifications" element={<PagePlaceholder title="Notifications" />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
 }

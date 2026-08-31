@@ -21,7 +21,7 @@ app.use(express.json());
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads', 'assignments');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-app.use('/uploads', express.static(UPLOAD_DIR));
+app.use('/uploads/assignments', express.static(UPLOAD_DIR));
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'assignment-service' }));
 

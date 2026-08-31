@@ -18,16 +18,15 @@ import {
   Users, BookOpen, ClipboardCheck, MessageSquare, Briefcase, FileText, Archive
 } from 'lucide-react';
 
-import {
-  useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
-  useLivePlacementDrives, useLiveAuditLogs, useLiveCourses
-} from '../../api/liveData.js';
+import { useLiveAuditLogs, useLiveApprovalQueue, useLiveRoles, useLiveApiLogs, useLiveLibraryResources, useLivePlacementDrives, useLiveEmailTemplates, useLiveFileRecords, useLiveTimetable, useLiveCourses } from '../../api/liveData.js';
 
 // ── TIMETABLE MANAGEMENT ────────────────────────────────────────────────────
 export function TimetableMgmt({ user }) {
+  const { data: APPROVAL_QUEUE = [] } = useLiveApprovalQueue();
+  
   const { data: TIMETABLE } = useLiveTimetable();
-  const { data: COURSES } = useLiveCourses();
-  const [slots, setSlots] = useState(TIMETABLE || TIMETABLE);
+  const { data: COURSES = [] } = useLiveCourses();
+  const [slots, setSlots] = useState(TIMETABLE || []);
   
   const [modalOpen, setModalOpen] = useState(false);
   const [day, setDay] = useState('Monday');
@@ -145,7 +144,8 @@ export function CertificateApproval({ user }) {
 }
 
 // ── ROLE & PERMISSION MANAGEMENT ────────────────────────────────────────────
-export function RolePermissions({ user }) {
+export function DocumentAdmin({ user }) {
+  const { data: FILE_RECORDS = [] } = useLiveFileRecords();
   return (
     <div>
       <PageHeader
@@ -161,7 +161,7 @@ export function RolePermissions({ user }) {
           { key: 'userCount', label: 'Active Users', width: 100 },
           { key: 'permissions', label: 'Permissions Count', render: v => <span className="badge badge-accent">{v.length} assigned</span> }
         ]}
-        data={ROLES}
+        data={[]}
       />
     </div>
   );
@@ -303,7 +303,9 @@ export function BackupRestore({ user }) {
 }
 
 // ── AUDIT & LOGS CENTER ─────────────────────────────────────────────────────
-export function AuditLogsCenter({ user }) {
+export function AuditLogs({ user }) {
+  const { data: AUDIT_LOGS = [] } = useLiveAuditLogs();
+  const { data: API_LOGS = [] } = useLiveApiLogs();
   const [tab, setTab] = useState('audit');
 
   return (
@@ -349,7 +351,8 @@ export function AuditLogsCenter({ user }) {
 }
 
 // ── DIGITAL LIBRARY MANAGEMENT ──────────────────────────────────────────────
-export function LibraryManagement({ user }) {
+export function LibraryAdmin({ user }) {
+  const { data: LIBRARY_RESOURCES = [] } = useLiveLibraryResources();
   return (
     <div>
       <PageHeader
@@ -374,7 +377,8 @@ export function LibraryManagement({ user }) {
 }
 
 // ── PLACEMENT MANAGEMENT ────────────────────────────────────────────────────
-export function PlacementManagement({ user }) {
+export function PlacementAdmin({ user }) {
+  const { data: PLACEMENT_DRIVES = [] } = useLivePlacementDrives();
   return (
     <div>
       <PageHeader
@@ -401,7 +405,8 @@ export function PlacementManagement({ user }) {
 }
 
 // ── UNIVERSITY CONFIGURATION CENTER ─────────────────────────────────────────
-export function ConfigurationCenter({ user }) {
+export function CommunicationAdmin({ user }) {
+  const { data: EMAIL_TEMPLATES = [] } = useLiveEmailTemplates();
   return (
     <div>
       <PageHeader
@@ -436,31 +441,9 @@ export function ConfigurationCenter({ user }) {
   );
 }
 
-// ── EMAIL BROADCAST ─────────────────────────────────────────────────────────
-export function EmailBroadcast({ user }) {
-  return (
-    <div>
-      <PageHeader
-        title="Email Broadcast"
-        subtitle="Broadcast emails to custom cohorts and student/faculty directories using templates"
-        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Email Broadcast' }]}
-      />
-
-      <DataTable
-        columns={[
-          { key: 'name', label: 'Template Name' },
-          { key: 'subject', label: 'Subject Line' },
-          { key: 'lastUsed', label: 'Last Broadcast Date', width: 140 },
-          { key: 'id', label: 'Action', width: 100, render: () => <button className="btn btn-outline btn-sm">Compose</button>, sortable: false }
-        ]}
-        data={EMAIL_TEMPLATES}
-      />
-    </div>
-  );
-}
-
 // ── FILE MANAGEMENT ─────────────────────────────────────────────────────────
-export function FileManager({ user }) {
+export function RoleManagement({ user }) {
+  const { data: ROLES = [] } = useLiveRoles();
   return (
     <div>
       <PageHeader
@@ -478,7 +461,7 @@ export function FileManager({ user }) {
           { key: 'uploadedAt', label: 'Date', width: 100 },
           { key: 'downloads', label: 'Hits', width: 70 }
         ]}
-        data={FILE_RECORDS}
+        data={[]}
       />
     </div>
   );

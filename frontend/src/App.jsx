@@ -105,7 +105,17 @@ function AppRoutes() {
   );
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      throwOnError: true,
+      retry: false, // Don't retry on error to immediately show ErrorBoundary
+    },
+    mutations: {
+      throwOnError: false, // Mutations usually handled manually
+    }
+  }
+});
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);

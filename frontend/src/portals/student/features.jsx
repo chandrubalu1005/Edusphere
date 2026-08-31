@@ -1,3 +1,4 @@
+import { Star, Megaphone, Activity } from 'lucide-react';
 // ══════════════════════════════════════════════════════════════════════════════
 // EduSphere Enterprise — Student Portal Feature Modules
 // New enterprise features split into separate file for maintainability

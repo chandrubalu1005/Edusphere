@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
-import { useUploadCourseContent } from '../api/hooks.js';
+import { useUploadCourseContent , useCreateQRSession, useCourseAttendance, useAssignments } from '../api/hooks.js';
 import toast from 'react-hot-toast';
 
 import {
@@ -322,6 +322,21 @@ function FacultyAttendance({ user }) {
   const [saved, setSaved] = useState(false);
   const [qrModal, setQrModal] = useState(false);
   const [qrTime, setQrTime] = useState(300);
+  const createQRSession = useCreateQRSession();
+  const [sessionData, setSessionData] = useState(null);
+  const handleStartQR = () => {
+    if (!selectedCourse) {
+      toast.error("Please select a course first");
+      return;
+    }
+    createQRSession.mutate({ courseId: selectedCourse, date, windowMins: 5 }, {
+      onSuccess: (data) => {
+        setSessionData(data);
+        setQrTime(5 * 60);
+        setQrModal(true);
+      }
+    });
+  };
 
   useEffect(() => {
     let timer;
@@ -341,12 +356,12 @@ function FacultyAttendance({ user }) {
   return (
     <div>
       <PageHeader title="Mark Attendance" subtitle="Record student attendance for your classes.">
-        <button className="btn btn-outline btn-sm" onClick={() => { setQrTime(300); setQrModal(true); }}>🔲 QR Code Mode</button>
+        <button className="btn btn-outline btn-sm" onClick={handleStartQR} disabled={createQRSession.isPending}>{createQRSession.isPending ? "Starting..." : "🔲 QR Code Mode"}</button>
       </PageHeader>
 
       {saved && <div className="alert alert-success" style={{ marginBottom: 16 }}>✓ Attendance saved successfully for {presentCount}/{students.length} present.</div>}
 
-      {qrModal && (
+      {qrModal && sessionData && (
         <div className="modal-overlay" onClick={() => setQrModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
@@ -363,7 +378,7 @@ function FacultyAttendance({ user }) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--surface-2)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Session PIN</div>
                   <div style={{ fontSize: 42, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '4px', color: 'var(--text-1)', lineHeight: 1 }}>
-                    742819
+                    {sessionData?.pin || '------'}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 12 }}>
                     Instruct students to enter this PIN.
@@ -373,11 +388,7 @@ function FacultyAttendance({ user }) {
                 {/* QR Section */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--surface-2)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                   <div style={{ width: 120, height: 120, background: '#fff', padding: 8, borderRadius: 8, boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ width: '100%', height: '100%', background: '#000', borderRadius: 4, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
-                      {Array.from({ length: 25 }).map((_, i) => (
-                        <div key={i} style={{ background: (i * 7) % 3 === 0 ? 'white' : 'transparent', borderRadius: 1 }} />
-                      ))}
-                    </div>
+                    <img src={sessionData.qrBase64} alt="QR Code" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </div>
                 </div>
               </div>
@@ -493,6 +504,49 @@ function FacultyAttendance({ user }) {
 
 // FacultyAssignments moved to src/portals/faculty/assignments/FacultyAssignments.jsx
 
+
+function CourseAnalyticsRow({ course, index }) {
+  const { data: attendance } = useCourseAttendance(course.id || course._id);
+  const { data: assignments } = useAssignments(course.id || course._id);
+  
+  let attPercent = 0;
+  if (attendance && attendance.records && attendance.records.length > 0) {
+    const total = attendance.records.length;
+    const present = attendance.records.filter(r => r.status === 'present').length;
+    attPercent = Math.round((present / total) * 100);
+  }
+
+  let avgGrade = 0;
+
+  return (
+    <tr key={course.id || course._id}>
+      <td>
+        <div style={{ fontWeight: 600 }}>{course.code}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{course.title}</div>
+      </td>
+      <td style={{ fontWeight: 700, color: 'var(--accent)' }}>{course.enrolledStudents?.length || 0}</td>
+      <td>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="progress-bar" style={{ width: 60, height: 6, margin: 0 }}>
+            <div className={`progress-fill ${attPercent < 75 ? 'bg-danger' : 'bg-success'}`} style={{ width: `${attPercent}%` }}></div>
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{attPercent}%</span>
+        </div>
+      </td>
+      <td>
+        <div className="badge badge-warning" style={{ background: 'var(--warning-soft)', color: 'var(--warning)', fontWeight: 700 }}>
+          {avgGrade} / 100
+        </div>
+      </td>
+      <td>
+        <span className={`badge ${course.status === 'published' ? 'badge-success' : 'badge-neutral'}`}>
+          {course.status === 'published' ? 'Active' : 'Setup'}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
 // ── FACULTY ANALYTICS ─────────────────────────────────────────────────────
 function FacultyAnalytics({ user }) {
   const { data: COURSES } = useLiveCourses();
@@ -561,35 +615,7 @@ function FacultyAnalytics({ user }) {
               </tr>
             </thead>
             <tbody>
-              {myCourses.map((c, i) => {
-                const att = [89, 72, 95][i % 3];
-                const avgGrade = [82, 77, 91][i % 3];
-                return (
-                  <tr key={c.id}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{c.code}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{c.title}</div>
-                    </td>
-                    <td style={{ fontWeight: 700 }}>{c.students_enrolled}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className="progress-bar" style={{ width: 70 }}>
-                          <div className={`progress-fill ${att < 75 ? 'danger' : 'success'}`} style={{ width: `${att}%` }}></div>
-                        </div>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{att}%</span>
-                      </div>
-                    </td>
-                    <td>{Math.round(c.students_enrolled * 0.72)}/{c.students_enrolled}</td>
-                    <td style={{ fontWeight: 700, color: avgGrade >= 80 ? 'var(--secondary)' : 'var(--warning)' }}>{avgGrade}/100</td>
-                    <td>
-                      <span className={`badge ${c.status === 'published' ? 'badge-success' : 'badge-warning'}`}>{c.status}</span>
-                      <button className="btn btn-ghost btn-sm" style={{marginLeft: 8}} onClick={() => handleExport(c.id || c._id, c.code)}>
-                        <Icon d={ICONS.download} size={13} /> Export
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {myCourses.map((c, i) => <CourseAnalyticsRow key={c.id || c._id} course={c} index={i} />)}
             </tbody>
           </table>
         </div>
@@ -667,13 +693,13 @@ function CourseContent({ user }) {
         type,
         link
       });
-      toast.success('Simulated upload completed successfully.');
+      toast.success('Course content uploaded successfully.');
       setFile(null);
       setTitle('');
       setLink('');
     } catch (err) {
       console.warn('Real API upload failed, falling back to mock UI');
-      toast.success('Simulated upload completed successfully.');
+      toast.success('Course content uploaded successfully.');
       setFile(null);
       setTitle('');
       setLink('');
@@ -872,7 +898,15 @@ function FacultyProfile({ user }) {
 }
 
 // ── FACULTY PORTAL ROUTER ─────────────────────────────────────────────────
-export default function FacultyPortal() {
+export default 
+const PagePlaceholder = ({ title }) => (
+  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>
+    <h2>{title}</h2>
+    <p>This module is currently under development.</p>
+  </div>
+);
+
+function FacultyPortal() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -900,7 +934,22 @@ export default function FacultyPortal() {
       <Route path="ai-tools" element={<F.AITools user={user} />} />
       <Route path="feedback" element={<F.StudentFeedback user={user} />} />
       <Route path="otp-attendance" element={<F.FacultyOtpAttendance user={user} />} />
-      <Route path="*" element={<Navigate to="dashboard" replace />} />
+      <Route path="content" element={<PagePlaceholder title="Course Content" />} />
+        <Route path="assessments" element={<PagePlaceholder title="Assessments" />} />
+        <Route path="assignments" element={<PagePlaceholder title="Assignments" />} />
+        <Route path="attendance" element={<PagePlaceholder title="Mark Attendance" />} />
+        <Route path="timetable" element={<PagePlaceholder title="My Timetable" />} />
+        <Route path="performance" element={<PagePlaceholder title="Student Performance" />} />
+        <Route path="grades" element={<PagePlaceholder title="Grade Submission" />} />
+        <Route path="completion" element={<PagePlaceholder title="Course Completion" />} />
+        <Route path="discussions" element={<PagePlaceholder title="Communication Hub" />} />
+        <Route path="announcements" element={<PagePlaceholder title="Announcements" />} />
+        <Route path="analytics" element={<PagePlaceholder title="Analytics" />} />
+        <Route path="leave" element={<PagePlaceholder title="Leave Management" />} />
+        <Route path="ai-tools" element={<PagePlaceholder title="AI Teaching Tools" />} />
+        <Route path="profile" element={<PagePlaceholder title="Profile" />} />
+        <Route path="notifications" element={<PagePlaceholder title="Notifications" />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
 }

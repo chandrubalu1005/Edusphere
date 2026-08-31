@@ -41,8 +41,9 @@ async function connectRabbitMQ(url) {
     console.log('User Service RabbitMQ Consumer configured successfully');
   } catch (error) {
     console.error('RabbitMQ connection error in User Service:', error.message);
-    setTimeout(() => connectRabbitMQ(url), 5000);
+    console.warn('Proceeding without RabbitMQ... Events will not be published.');
   }
 }
 
 module.exports = { connectRabbitMQ };
+

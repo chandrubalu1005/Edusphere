@@ -1430,3 +1430,17 @@ export const useCloseSemester = () => {
 };
 
 
+
+export const useRateCourse = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courseId, rating, comment }) => {
+      const res = await api.post(`/courses/${courseId}/rate`, { rating, comment });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Course rated successfully!');
+      queryClient.invalidateQueries(['enrolledCourses']);
+    }
+  });
+};
