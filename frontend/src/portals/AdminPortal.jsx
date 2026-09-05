@@ -541,10 +541,10 @@ function SystemSettings() {
           {tab === 'integrations' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
-                { name: 'Meilisearch', status: 'connected', url: 'http://localhost:7700' },
-                { name: 'Redis Cache', status: 'connected', url: 'redis://localhost:6379' },
-                { name: 'RabbitMQ', status: 'connected', url: 'amqp://localhost:5672' },
-                { name: 'MinIO Storage', status: 'disconnected', url: 'http://localhost:9000' },
+                { name: 'Meilisearch', status: 'disconnected', url: 'http://es-meili:7700' },
+                { name: 'Redis Cache', status: 'disconnected', url: 'redis://es-redis:6379' },
+                { name: 'RabbitMQ', status: 'disconnected', url: 'amqp://es-rabbitmq:5672' },
+                { name: 'MinIO Storage', status: 'disconnected', url: 'http://es-minio:9000' },
                 { name: 'Mails (Nodemailer)', status: 'connected', url: 'smtp.gmail.com:587' },
               ].map(i => (
                 <div key={i.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2)' }}>
@@ -744,7 +744,6 @@ function AdminProfile({ user }) {
 }
 
 // ── ADMIN PORTAL ROUTER ────────────────────────────────────────────────────
-export default 
 const PagePlaceholder = ({ title }) => (
   <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>
     <h2>{title}</h2>
@@ -809,3 +808,5 @@ function AdminPortal() {
   );
 }
 
+
+export default AdminPortal;

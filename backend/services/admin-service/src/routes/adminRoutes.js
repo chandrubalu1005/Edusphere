@@ -66,4 +66,7 @@ router.get('/helpdesk/tickets',       authMiddleware, adminController.getTickets
 router.post('/helpdesk/tickets',      authMiddleware, adminController.createTicket);
 router.patch('/helpdesk/tickets/:id', authMiddleware, requireAdmin, adminController.respondToTicket);
 
+// ── Approvals (Management) ─────────────────────────────────────────────────
+router.get('/approvals', authMiddleware, requireUserManagement, adminController.getApprovalQueue);
+
 module.exports = router;

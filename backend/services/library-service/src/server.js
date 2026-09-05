@@ -11,7 +11,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'library-serv
 app.use('/', libraryRoutes);
 
 const PORT = process.env.PORT || 3011;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_library';
+const MONGO_URI = process.env.MONGO_URI_LIBRARY || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_library';
 
 async function startServer() {
   await connectDB(MONGO_URI);

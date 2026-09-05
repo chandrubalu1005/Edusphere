@@ -10,6 +10,27 @@ import { logger } from '../events/rabbitmq';
 
 export class SubmissionController {
 
+  static async getPendingSubmissions(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      if (user.role !== 'faculty' && user.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const assignments = await Assignment.find({ createdBy: user.userId }).select('_id');
+      const assignmentIds = assignments.map(a => a._id);
+      
+      const submissions = await Submission.find({ 
+        assignmentId: { $in: assignmentIds },
+        status: { $ne: 'graded' }
+      });
+      
+      res.json(submissions);
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch pending submissions' });
+    }
+  }
+
   static async submitAssignment(req: Request, res: Response) {
     const session = await mongoose.startSession();
     session.startTransaction();

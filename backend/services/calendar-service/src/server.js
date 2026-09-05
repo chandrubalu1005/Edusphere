@@ -11,7 +11,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'calendar-ser
 app.use('/', calendarRoutes);
 
 const PORT = process.env.PORT || 3010;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_calendar';
+const MONGO_URI = process.env.MONGO_URI_CALENDAR || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_calendar';
 
 async function startServer() {
   await connectDB(MONGO_URI);

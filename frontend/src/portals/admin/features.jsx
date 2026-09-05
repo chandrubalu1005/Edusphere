@@ -116,14 +116,21 @@ export function TimetableMgmt({ user }) {
 
 // ── CERTIFICATE APPROVAL WORKFLOW ───────────────────────────────────────────
 export function CertificateApproval({ user }) {
-  const [queue, setQueue] = useState(APPROVAL_QUEUE.filter(q => q.type === 'Course Approval' || q.type.includes('Leave') || q.type.includes('Budget')));
+  const { data: approvalData = [], isLoading } = useLiveApprovalQueue();
+  const [queue, setQueue] = useState([]);
+
+  useEffect(() => {
+    if (approvalData.length > 0) {
+      setQueue(approvalData.filter(q => q.type === 'Course Approval' || q.type.includes('Leave') || q.type.includes('Budget')));
+    }
+  }, [approvalData]);
 
   function handleApprove(id) {
     setQueue(prev => prev.map(item => item.id === id ? { ...item, status: 'approved' } : item));
   }
 
   function handleReject(id, reason) {
-    setQueue(prev => prev.map(item => item.id === id ? { ...item, status: 'rejected', details: `${item.details} (Rejected Reason: ${reason})` } : item));
+    setQueue(prev => prev.map(item => item.id === id ? { ...item, status: 'rejected', details: `${item.details || ''} (Rejected Reason: ${reason})` } : item));
   }
 
   return (
@@ -144,7 +151,7 @@ export function CertificateApproval({ user }) {
 }
 
 // ── ROLE & PERMISSION MANAGEMENT ────────────────────────────────────────────
-export function DocumentAdmin({ user }) {
+export function RolePermissions({ user }) {
   const { data: FILE_RECORDS = [] } = useLiveFileRecords();
   return (
     <div>
@@ -303,7 +310,7 @@ export function BackupRestore({ user }) {
 }
 
 // ── AUDIT & LOGS CENTER ─────────────────────────────────────────────────────
-export function AuditLogs({ user }) {
+export function AuditLogsCenter({ user }) {
   const { data: AUDIT_LOGS = [] } = useLiveAuditLogs();
   const { data: API_LOGS = [] } = useLiveApiLogs();
   const [tab, setTab] = useState('audit');
@@ -351,7 +358,7 @@ export function AuditLogs({ user }) {
 }
 
 // ── DIGITAL LIBRARY MANAGEMENT ──────────────────────────────────────────────
-export function LibraryAdmin({ user }) {
+export function LibraryManagement({ user }) {
   const { data: LIBRARY_RESOURCES = [] } = useLiveLibraryResources();
   return (
     <div>
@@ -377,7 +384,7 @@ export function LibraryAdmin({ user }) {
 }
 
 // ── PLACEMENT MANAGEMENT ────────────────────────────────────────────────────
-export function PlacementAdmin({ user }) {
+export function PlacementManagement({ user }) {
   const { data: PLACEMENT_DRIVES = [] } = useLivePlacementDrives();
   return (
     <div>
@@ -405,7 +412,7 @@ export function PlacementAdmin({ user }) {
 }
 
 // ── UNIVERSITY CONFIGURATION CENTER ─────────────────────────────────────────
-export function CommunicationAdmin({ user }) {
+export function ConfigurationCenter({ user }) {
   const { data: EMAIL_TEMPLATES = [] } = useLiveEmailTemplates();
   return (
     <div>
@@ -442,7 +449,7 @@ export function CommunicationAdmin({ user }) {
 }
 
 // ── FILE MANAGEMENT ─────────────────────────────────────────────────────────
-export function RoleManagement({ user }) {
+export function FileManager({ user }) {
   const { data: ROLES = [] } = useLiveRoles();
   return (
     <div>
@@ -467,4 +474,17 @@ export function RoleManagement({ user }) {
   );
 }
 
+
+
+// ── EMAIL BROADCAST ────────────────────────────────────────────────────────
+export function EmailBroadcast({ user }) {
+  return (
+    <div>
+      <PageHeader
+        title="Email Broadcast"
+        subtitle="Send targeted email communications to specific student cohorts, faculty, or staff"
+        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Email Broadcast' }]} />
+    </div>
+  );
+}
 

@@ -5,9 +5,33 @@ const bcrypt = require('bcryptjs');
 const MONGO_HOST = process.env.MONGO_HOST || 'localhost';
 const MONGO_PORT = process.env.MONGO_PORT || '27017';
 
+// Map seed database names to env var suffixes (handles plural/singular mismatches)
+const DB_NAME_MAP = {
+  'placements': 'PLACEMENT',
+  'auth': 'AUTH',
+  'users': 'USERS',
+  'courses': 'COURSES',
+  'attendance': 'ATTENDANCE',
+  'assignments': 'ASSIGNMENTS',
+  'assessments': 'ASSESSMENTS',
+  'certificates': 'CERTIFICATES',
+  'discussions': 'DISCUSSIONS',
+  'library': 'LIBRARY',
+  'notifications': 'NOTIFICATIONS',
+  'analytics': 'ANALYTICS',
+  'admin': 'ADMIN',
+  'finance': 'FINANCE',
+};
+
 function uri(db) {
-  if (process.env.MONGO_URI) return process.env.MONGO_URI;
-  return process.env[`MONGO_URI_${db.toUpperCase()}`] || `mongodb://${MONGO_HOST}:${MONGO_PORT}/edusphere_${db}`;
+  const envKey = DB_NAME_MAP[db] || db.toUpperCase();
+  const perServiceUri = process.env[`MONGO_URI_${envKey}`];
+  if (perServiceUri) return perServiceUri;
+  // Fallback: use the base MONGO_URI but replace the database name
+  if (process.env.MONGO_URI) {
+    return process.env.MONGO_URI.replace(/\/edusphere(\?|$)/, `/edusphere_${db}$1`);
+  }
+  return `mongodb://${MONGO_HOST}:${MONGO_PORT}/edusphere_${db}`;
 }
 
 async function connect(dbUri, label) {
@@ -77,20 +101,23 @@ async function seedAll() {
   // 2. COURSES
   console.log('\n[2/12] Seeding courses & enrollments...');
   const connCourses = await connect(uri('courses'), 'edusphere_courses');
-  const Course = connCourses.model('Course', new mongoose.Schema({ title: String, code: String, department: String, facultyOwnerId: String, status: String, credits: Number, capacity: Number, enrolledStudents: [String] }, {strict: false}));
+  const Course = connCourses.model('Course', new mongoose.Schema({ title: String, code: String, description: String, department: String, facultyOwnerId: String, facultyName: String, status: String, credits: Number, capacity: Number, enrolledStudents: [String] }, {strict: false}));
+
+  // Faculty name lookup
+  const facNameMap = { 'faculty_1': 'Faculty One', 'faculty_2': 'Faculty Two', 'faculty_3': 'Faculty Three' };
 
   // Create 10 courses
   const coursesData = [
-    { title: 'Intro to Programming', code: 'CS101', dept: 'CSE', fac: 'faculty_1', status: 'published', students: ['student_1', 'student_2'] },
-    { title: 'Data Structures', code: 'CS201', dept: 'CSE', fac: 'faculty_1', status: 'published', students: ['student_1', 'student_2'] },
-    { title: 'Algorithms', code: 'CS301', dept: 'CSE', fac: 'faculty_2', status: 'published', students: ['student_1'] },
-    { title: 'Operating Systems', code: 'CS401', dept: 'CSE', fac: 'faculty_2', status: 'published', students: ['student_2'] },
-    { title: 'Machine Learning', code: 'CS501', dept: 'CSE', fac: 'faculty_2', status: 'pending', students: [] }, // Edge case: zero students, pending
-    { title: 'Digital Logic', code: 'EC101', dept: 'ECE', fac: 'faculty_3', status: 'published', students: ['student_3'] },
-    { title: 'Signals and Systems', code: 'EC201', dept: 'ECE', fac: 'faculty_3', status: 'published', students: ['student_3'] },
-    { title: 'Microprocessors', code: 'EC301', dept: 'ECE', fac: 'faculty_3', status: 'published', students: ['student_3'] },
-    { title: 'VLSI Design', code: 'EC401', dept: 'ECE', fac: 'faculty_3', status: 'published', students: [] },
-    { title: 'Wireless Comms', code: 'EC501', dept: 'ECE', fac: 'faculty_3', status: 'pending', students: [] },
+    { title: 'Intro to Programming', code: 'CS101', dept: 'CSE', fac: 'faculty_1', status: 'published', students: ['student_1', 'student_2'], desc: 'Fundamentals of programming using Python and C' },
+    { title: 'Data Structures', code: 'CS201', dept: 'CSE', fac: 'faculty_1', status: 'published', students: ['student_1', 'student_2'], desc: 'Arrays, linked lists, trees, graphs, and hash tables' },
+    { title: 'Algorithms', code: 'CS301', dept: 'CSE', fac: 'faculty_2', status: 'published', students: ['student_1'], desc: 'Sorting, searching, dynamic programming, and greedy algorithms' },
+    { title: 'Operating Systems', code: 'CS401', dept: 'CSE', fac: 'faculty_2', status: 'published', students: ['student_2'], desc: 'Process management, memory, file systems, and concurrency' },
+    { title: 'Machine Learning', code: 'CS501', dept: 'CSE', fac: 'faculty_2', status: 'pending', students: [], desc: 'Supervised, unsupervised learning, neural networks' },
+    { title: 'Digital Logic', code: 'EC101', dept: 'ECE', fac: 'faculty_3', status: 'published', students: ['student_3'], desc: 'Boolean algebra, combinational and sequential circuits' },
+    { title: 'Signals and Systems', code: 'EC201', dept: 'ECE', fac: 'faculty_3', status: 'published', students: ['student_3'], desc: 'Fourier analysis, Laplace transforms, and LTI systems' },
+    { title: 'Microprocessors', code: 'EC301', dept: 'ECE', fac: 'faculty_3', status: 'published', students: ['student_3'], desc: 'Architecture, assembly programming, and interfacing' },
+    { title: 'VLSI Design', code: 'EC401', dept: 'ECE', fac: 'faculty_3', status: 'published', students: [], desc: 'CMOS design, layout, and verification' },
+    { title: 'Wireless Comms', code: 'EC501', dept: 'ECE', fac: 'faculty_3', status: 'pending', students: [], desc: 'Wireless channel models and communication protocols' },
   ];
 
   let courseMap = {};
@@ -98,7 +125,7 @@ async function seedAll() {
     const studentIds = c.students.map(s => userMap[s]);
     const course = await Course.findOneAndUpdate(
       { code: c.code },
-      { title: c.title, code: c.code, department: c.dept, facultyOwnerId: userMap[c.fac], status: c.status, credits: 3, capacity: 60, enrolledStudents: studentIds },
+      { title: c.title, code: c.code, description: c.desc, department: c.dept, facultyOwnerId: userMap[c.fac], facultyName: facNameMap[c.fac], status: c.status, credits: 3, capacity: 60, enrolledStudents: studentIds },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     courseMap[c.code] = { id: course._id.toString(), students: studentIds, title: c.title, facId: userMap[c.fac] };

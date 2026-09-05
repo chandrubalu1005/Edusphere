@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(cors());
 
 const PORT = process.env.PORT || 3001;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_auth';
+const MONGO_URI = process.env.MONGO_URI_AUTH || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_auth';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
 const rateLimit = require('express-rate-limit');

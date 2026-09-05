@@ -1,21 +1,129 @@
 # MASTER DATABASE MATRIX
 
-The backend comprises independent microservices, each with its own logical MongoDB database (e.g., `edusphere_auth`, `edusphere_users`).
+This matrix outlines the database collections and models used across the EduSphere microservices.
 
-| Service | Model / Collection | Key Fields | Owner | Status |
-|---|---|---|---|---|
-| `user-service` | `users`, `profiles` | `username`, `role`, `department`, `firstName` | `user-service` | NOT VERIFIED |
-| `auth-service` | `passwords`, `tokens` | `hash`, `refreshTokens` (often stored in Redis) | `auth-service` | NOT VERIFIED |
-| `course-service` | `courses`, `course_masters`, `student_enrollments`, `course_ratings` | `code`, `credits`, `facultyOwnerId`, `students_enrolled` | `course-service` | NOT VERIFIED |
-| `attendance-service` | `attendance_sessions`, `qr_sessions`, `attendance_participants`, `leave_policies` | `courseId`, `status`, `expiresAt`, `studentId`, `checkInTime` | `attendance-service` | NOT VERIFIED |
-| `assignment-service` | `assignments`, `submissions`, `submission_files` | `courseId`, `dueDate`, `studentId`, `grade`, `storageKey` | `assignment-service` | NOT VERIFIED |
-| `assessment-service` | `assessments`, `questions`, `results` | `courseId`, `type`, `maxScore`, `studentId`, `score` | `assessment-service` | NOT VERIFIED |
-| `library-service` | `library_books`, `book_copies`, `book_issues`, `loans`, `reservations`, `fines`, `categories` | `isbn`, `title`, `available`, `studentId`, `dueDate`, `fineAmount` | `library-service` | NOT VERIFIED |
-| `placement-service` | `placement_drives`, `placement_applications` | `company`, `eligibility`, `studentId`, `status`, `offerPackage` | `placement-service` | NOT VERIFIED |
-| `timetable-service` | `timetables`, `time_slots` | `courseId`, `day`, `startTime`, `endTime`, `room` | `timetable-service` | NOT VERIFIED |
-| `calendar-service` | `calendar_events` | `title`, `type`, `date`, `audience` | `calendar-service` | NOT VERIFIED |
-| `finance-service` | `invoices`, `payment_transactions`, `fee_structures`, `scholarships` | `studentId`, `amount`, `status`, `dueDate` | `finance-service` | NOT VERIFIED |
-| `notification-service` | `notifications` | `userId`, `title`, `message`, `read`, `type` | `notification-service` | NOT VERIFIED |
-| `discussion-service` | `discussion_threads`, `discussion_replies` | `courseId`, `authorId`, `content`, `createdAt` | `discussion-service` | NOT VERIFIED |
+## 1. Admin Service
+*Database: MongoDB (`admin-service` database or shared `edusphere` depending on setup)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `AuditLog` | `auditlogs` | System-wide compliance and action tracking |
+| `Department` | `departments` | Academic department records |
+| `Semester` | `semesters` | Academic terms and sessions |
+| `SupportTicket`| `supporttickets`| Helpdesk and IT ticketing |
 
-*Note: Detailed DB schemas, indexes, and write operations require static code analysis of Mongoose models across the services. This matrix will be expanded during Phase 2 (Database Architecture).*
+## 2. Analytics Service
+*Database: MongoDB (`analytics-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `AssessmentEvent` | `assessmentevent` | Telemetry for quizzes and exams |
+| `AttendanceEvent` | `attendanceevent` | Telemetry for attendance tracking |
+| `CourseGrade` | `coursegrades` | Aggregated grade metrics |
+| `CourseRatingEvent`| `courseratingevent`| Faculty and course feedback telemetry |
+| `DepartmentSnapshot`| `departmentsnapshot`| KPI rollups for management portal |
+| `Settings` | `settings` | Analytics configuration |
+
+## 3. Attendance Service
+*Database: MongoDB (`attendance-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `Attendance` | `attendances` | Core attendance records per student |
+| `AttendanceEvent`| `attendanceevents`| Raw check-in logs |
+| `AttendanceParticipant`| `attendanceparticipants`| Roster state per session |
+| `AttendancePolicy`| `attendancepolicies`| Rules for check-in windows |
+| `AttendanceSession`| `attendancesessions`| Instance of a class occurring |
+| `ClassSession` | `classsessions` | Master schedule block |
+| `LeavePolicy` | `leavepolicies` | Institutional leave configurations |
+| `LeaveRequest` | `leaverequests` | Student/Staff leave tracking |
+| `OtpAttendanceSession`| `otpattendancesessions`| Dynamic PIN state |
+| `OtpSubmission`| `otpsubmissions`| Verification logs for OTPs |
+| `QRSession` | `qrsessions` | QR based attendance active sessions |
+
+## 4. Auth Service
+*Database: MongoDB (`auth-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `User` | `users` | Core identities, passwords (hashed), roles |
+
+## 5. Calendar Service
+*Database: MongoDB (`calendar-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `CalendarEvent`| `calendarevents`| Academic calendar and schedules |
+
+## 6. Course Service
+*Database: MongoDB (`course-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `Course` | `courses` | Academic course master records |
+| `CourseRating` | `courseratings` | Faculty/Course feedback scores |
+| `FeedbackSurvey`| `feedbacksurveys`| Detailed surveys |
+
+## 7. Discussion Service
+*Database: MongoDB (`discussion-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `DiscussionThread`| `discussionthreads`| Forum main topics |
+| `DiscussionReply` | `discussionreplies`| Forum replies and comments |
+
+## 8. Finance Service
+*Database: MongoDB (`finance-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `FeeStructure` | `feestructures` | Institutional fee definitions |
+| `Invoice` | `invoices` | Student billing |
+| `PaymentTransaction`| `paymenttransactions`| Payment receipts and logs |
+| `Scholarship` | `scholarships` | Financial aid tracking |
+
+## 9. Library Service (Enterprise Module)
+*Database: MongoDB (`library-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `BookTitle` / `LibraryBook`| `booktitles`| Master catalog record |
+| `BookCopy` | `bookcopies` | Individual physical inventory instances |
+| `Author` | `authors` | Catalog metadata |
+| `Category` | `categories` | Catalog metadata |
+| `Publisher` | `publishers` | Catalog metadata |
+| `Location` / `LibraryBranch`| `locations` | Physical mapping |
+| `LibraryMember`| `librarymembers`| Patrons |
+| `BorrowingPolicy`| `borrowingpolicies`| Circulation rules |
+| `Loan` / `BookIssue` | `loans` | Active circulation |
+| `LoanEvent` | `loanevents` | Historical log |
+| `Reservation` | `reservations` | Holds and queues |
+| `Fine` / `FineTransaction`| `fines` | Overdue accounting |
+| `AcquisitionRequest`| `acquisitionrequests`| Procurement |
+| `PurchaseOrder`| `purchaseorders`| Procurement |
+| `ReceivingRecord`| `receivingrecords`| Procurement |
+| `Vendor` | `vendors` | Procurement |
+| `DigitalResource`| `digitalresources`| E-Books / PDF storage links |
+| `DigitalAccessLog`| `digitalaccesslogs`| DRM / viewing metrics |
+| `InventorySession`| `inventorysessions`| Physical audit |
+| `InventoryScan`| `inventoryscans`| Physical audit logs |
+| `InventoryDiscrepancy`| `inventorydiscrepancies`| Audit findings |
+
+## 10. Placement Service
+*Database: MongoDB (`placement-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `PlacementDrive`| `placementdrives`| Campus recruiting events |
+| `PlacementApplication`| `placementapplications`| Student job applications |
+
+## 11. Timetable Service
+*Database: MongoDB (`timetable-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `TimeSlot` | `timeslots` | Basic grid mapping |
+| `Timetable` | `timetables` | Finalized weekly schedule |
+
+## 12. User Service
+*Database: MongoDB (`user-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `Profile` | `profiles` | Extended user data (avatar, bio, address) |
+
+## 13. Assignment Service (TypeScript)
+*Database: MongoDB (`assignment-service`)*
+| Model | Collection/Entity | Purpose |
+|-------|-------------------|---------|
+| `Assignment` | `assignments` | Faculty posted assignments |
+| `Submission` | `submissions` | Student submitted works |
+| `OutboxEvent` | `outboxevents`| Distributed transaction/event logs |

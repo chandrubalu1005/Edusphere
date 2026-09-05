@@ -156,7 +156,7 @@ exports.getStudentMetrics = async (req, res) => {
     }
     const records = await Attendance.find({ studentId: req.params.studentId });
     if (records.length === 0) {
-      return res.json({ percentage: 100, present: 0, total: 0, breakdown: {} });
+      return res.json({ percentage: 100, present: 0, total: 0, breakdown: {}, records: [] });
     }
     const total   = records.length;
     const present = records.filter(r => r.status === 'present').length;
@@ -171,7 +171,7 @@ exports.getStudentMetrics = async (req, res) => {
       const course = breakdown[courseId];
       course.percentage = Math.round((course.present / course.total) * 100);
     });
-    const metrics = { percentage, present, total, breakdown };
+    const metrics = { percentage, present, total, breakdown, records };
     if (redisClient) await redisClient.setEx(cacheKey, 604800, JSON.stringify(metrics));
     res.json(metrics);
   } catch (error) {
@@ -352,15 +352,28 @@ exports.getWeeklySummary = async (req, res) => {
     const grouped = {};
     days.forEach(d => { grouped[d] = { date: d, present: 0, absent: 0, total: 0 }; });
     records.forEach(r => {
-      if (grouped[r.date]) {
-        grouped[r.date].total++;
-        if (r.status === 'present') grouped[r.date].present++;
-        else grouped[r.date].absent++;
+      const dateKey = r.date instanceof Date ? r.date.toISOString().slice(0, 10) : new Date(r.date).toISOString().slice(0, 10);
+      if (grouped[dateKey]) {
+        grouped[dateKey].total++;
+        if (r.status === 'present') grouped[dateKey].present++;
+        else grouped[dateKey].absent++;
       }
     });
 
-    const summary = days.map(d => grouped[d]);
-    res.json({ summary, days: days.length, courseId: courseId || 'all' });
+    const result = days.map(d => {
+      const g = grouped[d];
+      const dayName = new Date(d).toLocaleDateString('en-US', { weekday: 'short' });
+      const presentPercent = g.total > 0 ? Math.round((g.present / g.total) * 100) : 0;
+      return {
+        day: dayName,
+        date: d,
+        present: presentPercent,
+        absent: g.total > 0 ? 100 - presentPercent : 0,
+        total: g.total
+      };
+    });
+
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

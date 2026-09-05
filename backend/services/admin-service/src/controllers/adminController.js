@@ -440,3 +440,13 @@ exports.respondToTicket = async (req, res) => {
     res.json(ticket);
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
+
+// ── Approval Queue ─────────────────────────────────────────────────────────
+exports.getApprovalQueue = async (req, res) => {
+  try {
+    // No Approval model exists. Returning empty to avoid fake data and 404 errors.
+    res.json({ approvals: [], queue: [] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

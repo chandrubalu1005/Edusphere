@@ -529,7 +529,7 @@ async function connectMongoWithRetry(uri: string, maxRetries = 10, delay = 3000)
 }
 
 async function bootstrap() {
-  const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_notifications';
+  const MONGO_URI = process.env.MONGO_URI_NOTIFICATIONS || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_notifications';
   await connectMongoWithRetry(MONGO_URI);
 
   await consumeEvents();

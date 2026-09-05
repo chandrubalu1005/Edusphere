@@ -28,7 +28,7 @@
     "start:placement":    "npm run start --workspace=backend/services/placement-service",
     "start:timetable":    "npm run start --workspace=backend/services/timetable-service",
     "start:frontend":     "npm run dev --workspace=frontend",
-    "seed":               "dotenv -e .env -- node backend/scripts/seed.js",
+    "seed":               "dotenv -e .env -- node backend/scripts/seeder/index.js",
     "smoke-test":         "node backend/scripts/smoke-test.js",
     "docker:up":          "docker compose -f infra/docker-compose.yml up --build -d",
     "docker:down":        "docker compose -f infra/docker-compose.yml down",

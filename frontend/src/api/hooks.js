@@ -1014,6 +1014,17 @@ export const useMySubmissions = (studentId) => {
   });
 };
 
+export const usePendingSubmissions = () => {
+  return useQuery({
+    queryKey: ['pendingSubmissions'],
+    queryFn: async () => {
+      const res = await api.get(`/submissions/pending`);
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
 export const useBulkUpdateUsers = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -1442,5 +1453,46 @@ export const useRateCourse = () => {
       toast.success('Course rated successfully!');
       queryClient.invalidateQueries(['enrolledCourses']);
     }
+  });
+};
+
+
+
+// ── Fee Records ────────────────────────────────────────────────────────────
+export const useFeeRecords = (studentId) => {
+  return useQuery({
+    queryKey: ['feeRecords', studentId],
+    queryFn: async () => {
+      const res = await api.get('/finance/fees', { params: { studentId } });
+      return res.data;
+    },
+    enabled: Boolean(studentId),
+    retry: 1,
+  });
+};
+
+// ── Approval Queue (Management) ────────────────────────────────────────────
+export const useApprovalQueue = (params) => {
+  return useQuery({
+    queryKey: ['approvalQueue', params],
+    queryFn: async () => {
+      const res = await api.get('/admin/approvals', { params });
+      return res.data;
+    },
+    retry: 1,
+  });
+};
+
+export const useProcessApproval = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, action, note }) => {
+      const res = await api.patch(`/admin/approvals/${id}`, { action, note });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Approval action recorded');
+      queryClient.invalidateQueries(['approvalQueue']);
+    },
   });
 };

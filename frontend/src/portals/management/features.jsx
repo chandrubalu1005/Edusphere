@@ -21,10 +21,26 @@ import {
   useLivePlacementDrives, useLiveKPIForecast, useLiveBudgets, useLiveKPIs
 } from '../../api/liveData.js';
 
+// ── SAFE FALLBACKS (PREVENTS REFERENCE ERRORS) ──────────────────────────────
+const APPROVAL_QUEUE = [];
+const RESEARCH_STATS = { totalPublications: 0, totalCitations: 0, hIndex: 0, totalFunding: 0, recentPublications: [] };
+const BUDGET_DATA = { categories: [{ name: 'Default', allocated: 0, spent: 0 }] };
+const RISK_ALERTS = [];
+const PREDICTIVE_DATA = { dropoutRisk: [], placementPrediction: [] };
+const DEFAULT_KPI = { overall: { naacGrade: 'N/A', studentSuccessRate: 0, placementRate: 0 }, yearlyTrend: [] };
+
 // ── INSTITUTIONAL KPIS ──────────────────────────────────────────────────────
 export function InstitutionalKPIs({ user }) {
-  const { data: INSTITUTIONAL_KPIS = { overall: 85, academic: 88, research: 75, operational: 92 } } = useLiveKPIs();
-  const kpi = INSTITUTIONAL_KPIS.overall;
+  const { data: kpiData, isLoading } = useLiveKPIs();
+  const INSTITUTIONAL_KPIS = kpiData || DEFAULT_KPI;
+  
+  // Extract values from flat kpiData structure or fallback to default
+  const naacGrade = kpiData ? (kpiData.NAAC_Score || 'N/A') : DEFAULT_KPI.overall.naacGrade;
+  const studentSuccessRate = kpiData ? parseInt(kpiData.assessmentPassRate) || 0 : DEFAULT_KPI.overall.studentSuccessRate;
+  const placementRate = kpiData ? parseInt(kpiData.placementRatio) || 0 : DEFAULT_KPI.overall.placementRate;
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>Loading KPI data...</div>;
+  
   return (
     <div>
       <PageHeader
@@ -34,9 +50,9 @@ export function InstitutionalKPIs({ user }) {
       />
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        <StatCard label="NAAC Rating" value={kpi.naacGrade} trend="Accredited" trendType="up" icon={<Trophy size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
-        <StatCard label="Success Rate" value={`${kpi.studentSuccessRate}%`} trend="Overall student clearance" icon={<TrendingUp size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
-        <StatCard label="Placement Rate" value={`${kpi.placementRate}%`} trend="Target: 90%" trendType="neutral" icon={<Briefcase size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="NAAC Rating" value={naacGrade} trend="Accredited" trendType="up" icon={<Trophy size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Success Rate" value={`${studentSuccessRate}%`} trend="Overall student clearance" icon={<TrendingUp size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Placement Rate" value={`${placementRate}%`} trend="Target: 90%" trendType="neutral" icon={<Briefcase size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
       <div className="card" style={{ padding: 20 }}>
@@ -45,7 +61,7 @@ export function InstitutionalKPIs({ user }) {
           <div>
             <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 12 }}>Yearly Placement Trend (%)</h4>
             <BarChart
-              data={INSTITUTIONAL_KPIS.yearlyTrend.map(t => ({ label: t.year, value: t.placement }))}
+              data={(INSTITUTIONAL_KPIS.yearlyTrend || []).map(t => ({ label: t.year, value: t.placement }))}
               valueKey="value"
               labelKey="label"
               color="var(--accent)"
@@ -54,7 +70,7 @@ export function InstitutionalKPIs({ user }) {
           <div>
             <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 12 }}>Yearly Research Index</h4>
             <BarChart
-              data={INSTITUTIONAL_KPIS.yearlyTrend.map(t => ({ label: t.year, value: t.research }))}
+              data={(INSTITUTIONAL_KPIS.yearlyTrend || []).map(t => ({ label: t.year, value: t.research }))}
               valueKey="value"
               labelKey="label"
               color="var(--secondary)"
@@ -189,7 +205,10 @@ export function ResearchStats({ user }) {
 
 // ── BUDGET OVERVIEW ─────────────────────────────────────────────────────────
 export function BudgetOverview({ user }) {
-  const [data, setData] = useState(BUDGET_DATA);
+  const { data: budgets, isLoading } = useLiveBudgets();
+  // Live budgets return an array; fallback to safe empty categories if no data
+  const data = (budgets && budgets.length > 0) ? { categories: budgets } : { categories: [] };
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [fromSector, setFromSector] = useState('');
   const [toSector, setToSector] = useState('');

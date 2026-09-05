@@ -25,7 +25,7 @@ app.use(express.json());
 app.use(cors());
 
 const PORT = process.env.PORT || 3008;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_attendance';
+const MONGO_URI = process.env.MONGO_URI_ATTENDANCE || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_attendance';
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 

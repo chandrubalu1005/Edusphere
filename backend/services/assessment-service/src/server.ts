@@ -488,7 +488,7 @@ async function connectMongoWithRetry(uri: string, maxRetries = 10, delay = 3000)
 }
 
 async function bootstrap() {
-  await connectMongoWithRetry(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_assessments');
+  await connectMongoWithRetry(process.env.MONGO_URI_ASSESSMENTS || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_assessments');
   await connectRedis();
   await connectRabbitMQ();
 

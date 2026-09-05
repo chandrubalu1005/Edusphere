@@ -11,7 +11,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'discussion-s
 app.use('/', discussionRoutes);
 
 const PORT = process.env.PORT || 3013;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_discussions';
+const MONGO_URI = process.env.MONGO_URI_DISCUSSIONS || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_discussions';
 
 async function startServer() {
   await connectDB(MONGO_URI);

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../api/hooks.js';
 import CommandPalette from './shared/CommandPalette.jsx';
+import SystemStatusBar from './SystemStatusBar.jsx';
 
 import { 
   Home, BookOpen, Calendar, Users, BarChart2, Settings, Bell, Search, 
@@ -473,6 +474,8 @@ export default function Layout({ children, searchQuery, onSearchChange }) {
       </div>
 
       <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onNavigate={(path) => navigate(path)} />
+      
+      <SystemStatusBar />
     </div>
   );
 }

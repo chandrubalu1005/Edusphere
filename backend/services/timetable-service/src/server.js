@@ -13,7 +13,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'timetable-se
 app.use('/', timetableRoutes);
 
 const PORT = process.env.PORT || 3009;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_timetable';
+const MONGO_URI = process.env.MONGO_URI_TIMETABLE || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_timetable';
 
 async function startServer() {
   await connectDB(MONGO_URI);

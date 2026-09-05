@@ -1,10 +1,10 @@
-import { Star, Megaphone, Activity } from 'lucide-react';
 // ══════════════════════════════════════════════════════════════════════════════
 // EduSphere Enterprise — Student Portal Feature Modules
 // New enterprise features split into separate file for maintainability
 // ══════════════════════════════════════════════════════════════════════════════
-import React, { useState, useMemo } from 'react';
-import { useLiveLibraryLoans } from '../../api/liveData';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Star, Megaphone, Activity } from 'lucide-react';
+import { useLiveLibraryLoans, useLiveAuditLogs } from '../../api/liveData';
 import { useReturnLoan, useIssueLoan, useSearchCatalog } from '../../api/hooks';
 import { 
   BookOpen, Calendar as CalendarIcon, Clock, CreditCard, 
@@ -24,7 +24,8 @@ import {
   useLiveTimetable, useLiveCalendarEvents, useLiveLibraryBooks,
   useLivePlacementDrives, useLivePlacementApplications, useLiveNotifications,
   useLiveDiscussionThreads, useLiveThreadDetails,
-  useLiveLeaveRecords, useLiveLeaveBalance, useLiveCourses, useLiveEnrollments
+  useLiveLeaveRecords, useLiveLeaveBalance, useLiveCourses, useLiveEnrollments,
+  useLiveFeeRecords
 } from '../../api/liveData.js';
 import {
   useCreateReply, useApplyForLeave, useWithdrawLeave,
@@ -166,7 +167,8 @@ export function AcademicCalendar({ user }) {
 
 // ── LEARNING PROGRESS ───────────────────────────────────────────────────────
 export function LearningProgress({ user }) {
-  const enrolled = ENROLLMENTS.filter(e => e.studentId === user.id);
+  const { data: enrollmentsData = [] } = useLiveEnrollments(user?.id || user?.userId);
+  const enrolled = enrollmentsData.filter(e => e.studentId === (user?.id || user?.userId));
 
   // Skills radar mock data
   const skills = [
@@ -504,7 +506,10 @@ export function TranscriptGrades({ user }) {
 
 // ── FEE & PAYMENT ───────────────────────────────────────────────────────────
 export function FeePayment({ user }) {
-  const [fees, setFees] = useState(() => FEE_RECORDS.filter(f => f.studentId === user.id));
+  const { data: feeData = [] } = useLiveFeeRecords(user?.id || user?.userId);
+  const [fees, setFees] = useState([]);
+  // Sync fees from API data
+  useEffect(() => { if (feeData.length > 0) setFees(feeData); }, [feeData]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFee, setSelectedFee] = useState(null);
   const [cardNumber, setCardNumber] = useState('');

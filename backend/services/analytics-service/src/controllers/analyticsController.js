@@ -17,13 +17,13 @@ exports.getKPIs = async (req, res) => {
       assessmentPassRate:`${passRate}%`,
       totalAttendance,
       totalAssessments,
-      // Static institutional KPIs (admin-curated, not sourced from LMS events)
-      NAAC_Score:         '3.62 / 4 (A++)',
-      NBA_Accreditation:  '9 out of 11 Departments Accredited',
-      researchIndex:      'H-Index 42',
-      placementRatio:     '92.4% average salary ₹8.2 LPA',
+      // Static institutional KPIs (models do not exist, returning N/A to prevent fake data)
+      NAAC_Score:         'N/A',
+      NBA_Accreditation:  'N/A',
+      researchIndex:      'N/A',
+      placementRatio:     'N/A',
       retentionRate:      `${attendanceRate}%`,
-      studentSatisfaction:'4.7 / 5',
+      studentSatisfaction:'N/A',
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -33,12 +33,8 @@ exports.getKPIs = async (req, res) => {
 // ── Budgets (static — not sourced from LMS events) ─────────────────────────
 exports.getBudgets = async (req, res) => {
   try {
-    res.json([
-      { department: 'Computer Science',     allocated: 2500000, spent: 2100000 },
-      { department: 'Electronics & Comm',   allocated: 1800000, spent: 1750000 },
-      { department: 'Mechanical Engg',      allocated: 1200000, spent: 980000  },
-      { department: 'Civil Engg',           allocated: 900000,  spent: 870000  },
-    ]);
+    // Budget model does not exist. Returning empty array to avoid fake data.
+    res.json([]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

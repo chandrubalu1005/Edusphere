@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Icon, ICONS } from '../components/Layout.jsx';
@@ -8,9 +8,9 @@ import toast from 'react-hot-toast';
 
 import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
-  useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions, useLiveProfile
+  useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions, useLiveProfile, useLivePendingSubmissions, useLiveUsers
 } from '../api/liveData.js';
-import { useGradeSubmission, useBulkGradeAssignment, useCreateCourse, useUpdateCourse, useResolveDispute, useUpdateProfile } from '../api/hooks.js';
+import { useGradeSubmission, useBulkGradeAssignment, useCreateCourse, useUpdateCourse, useResolveDispute, useUpdateProfile, useWeeklyAttendanceSummary, useMarkAllAttendance } from '../api/hooks.js';
 import * as F from './faculty/features.jsx';
 import ProfilePage from '../components/profile/ProfilePage.jsx';
 import FacultyAssignments from './faculty/assignments/FacultyAssignments.jsx';
@@ -35,12 +35,13 @@ function PageHeader({ title, subtitle, children }) {
 function FacultyDashboard({ user, onNavigate }) {
   const { data: COURSES } = useLiveCourses();
   const { data: ASSIGNMENTS } = useLiveAssignments();
-  const { data: SUBMISSIONS } = useLiveSubmissions(user.id || user.userId);
+  const { data: PENDING_SUBMISSIONS } = useLivePendingSubmissions();
+  const { data: dayAtt = [] } = useWeeklyAttendanceSummary({ facultyId: user.id || user.userId });
 
   const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
   const totalStudents = myCourses.reduce((sum, c) => sum + (c.students_enrolled || 0), 0);
   const totalAssignments = ASSIGNMENTS.filter(a => myCourses.find(c => c.id === a.courseId || c._id === a.courseId)).length;
-  const pendingGrading = SUBMISSIONS.filter(s => s.status !== 'graded').length;
+  const pendingGrading = PENDING_SUBMISSIONS.length;
 
 
   return (
@@ -87,7 +88,7 @@ function FacultyDashboard({ user, onNavigate }) {
           </div>
           <div className="card-body">
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 140, paddingTop: 20 }}>
-              {dayAtt.map(d => (
+              {Array.isArray(dayAtt) && dayAtt.map(d => (
                 <div key={d.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                   <div style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>{d.present}%</div>
                   <div style={{
@@ -220,7 +221,7 @@ function FacultyCourses({ user, onNavigate }) {
 
       <div className="course-grid">
         {myCourses.map(course => (
-          <div className="course-card" key={course.id}>
+          <div className="course-card" key={course.id || course._id}>
             <div className="course-card-banner"></div>
             <div className="course-card-body">
               <div className="course-dept-tag">{course.dept_code} · {course.credits} Credits</div>
@@ -308,17 +309,24 @@ function FacultyCourses({ user, onNavigate }) {
 // ── MARK ATTENDANCE ────────────────────────────────────────────────────────
 function FacultyAttendance({ user }) {
   const { data: COURSES } = useLiveCourses();
-  const { data: USERS } = { data: USERS };
+  const { data: USERS = [] } = useLiveUsers('student');
+  const markAllAttendance = useMarkAllAttendance();
 
   const myCourses = COURSES.filter(c => c.facultyOwnerId === user.id || c.facultyOwnerId === user.userId || c.facultyId === user.id);
   const [selectedCourse, setSelectedCourse] = useState(myCourses[0]?.id || myCourses[0]?._id || '');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const students = USERS.filter(u => u.role === 'student').slice(0, 6);
-  const [attendance, setAttendance] = useState(() => {
+  
+  const course = myCourses.find(c => (c.id || c._id) === selectedCourse);
+  const enrolledIds = course?.enrolledStudents || [];
+  const students = USERS.filter(u => enrolledIds.includes(u.id || u._id));
+  
+  const [attendance, setAttendance] = useState({});
+  useEffect(() => {
     const init = {};
-    students.forEach(s => { init[s.id] = 'present'; });
-    return init;
-  });
+    students.forEach(s => { init[s.id || s._id] = 'present'; });
+    setAttendance(init);
+  }, [selectedCourse, students.length]);
+
   const [saved, setSaved] = useState(false);
   const [qrModal, setQrModal] = useState(false);
   const [qrTime, setQrTime] = useState(300);
@@ -347,8 +355,23 @@ function FacultyAttendance({ user }) {
   }, [qrModal, qrTime]);
 
   function saveAttendance() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    const payload = {
+      courseId: selectedCourse,
+      date: date,
+      records: students.map(s => ({
+        studentId: s.id || s._id,
+        status: attendance[s.id || s._id] || 'present'
+      }))
+    };
+    markAllAttendance.mutate(payload, {
+      onSuccess: () => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      },
+      onError: (err) => {
+        toast.error('Failed to save attendance');
+      }
+    });
   }
 
   const presentCount = Object.values(attendance).filter(v => v === 'present').length;
@@ -430,8 +453,8 @@ function FacultyAttendance({ user }) {
               <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-outline btn-sm" onClick={() => setAttendance(Object.fromEntries(students.map(s => [s.id, 'present'])))}>All Present</button>
-              <button className="btn btn-outline btn-sm" onClick={() => setAttendance(Object.fromEntries(students.map(s => [s.id, 'absent'])))}>All Absent</button>
+              <button className="btn btn-outline btn-sm" onClick={() => setAttendance(Object.fromEntries(students.map(s => [s.id || s._id, 'present'])))}>All Present</button>
+              <button className="btn btn-outline btn-sm" onClick={() => setAttendance(Object.fromEntries(students.map(s => [s.id || s._id, 'absent'])))}>All Absent</button>
             </div>
           </div>
         </div>
@@ -443,8 +466,8 @@ function FacultyAttendance({ user }) {
             <div className="card-title">Student List</div>
             <div className="card-subtitle">{presentCount}/{students.length} present · {date}</div>
           </div>
-          <button className="btn btn-primary" onClick={saveAttendance}>
-            <Icon d={ICONS.check} size={15} /> Save Attendance
+          <button className="btn btn-primary" onClick={saveAttendance} disabled={markAllAttendance.isPending}>
+            <Icon d={ICONS.check} size={15} /> {markAllAttendance.isPending ? 'Saving...' : 'Save Attendance'}
           </button>
         </div>
         <div className="table-wrapper" style={{ border: 'none', boxShadow: 'none', borderRadius: 0 }}>
@@ -455,42 +478,41 @@ function FacultyAttendance({ user }) {
                 <th>Student ID</th>
                 <th>Department</th>
                 <th style={{ width: 200 }}>Status</th>
-                <th>Last Attendance</th>
               </tr>
             </thead>
             <tbody>
               {students.map(s => (
-                <tr key={s.id}>
+                <tr key={s.id || s._id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 14, borderRadius: 8 }}>
-                        {s.firstName[0]}{s.lastName[0]}
+                        {s.firstName?.[0]}{s.lastName?.[0]}
                       </div>
-                      <div style={{ fontWeight: 600 }}>{s.firstName} {s.lastName}</div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{s.firstName} {s.lastName}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{s.email}</div>
+                      </div>
                     </div>
                   </td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.id.toUpperCase()}</td>
-                  <td><span className="badge badge-neutral">{s.department}</span></td>
+                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-2)' }}>{s.regNo || (s.id || s._id)?.slice(-6).toUpperCase()}</td>
+                  <td><span className="badge">{s.department || 'CSE'}</span></td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {['present', 'absent', 'leave'].map(status => (
                         <button
                           key={status}
-                          className={`btn btn-sm ${attendance[s.id] === status
+                          className={`btn btn-sm ${attendance[s.id || s._id] === status
                             ? status === 'present' ? 'btn-secondary'
                               : status === 'absent' ? 'btn-danger'
                               : 'btn-outline'
                             : 'btn-ghost'}`}
-                          onClick={() => setAttendance(prev => ({ ...prev, [s.id]: status }))}
+                          onClick={() => setAttendance(prev => ({ ...prev, [s.id || s._id]: status }))}
                           style={{ textTransform: 'capitalize' }}
                         >
                           {status === 'present' ? '✓' : status === 'absent' ? '✗' : '~'} {status}
                         </button>
                       ))}
                     </div>
-                  </td>
-                  <td style={{ color: 'var(--text-2)', fontSize: 12 }}>
-                    {ATTENDANCE_RECORDS.find(r => r.studentId === s.id)?.date || '—'}
                   </td>
                 </tr>
               ))}
@@ -898,7 +920,6 @@ function FacultyProfile({ user }) {
 }
 
 // ── FACULTY PORTAL ROUTER ─────────────────────────────────────────────────
-export default 
 const PagePlaceholder = ({ title }) => (
   <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>
     <h2>{title}</h2>
@@ -934,23 +955,10 @@ function FacultyPortal() {
       <Route path="ai-tools" element={<F.AITools user={user} />} />
       <Route path="feedback" element={<F.StudentFeedback user={user} />} />
       <Route path="otp-attendance" element={<F.FacultyOtpAttendance user={user} />} />
-      <Route path="content" element={<PagePlaceholder title="Course Content" />} />
-        <Route path="assessments" element={<PagePlaceholder title="Assessments" />} />
-        <Route path="assignments" element={<PagePlaceholder title="Assignments" />} />
-        <Route path="attendance" element={<PagePlaceholder title="Mark Attendance" />} />
-        <Route path="timetable" element={<PagePlaceholder title="My Timetable" />} />
-        <Route path="performance" element={<PagePlaceholder title="Student Performance" />} />
-        <Route path="grades" element={<PagePlaceholder title="Grade Submission" />} />
-        <Route path="completion" element={<PagePlaceholder title="Course Completion" />} />
-        <Route path="discussions" element={<PagePlaceholder title="Communication Hub" />} />
-        <Route path="announcements" element={<PagePlaceholder title="Announcements" />} />
-        <Route path="analytics" element={<PagePlaceholder title="Analytics" />} />
-        <Route path="leave" element={<PagePlaceholder title="Leave Management" />} />
-        <Route path="ai-tools" element={<PagePlaceholder title="AI Teaching Tools" />} />
-        <Route path="profile" element={<PagePlaceholder title="Profile" />} />
-        <Route path="notifications" element={<PagePlaceholder title="Notifications" />} />
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
+      <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>
   );
 }
 
+
+export default FacultyPortal;

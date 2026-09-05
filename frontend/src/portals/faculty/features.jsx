@@ -335,7 +335,7 @@ export function AnnouncementMgmt({ user }) {
 
 // ── DISCUSSION MODERATION ───────────────────────────────────────────────────
 export function DiscussionModeration({ user }) {
-  const { data: threads } = useLiveDiscussionThreads('all');
+  const { data: threads } = useLiveDiscussionThreadsHook('all');
   const [filter, setFilter] = useState('all');
 
   const discussions = threads?.length ? threads : [];

@@ -16,7 +16,7 @@ app.use('/uploads/courses', express.static(UPLOAD_DIR));
 app.use(cors());
 
 const PORT = process.env.PORT || 3003;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_courses';
+const MONGO_URI = process.env.MONGO_URI_COURSES || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_courses';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
 // Register routes

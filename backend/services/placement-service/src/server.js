@@ -11,7 +11,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'placement-se
 app.use('/', placementRoutes);
 
 const PORT = process.env.PORT || 3012;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_placement';
+const MONGO_URI = process.env.MONGO_URI_PLACEMENT || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_placement';
 
 async function startServer() {
   await connectDB(MONGO_URI);

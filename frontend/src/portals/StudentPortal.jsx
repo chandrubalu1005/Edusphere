@@ -36,7 +36,7 @@ function StudentDashboard({ user, onNavigate }) {
   const { data: NOTIFICATIONS = [] } = useLiveNotifications();
   const { data: COURSES = [] } = useLiveCourses();
   const { data: ENROLLMENTS = [] } = useLiveEnrollments(user.id || user.userId);
-  const { data: ATTENDANCE_RECORDS = [] } = useLiveAttendance();
+  const { data: ATTENDANCE_RECORDS = [] } = useLiveAttendance(null, null, user.id || user.userId);
   const { data: ASSIGNMENTS = [] } = useLiveAssignments();
   const { data: ASSESSMENTS = [] } = useLiveAssessments();
   const { data: CERTIFICATES = [] } = useLiveCertificates();
@@ -111,7 +111,7 @@ function StudentDashboard({ user, onNavigate }) {
           </div>
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {enrolled.map(enr => {
-              const course = COURSES.find(c => c.id === enr.courseId);
+              const course = COURSES.find(c => c.id === enr.courseId || c._id === enr.courseId);
               return (
                 <div key={enr.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -239,7 +239,7 @@ function StudentCourses({ user }) {
               </thead>
               <tbody>
                 {enrolled.map(enr => {
-                  const course = COURSES.find(c => c.id === enr.courseId);
+                  const course = COURSES.find(c => c.id === enr.courseId || c._id === enr.courseId);
                   if (!course) return null;
                   return (
                     <tr key={enr.id}>
@@ -325,7 +325,7 @@ function StudentCourses({ user }) {
 function StudentAttendance({ user }) {
   const { data: COURSES } = useLiveCourses();
   const { data: ENROLLMENTS } = useLiveEnrollments();
-  const { data: ATTENDANCE_RECORDS } = useLiveAttendance();
+  const { data: ATTENDANCE_RECORDS = [] } = useLiveAttendance(null, null, user.id || user.userId);
   const [activeSession, setActiveSession] = useState(null);
   
   const records = ATTENDANCE_RECORDS.filter(a => a.studentId === user.id || a.studentId === user.userId);
@@ -432,7 +432,7 @@ function StudentAttendance({ user }) {
           const courseRecords = records.filter(r => r.courseId === enr.courseId);
           const present = courseRecords.filter(r => r.status === 'present').length;
           const pct = courseRecords.length ? Math.round((present / courseRecords.length) * 100) : 0;
-          const course = COURSES.find(c => c.id === enr.courseId);
+          const course = COURSES.find(c => c.id === enr.courseId || c._id === enr.courseId);
           return (
             <div className="stat-card" key={enr.id}>
               <div className="stat-label">{course?.code || enr.courseCode}</div>
@@ -473,7 +473,7 @@ function StudentAttendance({ user }) {
             </thead>
             <tbody>
               {records.map(r => {
-                const course = COURSES.find(c => c.id === r.courseId);
+                const course = COURSES.find(c => c.id === r.courseId || c._id === r.courseId);
                 return (
                   <tr key={r.id}>
                     <td><span style={{ fontWeight: 600 }}>{course?.code}</span> — {course?.title}</td>

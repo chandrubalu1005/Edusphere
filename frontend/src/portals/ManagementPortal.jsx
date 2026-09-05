@@ -607,7 +607,6 @@ function ManagementProfile({ user }) {
 }
 
 // ── MANAGEMENT PORTAL ROUTER ─────────────────────────────────────────────
-export default 
 const PagePlaceholder = ({ title }) => (
   <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>
     <h2>{title}</h2>
@@ -666,3 +665,5 @@ function ManagementPortal() {
   );
 }
 
+
+export default ManagementPortal;

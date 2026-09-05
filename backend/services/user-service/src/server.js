@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(cors());
 
 const PORT = process.env.PORT || 3002;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_users';
+const MONGO_URI = process.env.MONGO_URI_USERS || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_users';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 
 // Register routes
