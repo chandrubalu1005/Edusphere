@@ -30,6 +30,7 @@ export default defineConfig({
       '/api/submissions': { target: 'http://localhost:3006', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/submissions/, '/submissions') },
       '/api/certificates': { target: 'http://localhost:3007', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/certificates/, '/certificates') },
       '/api/attendance': { target: 'http://localhost:3008', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/attendance/, '') },
+      '/api/leave': { target: 'http://localhost:3008', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/leave/, '/leave') },
       '/api/timetable': { target: 'http://localhost:3009', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/timetable/, '') },
       '/api/calendar': { target: 'http://localhost:3010', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/calendar/, '') },
       '/api/library': { target: 'http://localhost:3011', changeOrigin: true, rewrite: (p) => p.replace(/^\/api\/library/, '') },

@@ -108,8 +108,8 @@ function AppRoutes() {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      throwOnError: true,
-      retry: false, // Don't retry on error to immediately show ErrorBoundary
+      throwOnError: false,
+      retry: 1,
     },
     mutations: {
       throwOnError: false, // Mutations usually handled manually

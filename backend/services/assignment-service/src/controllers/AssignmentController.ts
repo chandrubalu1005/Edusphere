@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Assignment } from '../models/Assignment';
+import { Submission } from '../models/Submission';
 import { OutboxEvent } from '../models/OutboxEvent';
 import { CourseVerification } from '../services/CourseVerification';
 import { logger } from '../events/rabbitmq';
@@ -37,6 +38,25 @@ export class AssignmentController {
       res.json({ assignments, total });
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch assignments' });
+    }
+  }
+
+  static async getAssignmentStats(_req: Request, res: Response) {
+    try {
+      const stats = await Submission.aggregate([
+        {
+          $group: {
+            _id: '$assignmentId',
+            submissionsCount: { $sum: 1 },
+            gradedCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'graded'] }, 1, 0] }
+            }
+          }
+        }
+      ]);
+      res.json(stats);
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch assignment stats' });
     }
   }
 

@@ -405,15 +405,19 @@ export function TimetableGrid({ slots, days = ['Monday', 'Tuesday', 'Wednesday',
 }
 
 // ── CHARTS (Pure CSS/SVG) ───────────────────────────────────────────────────
-export function BarChart({ data, valueKey = 'value', labelKey = 'label', color = 'var(--accent)', height = 160, showValues = true }) {
-  const max = Math.max(...data.map(d => d[valueKey]), 1);
+export function BarChart({ data = [], valueKey = 'value', labelKey = 'label', color = 'var(--accent)', height = 160, showValues = true }) {
+  const chartData = Array.isArray(data) ? data : [];
+  if (chartData.length === 0) {
+    return <div className="chart-bar" style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: 13 }}>No data available</div>;
+  }
+  const max = Math.max(...chartData.map(d => d[valueKey] || 0), 1);
   return (
     <div className="chart-bar" style={{ height }}>
       <div className="chart-bars" style={{ height: height - 24 }}>
-        {data.map((d, i) => (
+        {chartData.map((d, i) => (
           <div key={i} className="chart-bar-item">
             {showValues && <div className="chart-bar-value">{d[valueKey]}</div>}
-            <div className="chart-bar-fill" style={{ height: `${(d[valueKey] / max) * 100}%`, background: d.color || color }} />
+            <div className="chart-bar-fill" style={{ height: `${((d[valueKey] || 0) / max) * 100}%`, background: d.color || color }} />
             <div className="chart-bar-label">{d[labelKey]}</div>
           </div>
         ))}

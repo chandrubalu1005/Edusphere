@@ -31,7 +31,7 @@ exports.createSession = async (req, res) => {
 
     // Validate course ownership
     const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-    const resp = await fetch(`${COURSE_URL}/courses/${courseId}`, {
+    const resp = await fetch(`${COURSE_URL}/${courseId}`, {
       headers: { Authorization: req.headers.authorization }
     });
     if (!resp.ok) return res.status(404).json({ error: 'Course not found or access denied' });

@@ -55,7 +55,7 @@ exports.markAttendance = async (req, res) => {
     if (req.user.role === 'faculty') {
       try {
         const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-        const resp = await fetch(`${COURSE_URL}/courses/${courseId}`, {
+        const resp = await fetch(`${COURSE_URL}/${courseId}`, {
           headers: { Authorization: req.headers.authorization }
         });
         if (!resp.ok) return res.status(404).json({ error: 'Course not found' });
@@ -96,7 +96,7 @@ exports.markAllAttendance = async (req, res) => {
     if (req.user.role === 'faculty') {
       try {
         const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-        const resp = await fetch(`${COURSE_URL}/courses/${courseId}`, {
+        const resp = await fetch(`${COURSE_URL}/${courseId}`, {
           headers: { Authorization: req.headers.authorization }
         });
         if (!resp.ok) return res.status(404).json({ error: 'Course not found' });

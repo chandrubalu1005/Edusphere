@@ -9,6 +9,7 @@ const router = Router();
 router.get('/health', (_req, res) => res.json({ status: 'ok', service: 'assignment-service' }));
 
 // Assignment Routes
+router.get('/stats', auth, AssignmentController.getAssignmentStats);
 router.get('/', auth, AssignmentController.getAssignments);
 router.get('/:id', auth, AssignmentController.getAssignment);
 router.post('/', auth, requireRole('faculty', 'admin'), AssignmentController.createAssignment);

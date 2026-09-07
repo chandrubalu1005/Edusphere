@@ -3,8 +3,30 @@ const DiscussionReply  = require('../models/DiscussionReply');
 
 exports.getThreads = async (req, res) => {
   try {
+    const { courseId } = req.params;
+    if (courseId === 'all') {
+      let filter = {};
+      if (req.user.role === 'faculty') {
+        const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
+        const courseResp = await fetch(COURSE_URL, {
+          headers: { Authorization: req.headers.authorization }
+        });
+        if (courseResp.ok) {
+          const allCourses = await courseResp.json();
+          const myCourseIds = (allCourses.courses || allCourses || [])
+            .filter(c => c.facultyOwnerId === req.user.userId || c.facultyId === req.user.userId || (c.coInstructors && c.coInstructors.includes(req.user.userId)))
+            .map(c => c.id || c._id);
+          if (myCourseIds.length > 0) {
+            filter.courseId = { $in: myCourseIds };
+          }
+        }
+      }
+      const threads = await DiscussionThread.find(filter).sort({ createdAt: -1 });
+      return res.json({ threads, total: threads.length });
+    }
+
     const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-    const courseResp = await fetch(`${COURSE_URL}/courses/${req.params.courseId}`, {
+    const courseResp = await fetch(`${COURSE_URL}/${courseId}`, {
       headers: { Authorization: req.headers.authorization }
     });
     if (!courseResp.ok) return res.status(403).json({ error: 'Access denied to this course' });
@@ -13,11 +35,8 @@ exports.getThreads = async (req, res) => {
     if (req.user.role === 'student' && (!course.enrolledStudents || !course.enrolledStudents.includes(req.user.userId))) {
       return res.status(403).json({ error: 'Access denied: Not enrolled' });
     }
-    if (req.user.role === 'faculty' && course.facultyOwnerId !== req.user.userId && (!course.coInstructors || !course.coInstructors.includes(req.user.userId))) {
-       return res.status(403).json({ error: 'Access denied: Not course owner' });
-    }
 
-    const threads = await DiscussionThread.find({ courseId: req.params.courseId }).sort({ createdAt: -1 });
+    const threads = await DiscussionThread.find({ courseId }).sort({ createdAt: -1 });
     res.json({ threads, total: threads.length });
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
@@ -38,7 +57,7 @@ const { publishEvent } = require('../config/rabbitmq');
 exports.createThread = async (req, res) => {
   try {
     const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-    const courseResp = await fetch(`${COURSE_URL}/courses/${req.body.courseId}`, {
+    const courseResp = await fetch(`${COURSE_URL}/${req.body.courseId}`, {
       headers: { Authorization: req.headers.authorization }
     });
     if (!courseResp.ok) return res.status(403).json({ error: 'Access denied to this course' });
@@ -75,7 +94,7 @@ exports.replyToThread = async (req, res) => {
     if (!thread) return res.status(404).json({ error: 'Thread not found' });
     
     const COURSE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-    const courseResp = await fetch(`${COURSE_URL}/courses/${thread.courseId}`, {
+    const courseResp = await fetch(`${COURSE_URL}/${thread.courseId}`, {
       headers: { Authorization: req.headers.authorization }
     });
     if (!courseResp.ok) return res.status(403).json({ error: 'Access denied to this course' });

@@ -87,7 +87,7 @@ exports.getLeaveRequests = async (req, res) => {
       try {
         const token = req.headers.authorization || '';
         const COURSE_SERVICE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:3003';
-        const resp = await axios.get(`${COURSE_SERVICE_URL}/courses`, {
+        const resp = await axios.get(`${COURSE_SERVICE_URL}/`, {
           headers: { Authorization: token },
           timeout: 5000
         });

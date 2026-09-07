@@ -5,10 +5,12 @@ import { Icon, ICONS } from '../components/Layout.jsx';
 import { useDropzone } from 'react-dropzone';
 import { useUploadCourseContent , useCreateQRSession, useCourseAttendance, useAssignments } from '../api/hooks.js';
 import toast from 'react-hot-toast';
+import api from '../api/client.js';
 
 import {
   useLiveCourses, useLiveAssignments, useLiveAssessments,
-  useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions, useLiveProfile, useLivePendingSubmissions, useLiveUsers
+  useLiveAttendance, useLiveSubmissions, useLiveAssignmentStats, useLiveAssignmentSubmissions, useLiveProfile, useLivePendingSubmissions, useLiveUsers,
+  useLiveLeaveRecords, useLiveTimetable, useLiveCalendarEvents, useLiveDiscussionThreads
 } from '../api/liveData.js';
 import { useGradeSubmission, useBulkGradeAssignment, useCreateCourse, useUpdateCourse, useResolveDispute, useUpdateProfile, useWeeklyAttendanceSummary, useMarkAllAttendance } from '../api/hooks.js';
 import * as F from './faculty/features.jsx';
@@ -31,6 +33,46 @@ function PageHeader({ title, subtitle, children }) {
   );
 }
 
+// ── VERIFICATION STATUS BAR ─────────────────────────────────────────────────
+function VerificationStatusBar({ user }) {
+  const { data: courses, error: errCourses } = useLiveCourses();
+  const { data: assignments, error: errAssign } = useLiveAssignments();
+  const { data: leaves, error: errLeaves } = useLiveLeaveRecords({ role: 'faculty' });
+  const { data: calendar, error: errCal } = useLiveCalendarEvents();
+  const { data: timetable, error: errTime } = useLiveTimetable();
+  const { data: discussions, error: errDisc } = useLiveDiscussionThreads('all');
+
+  const modules = [
+    { name: 'Courses', ok: courses && !errCourses },
+    { name: 'Assignments', ok: assignments && !errAssign },
+    { name: 'Leaves', ok: leaves && !errLeaves },
+    { name: 'Calendar', ok: calendar && !errCal },
+    { name: 'Timetable', ok: timetable && !errTime },
+    { name: 'Discussions', ok: discussions && !errDisc },
+  ];
+
+  const allWorking = modules.every(m => m.ok);
+  const color = allWorking ? 'var(--success)' : 'var(--warning)';
+  const bg = allWorking ? 'var(--success-soft)' : 'var(--warning-soft)';
+
+  return (
+    <div style={{ padding: 14, background: bg, border: `1px solid ${color}`, borderRadius: 8, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, boxShadow: `0 0 0 4px ${bg}` }}></div>
+        <span style={{ fontWeight: 700, color: 'var(--text-1)' }}>System Verification Status</span>
+      </div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        {modules.map(m => (
+          <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
+            {m.ok ? <CheckCircle2 size={16} color="var(--success)" /> : <div style={{width:16, height:16, borderRadius:8, background:'var(--danger)'}}></div>}
+            <span style={{ color: 'var(--text-2)' }}>{m.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── FACULTY DASHBOARD ─────────────────────────────────────────────────────
 function FacultyDashboard({ user, onNavigate }) {
   const { data: COURSES } = useLiveCourses();
@@ -46,7 +88,8 @@ function FacultyDashboard({ user, onNavigate }) {
 
   return (
     <div>
-      <PageHeader title={`Welcome, Prof. ${user.lastName} 👨‍🏫`} subtitle="Teaching dashboard overview." />
+      <VerificationStatusBar user={user} />
+      <PageHeader title={`Welcome, Prof. ${user.lastName || user.name || user.username || 'Faculty'} 👨‍🏫`} subtitle="Teaching dashboard overview." />
 
       <div className="stat-grid">
         <div className="stat-card">
@@ -919,6 +962,246 @@ function FacultyProfile({ user }) {
   );
 }
 
+// ── FACULTY ASSESSMENTS & QUIZZES ─────────────────────────────────────────
+function FacultyAssessments({ user }) {
+  const { data: courses = [] } = useLiveCourses();
+  const [selectedCourse, setSelectedCourse] = useState('all');
+  const [search, setSearch] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCourseId, setNewCourseId] = useState('');
+  const [newDuration, setNewDuration] = useState(30);
+  const [newPassMarks, setNewPassMarks] = useState(50);
+  const [newTotalMarks, setNewTotalMarks] = useState(100);
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data: assessments = [], refetch } = useLiveAssessments(selectedCourse === 'all' ? undefined : selectedCourse);
+
+  const filtered = (Array.isArray(assessments) ? assessments : []).filter(a => {
+    const matchesSearch = !search || a.title?.toLowerCase().includes(search.toLowerCase()) || a.description?.toLowerCase().includes(search.toLowerCase());
+    const matchesCourse = selectedCourse === 'all' || a.courseId === selectedCourse;
+    return matchesSearch && matchesCourse;
+  });
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newCourseId) {
+      toast.error('Please provide a title and course');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/assessments', {
+        title: newTitle,
+        courseId: newCourseId,
+        type: 'quiz',
+        status: 'active',
+        duration: Number(newDuration),
+        totalMarks: Number(newTotalMarks),
+        passMarks: Number(newPassMarks),
+        questions: [
+          {
+            text: 'Sample Question 1',
+            type: 'mcq',
+            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            correct: 0,
+            marks: 10
+          }
+        ]
+      });
+      toast.success('Assessment created successfully!');
+      setShowModal(false);
+      setNewTitle('');
+      if (refetch) refetch();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create assessment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div>
+      <PageHeader title="Assessments & Quizzes" subtitle="Create, schedule, and grade online exams and quizzes">
+        <button className="btn btn-primary" onClick={() => {
+          setNewCourseId(courses[0]?.id || courses[0]?._id || '');
+          setShowModal(true);
+        }}>
+          + New Assessment
+        </button>
+      </PageHeader>
+
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase' }}>Total Assessments</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-1)', marginTop: 4 }}>
+            {filtered.length}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>Across all active courses</div>
+        </div>
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase' }}>Active Tests</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--brand)', marginTop: 4 }}>
+            {filtered.filter(a => a.status === 'active' || !a.status).length}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>Accepting submissions</div>
+        </div>
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase' }}>Avg Duration</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-1)', marginTop: 4 }}>
+            {filtered.length ? Math.round(filtered.reduce((acc, c) => acc + (c.duration || 30), 0) / filtered.length) : 30}m
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>Time limit per attempt</div>
+        </div>
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase' }}>Standard Passing</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-1)', marginTop: 4 }}>50%</div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>Institution threshold</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card" style={{ padding: 16, marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          className="form-input"
+          style={{ maxWidth: 280 }}
+          placeholder="Search assessments..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select
+          className="form-select"
+          style={{ maxWidth: 240 }}
+          value={selectedCourse}
+          onChange={e => setSelectedCourse(e.target.value)}
+        >
+          <option value="all">All Courses</option>
+          {courses.map(c => (
+            <option key={c.id || c._id} value={c.id || c._id}>
+              {c.code || c.courseCode} - {c.title || c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Assessment Cards Grid */}
+      {filtered.length === 0 ? (
+        <div className="card" style={{ padding: 48, textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📝</div>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-1)', marginBottom: 8 }}>No assessments found</h3>
+          <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 20 }}>
+            Create your first quiz or exam for your enrolled students.
+          </p>
+          <button className="btn btn-primary" onClick={() => {
+            setNewCourseId(courses[0]?.id || courses[0]?._id || '');
+            setShowModal(true);
+          }}>
+            + Create New Quiz
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+          {filtered.map((item, idx) => (
+            <div key={item._id || item.id || idx} className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <span className="badge badge-info">{item.type || 'quiz'}</span>
+                  <span className={`badge ${item.status === 'closed' ? 'badge-muted' : 'badge-success'}`}>
+                    {item.status || 'active'}
+                  </span>
+                </div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--text-1)', marginBottom: 8 }}>
+                  {item.title}
+                </h3>
+                <p style={{ color: 'var(--text-2)', fontSize: 13, marginBottom: 16 }}>
+                  {item.description || 'No description provided'}
+                </p>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  ⏱ {item.duration || 30} mins · {item.questions?.length || 0} questions
+                </div>
+                <button className="btn btn-sm btn-outline" onClick={() => toast('Assessment details viewed')}>
+                  Manage
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ width: '100%', maxWidth: 500, padding: 24 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 16, color: 'var(--text-1)' }}>
+              Create New Assessment
+            </h3>
+            <form onSubmit={handleCreate}>
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label className="form-label">Assessment Title</label>
+                <input
+                  className="form-input"
+                  required
+                  placeholder="e.g. Midterm Quiz - Unit 1 & 2"
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label className="form-label">Course</label>
+                <select
+                  className="form-select"
+                  required
+                  value={newCourseId}
+                  onChange={e => setNewCourseId(e.target.value)}
+                >
+                  <option value="">Select Course</option>
+                  {courses.map(c => (
+                    <option key={c.id || c._id} value={c.id || c._id}>
+                      {c.code || c.courseCode} - {c.title || c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div>
+                  <label className="form-label">Duration (minutes)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={newDuration}
+                    onChange={e => setNewDuration(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Passing Score (%)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={newPassMarks}
+                    onChange={e => setNewPassMarks(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Creating...' : 'Create Assessment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── FACULTY PORTAL ROUTER ─────────────────────────────────────────────────
 const PagePlaceholder = ({ title }) => (
   <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-2)' }}>
@@ -941,7 +1224,7 @@ function FacultyPortal() {
       <Route path="content" element={<F.ResourceUpload user={user} />} />
       <Route path="attendance" element={<FacultyAttendance user={user} />} />
       <Route path="assignments" element={<FacultyAssignments user={user} />} />
-      <Route path="assessments" element={<FacultyDashboard user={user} onNavigate={handleNavigate} />} />
+      <Route path="assessments" element={<FacultyAssessments user={user} />} />
       <Route path="analytics" element={<FacultyAnalytics user={user} />} />
       <Route path="profile" element={<FacultyProfile user={user} />} />
       <Route path="notifications" element={<div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}><h1 className="page-title">Notifications</h1><div className="card"><div className="card-body">You have no new notifications.</div></div></div>} />

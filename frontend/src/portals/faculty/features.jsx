@@ -63,7 +63,7 @@ export function StudentPerformance({ user }) {
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
         <StatCard label="Total Students Guided" value={filteredUsers.length} icon={<UsersRound size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
-        <StatCard label="Average GPA of Batches" value="8.79" trend="On Track" trendType="up" icon={<BarChart size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
+        <StatCard label="Average GPA of Batches" value="8.79" trend="On Track" trendType="up" icon={<BarChart2 size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
         <StatCard label="At Risk Cohort" value="2" trend="Requires Intervention" trendType="down" icon={<AlertTriangle size={24} color="var(--brand, #C43D3D)" strokeWidth={1.5} />} />
       </div>
 
@@ -612,7 +612,7 @@ export function AITools({ user }) {
             { id: 'paper', label: 'Question Paper Gen', icon: <NotebookPen size={18} /> },
             { id: 'rubric', label: 'Rubric Generator', icon: <LayoutTemplate size={18} /> },
             { id: 'evaluator', label: 'AI Essay Evaluator', icon: <PenTool size={18} /> },
-            { id: 'summary', label: 'Batch Summary & Insights', icon: <BarChart size={18} /> }
+            { id: 'summary', label: 'Batch Summary & Insights', icon: <BarChart2 size={18} /> }
           ].map(tool => (
             <div
               key={tool.id}
