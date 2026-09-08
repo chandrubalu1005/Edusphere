@@ -1,16 +1,35 @@
 const mongoose = require('mongoose');
 
 const CourseSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true },
+  courseId: { type: String, unique: true, sparse: true, index: true },
+  masterCourseId: { type: String, index: true },
+  code: { type: String, required: true, index: true },
   title: { type: String, required: true },
   description: { type: String, default: '' },
   department: { type: String, required: true },
-  facultyOwnerId: { type: String, required: true },
-  facultyName: { type: String, required: true },
+  program: { type: String },
+  yearOfStudy: { type: Number },
+  semester: { type: Number },
+  category: { type: String, default: 'CORE' },
+  categorySource: { type: String },
+  facultyOwnerId: { type: String },
+  facultyName: { type: String },
   coInstructors: [{ type: String }], // Array of user IDs
-  status: { type: String, required: true, enum: ['draft', 'pending', 'published'], default: 'pending' },
+  status: { type: String, required: true, enum: ['draft', 'pending', 'published', 'active', 'completed'], default: 'published' },
   rejectionReason: { type: String, default: '' },
   capacity: { type: Number, default: 60 },
+  credits: { type: Number, default: 3 },
+  units: [{
+    unitNumber: { type: Number, required: true },
+    title: { type: String, required: true },
+    description: { type: String, default: '' },
+    documents: [{
+      title: { type: String },
+      type: { type: String, default: 'document' },
+      url: { type: String },
+      addedAt: { type: Date, default: Date.now }
+    }]
+  }],
   content: [{
     title: { type: String, required: true },
     type: { type: String, enum: ['document', 'video', 'link'], default: 'document' },

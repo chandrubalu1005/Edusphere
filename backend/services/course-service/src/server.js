@@ -1,3 +1,4 @@
+const { errorHandler } = require('@edusphere/shared');
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -13,7 +14,10 @@ const fs = require('fs');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads', 'courses');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 app.use('/uploads/courses', express.static(UPLOAD_DIR));
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : 'http://localhost:5173',
+  credentials: true
+}));
 
 const PORT = process.env.PORT || 3003;
 const MONGO_URI = process.env.MONGO_URI_COURSES || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_courses';
@@ -177,6 +181,8 @@ app.get('/api-docs', (req, res) => {
 });
 
 // Initialization
+app.use(errorHandler);
+
 async function startServer() {
   await connectDB(MONGO_URI);
   await connectRabbitMQ(RABBITMQ_URL);

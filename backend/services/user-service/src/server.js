@@ -3,11 +3,15 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const { connectRabbitMQ } = require('./config/rabbitmq');
 const userRoutes = require('./routes/userRoutes');
+const { errorHandler } = require('@edusphere/shared');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : 'http://localhost:5173',
+  credentials: true
+}));
 
 const PORT = process.env.PORT || 3002;
 const MONGO_URI = process.env.MONGO_URI_USERS || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_users';
@@ -134,6 +138,8 @@ app.get('/api-docs', (req, res) => {
 });
 
 // Initialization
+app.use(errorHandler);
+
 async function startServer() {
   await connectDB(MONGO_URI);
   await connectRabbitMQ(RABBITMQ_URL);
@@ -144,4 +150,3 @@ startServer();
 
 process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
 process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
-

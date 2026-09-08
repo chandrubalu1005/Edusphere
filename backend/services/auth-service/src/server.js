@@ -1,3 +1,4 @@
+const { errorHandler } = require('@edusphere/shared');
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -8,7 +9,10 @@ require('dotenv').config();
 const app = express();
 require('./config/passport');
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : 'http://localhost:5173',
+  credentials: true
+}));
 
 const PORT = process.env.PORT || 3001;
 const MONGO_URI = process.env.MONGO_URI_AUTH || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_auth';
@@ -137,6 +141,8 @@ app.get('/api-docs', (req, res) => {
 });
 
 // Initialization
+app.use(errorHandler);
+
 async function startServer() {
   await connectDB(MONGO_URI);
   await connectRabbitMQ(RABBITMQ_URL);

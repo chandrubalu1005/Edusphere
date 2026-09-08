@@ -18,7 +18,8 @@
     "mongoose": "^7.3.1",
     "redis": "^4.6.7",
     "winston": "^3.9.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "@edusphere/shared": "*"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",

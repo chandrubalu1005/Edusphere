@@ -19,7 +19,14 @@ const ProfileSchema = new mongoose.Schema({
     themeName: { type: String, default: 'university' }
   },
   active: { type: Boolean, default: true },
+  displayName: { type: String, default: '' },
+  department: { type: String, default: '' },
+  organizationScope: { type: mongoose.Schema.Types.Mixed },
+  academicScope: { type: mongoose.Schema.Types.Mixed },
+  responsibilityScope: { type: mongoose.Schema.Types.Mixed },
+  permissionsProfile: { type: String },
   createdAt: { type: Date, default: Date.now }
-});
+}, { strict: false });
 
 module.exports = mongoose.model('Profile', ProfileSchema);
+

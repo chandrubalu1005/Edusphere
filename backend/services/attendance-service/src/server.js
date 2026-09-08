@@ -1,3 +1,4 @@
+const { errorHandler } = require('@edusphere/shared');
 const express = require('express');
 const cors = require('cors');
 const redis = require('redis');
@@ -22,7 +23,10 @@ const io = new Server(server, {
 });
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : 'http://localhost:5173',
+  credentials: true
+}));
 
 const PORT = process.env.PORT || 3008;
 const MONGO_URI = process.env.MONGO_URI_ATTENDANCE || process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere_attendance';
@@ -88,6 +92,8 @@ app.get('/api-docs', (req, res) => {
     </html>
   `);
 });
+
+app.use(errorHandler);
 
 async function startServer() {
   const dbConnected = await connectDB(MONGO_URI);

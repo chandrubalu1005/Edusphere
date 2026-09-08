@@ -19,7 +19,8 @@
     "sharp": "^0.32.1",
     "winston": "^3.9.0",
     "exceljs": "^4.3.0",
-    "pdfkit": "^0.13.0"
+    "pdfkit": "^0.13.0",
+    "@edusphere/shared": "*"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",

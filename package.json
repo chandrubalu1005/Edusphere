@@ -6,7 +6,8 @@
   "description": "EduSphere Enterprise — Full-stack monorepo. Frontend + Backend microservices.",
   "workspaces": [
     "frontend",
-    "backend/services/*"
+    "backend/services/*",
+    "backend/packages/*"
   ],
   "scripts": {
     "dev": "dotenv -e .env -- concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\"",

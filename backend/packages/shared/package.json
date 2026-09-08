@@ -1,0 +1,10 @@
+{
+  "name": "@edusphere/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities, middleware, and errors for EduSphere microservices",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0"
+  }
+}
