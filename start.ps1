@@ -220,53 +220,15 @@ if (-not $lanIP) {
 }
 if (-not $lanIP) { $lanIP = "127.0.0.1" }
 
-Write-Host ""
-Write-Host "  ┌─────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
-Write-Host "  │  🖥️  LOCAL ACCESS (this machine)                        │" -ForegroundColor Cyan
-Write-Host "  │     http://127.0.0.1:5173                               │" -ForegroundColor Cyan
-Write-Host "  │                                                         │" -ForegroundColor Cyan
-Write-Host "  │  🌐  NETWORK ACCESS (other devices on same WiFi/LAN)   │" -ForegroundColor Green
-Write-Host "  │     http://${lanIP}:5173                                │" -ForegroundColor Green
-Write-Host "  └─────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
-Write-Host ""
+Write-Step "🔍" "Running current-user verification & generating test accounts..."
 
-Write-Host "  📡  Service Endpoints (Local):" -ForegroundColor Yellow
-Write-Host "  🔐  Auth API:            http://127.0.0.1:3001/health" -ForegroundColor DarkYellow
-Write-Host "  👥  User API:            http://127.0.0.1:3002/health" -ForegroundColor DarkYellow
-Write-Host "  📚  Course API:          http://127.0.0.1:3003/health" -ForegroundColor DarkYellow
-Write-Host "  🔔  Notification API:    http://127.0.0.1:3004/health" -ForegroundColor DarkYellow
-Write-Host "  ⚡  Assessment API:      http://127.0.0.1:3005/health" -ForegroundColor DarkYellow
-Write-Host "  📝  Assignment API:      http://127.0.0.1:3006/health" -ForegroundColor DarkYellow
-Write-Host "  🏆  Certificate API:     http://127.0.0.1:3007/health" -ForegroundColor DarkYellow
-Write-Host "  📅  Attendance API:      http://127.0.0.1:3008/health" -ForegroundColor DarkYellow
-Write-Host "  🗓️  Timetable API:       http://127.0.0.1:3009/health" -ForegroundColor DarkYellow
-Write-Host "  📆  Calendar API:        http://127.0.0.1:3010/health" -ForegroundColor DarkYellow
-Write-Host "  📖  Library API:         http://127.0.0.1:3011/health" -ForegroundColor DarkYellow
-Write-Host "  💼  Placement API:       http://127.0.0.1:3012/health" -ForegroundColor DarkYellow
-Write-Host "  💬  Discussion API:      http://127.0.0.1:3013/health" -ForegroundColor DarkYellow
-Write-Host "  📊  Analytics API:       http://127.0.0.1:3014/health" -ForegroundColor DarkYellow
-Write-Host "  🛡️  Admin API:           http://127.0.0.1:3015/health" -ForegroundColor DarkYellow
-Write-Host "  💰  Finance API:         http://127.0.0.1:3016/health" -ForegroundColor DarkYellow
-Write-Host ""
-
-Write-Host "  🎓  Demo Login Credentials:" -ForegroundColor Magenta
-Write-Host "  ┌──────────────┬────────────────┬──────────┬────────────────────────────────────┐" -ForegroundColor DarkGray
-Write-Host "  │ Role         │ Username       │ Password │ Network URL                        │" -ForegroundColor DarkGray
-Write-Host "  ├──────────────┼────────────────┼──────────┼────────────────────────────────────┤" -ForegroundColor DarkGray
-Write-Host "  │ Student      │ student_1      │ demo123  │ http://${lanIP}:5173/login/student  │" -ForegroundColor White
-Write-Host "  │ Student      │ student_2      │ demo123  │ http://${lanIP}:5173/login/student  │" -ForegroundColor White
-Write-Host "  │ Student      │ john_doe       │ demo123  │ http://${lanIP}:5173/login/student  │" -ForegroundColor White
-Write-Host "  │ Faculty      │ faculty_1      │ demo123  │ http://${lanIP}:5173/login/faculty  │" -ForegroundColor Cyan
-Write-Host "  │ Faculty      │ faculty_2      │ demo123  │ http://${lanIP}:5173/login/faculty  │" -ForegroundColor Cyan
-Write-Host "  │ Admin        │ admin_1        │ demo123  │ http://${lanIP}:5173/login/admin    │" -ForegroundColor Yellow
-Write-Host "  │ Management   │ management_1   │ demo123  │ http://${lanIP}:5173/login/mgmt     │" -ForegroundColor Green
-Write-Host "  └──────────────┴────────────────┴──────────┴────────────────────────────────────┘" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "  💡  Share  http://${lanIP}:5173  with teammates on the same WiFi/LAN" -ForegroundColor Green
-Write-Host ""
-Write-Host "  📊  Smoke test:  node backend/scripts/smoke-test.js" -ForegroundColor DarkCyan
-Write-Host "  🌱  Seed data:   node -r dotenv/config backend/scripts/seed.js" -ForegroundColor DarkCyan
-Write-Host ""
+$nodeProc = Start-Process -FilePath "node" -ArgumentList "backend/scripts/verify-startup.js", $lanIP -Wait -PassThru -NoNewWindow
+if ($nodeProc.ExitCode -ne 0) {
+    Write-ErrorMsg "Startup Verification Failed (Exit Code: $($nodeProc.ExitCode)). Halting."
+    Write-Host "Shutting down gracefully..." -ForegroundColor Yellow
+    & ".\stop.ps1"
+    exit 1
+}
 
 # Open browser ONLY after frontend is fully verified
 try {

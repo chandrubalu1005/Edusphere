@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const CSV_FILE = path.join(__dirname, '../../CampusSphere_All_1141_Users(1).csv');
-const DEFAULT_PASSWORD = 'password123';
+const DEFAULT_PASSWORD = 'demo123';
 
 function getMongoUri(dbName) {
   const envKey = `MONGO_URI_${dbName.toUpperCase()}`;
