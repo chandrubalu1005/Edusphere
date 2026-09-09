@@ -10,13 +10,29 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Map backend RBAC roles to frontend app logic
+  const normalizeUser = (apiUser) => {
+    if (!apiUser) return null;
+    const roleMapping = {
+      'ROOT_ADMIN': 'admin',
+      'ADMIN': 'admin',
+      'MANAGEMENT': 'management',
+      'HOD': 'hod',
+      'FACULTY': 'faculty',
+      'STUDENT': 'student'
+    };
+    // If the backend role is standard (e.g. ROOT_ADMIN), map it, otherwise fallback to lowercase
+    const portalRole = roleMapping[apiUser.role] || apiUser.role?.toLowerCase();
+    return { ...apiUser, portalRole };
+  };
+
   // On mount, restore session from localStorage (consistent with login below)
   useEffect(() => {
     try {
       const storedUser  = localStorage.getItem('edu_user');
       const storedToken = localStorage.getItem('edu_token');
       if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
+        setUser(normalizeUser(JSON.parse(storedUser)));
       }
     } catch {
       // Corrupted storage — clear it
@@ -32,10 +48,12 @@ export function AuthProvider({ children }) {
       // backend auth-service POST /login expects { identifier, password, domain }
       const res = await axios.post('/api/auth/login', { identifier, password, domain });
       const { token, user: apiUser } = res.data; // backend returns { token, user }
+      
+      const normalized = normalizeUser(apiUser);
       localStorage.setItem('edu_token', token);
-      localStorage.setItem('edu_user', JSON.stringify(apiUser));
-      setUser(apiUser);
-      return apiUser;
+      localStorage.setItem('edu_user', JSON.stringify(apiUser)); // store original
+      setUser(normalized);
+      return normalized;
     } catch (err) {
       console.error("Real API login failed", err);
       throw err;
@@ -47,10 +65,12 @@ export function AuthProvider({ children }) {
     try {
       const res = await axios.post('/api/auth/register', { username, email, password });
       const { token, user: apiUser } = res.data;
+      const normalized = normalizeUser(apiUser);
+      
       localStorage.setItem('edu_token', token);
       localStorage.setItem('edu_user', JSON.stringify(apiUser));
-      setUser(apiUser);
-      return apiUser;
+      setUser(normalized);
+      return normalized;
     } catch (err) {
       console.error("Real API registration failed", err);
       throw err;
@@ -68,8 +88,9 @@ export function AuthProvider({ children }) {
   const switchRole = useCallback((roleOrUser) => {
     if (!import.meta.env.DEV) return;
     if (typeof roleOrUser === 'object') {
+      const normalized = normalizeUser(roleOrUser);
       localStorage.setItem('edu_user', JSON.stringify(roleOrUser));
-      setUser(roleOrUser);
+      setUser(normalized);
     }
   }, []);
 

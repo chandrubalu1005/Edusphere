@@ -55,9 +55,11 @@ exports.register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
+      userId: username.toUpperCase(), // basic default
       username,
       email,
-      password: hashedPassword,
+      displayName: username,
+      passwordHash: hashedPassword,
       role: requestedRole
     });
 
@@ -99,18 +101,36 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Identifier, password, and domain are required' });
     }
 
-    const validDomains = ['student', 'faculty', 'admin', 'management'];
+    const validDomains = ['student', 'faculty', 'admin', 'management', 'ROOT_ADMIN', 'HOD'];
     if (!validDomains.includes(domain)) {
       return res.status(400).json({ error: 'Invalid domain' });
     }
 
     const user = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
-    if (!user || user.role !== domain) {
-      // Intentionally generic error message to prevent enumeration
+    if (!user) {
       return res.status(401).json({ error: 'Invalid credentials or access not permitted for this domain' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Role check map since domain might be lowercase from URL
+    const roleMapping = {
+      'student': 'STUDENT',
+      'faculty': 'FACULTY',
+      'admin': 'ADMIN',
+      'management': 'MANAGEMENT',
+      'hod': 'HOD',
+      'root_admin': 'ROOT_ADMIN'
+    };
+    const expectedRole = roleMapping[domain.toLowerCase()] || domain;
+
+    if (user.role !== expectedRole && expectedRole !== 'ROOT_ADMIN') {
+       return res.status(401).json({ error: 'Invalid credentials or access not permitted for this domain' });
+    }
+
+    if (user.status !== 'ACTIVE' && user.status !== 'active') {
+       return res.status(403).json({ error: 'Account is inactive. Please contact administrator.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash || user.password || '');
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials or access not permitted for this domain' });
     }
@@ -140,13 +160,27 @@ exports.login = async (req, res) => {
       role: user.role
     });
 
+    // Update lastLoginAt
+    user.lastLoginAt = new Date();
+    await user.save();
+
     res.json({
       token,
       user: {
         id: user._id,
+        userId: user.userId,
         username: user.username,
         email: user.email,
-        role: user.role
+        displayName: user.displayName,
+        role: user.role,
+        department: user.departmentId,
+        academicYear: user.academicYear,
+        yearOfStudy: user.yearOfStudy,
+        currentSemester: user.currentSemester,
+        program: user.program,
+        batch: user.batch,
+        status: user.status,
+        forcePasswordChange: user.forcePasswordChangeOnFirstLogin
       }
     });
   } catch (error) {
@@ -302,6 +336,88 @@ exports.resetPassword = async (req, res) => {
     res.json({ 
       message: 'Password reset successfully',
       temporaryPassword: tempPassword // Provide exactly once to the admin
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.facultyPortalLogin = async (req, res) => {
+  try {
+    const { username, password, selectedDepartmentId, selectedFacultyType } = req.body;
+    if (!username || !password || !selectedDepartmentId || !selectedFacultyType) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const user = await User.findOne({ $or: [{ email: username }, { username: username }] });
+    if (!user) {
+      return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash || user.password || '');
+    if (!isMatch) {
+      return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
+    }
+
+    if (!['FACULTY', 'HOD'].includes(user.role)) {
+      return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
+    }
+
+    if (user.status !== 'ACTIVE' && user.status !== 'active') {
+      return res.status(403).json({ error: 'Account is inactive.' });
+    }
+
+    const actualFacultyType = user.role === 'HOD' ? 'HOD' : 'NORMAL';
+    if (user.departmentId !== selectedDepartmentId || actualFacultyType !== selectedFacultyType) {
+      publishEvent('audit.event', {
+        logId: require('crypto').randomUUID(),
+        actorUserId: user.userId,
+        actorRole: user.role,
+        action: 'LOGIN_FAILURE',
+        resourceType: 'USER',
+        resourceId: user.userId,
+        result: 'DENIED',
+        correlationId: req.headers['x-request-id'] || 'unknown',
+        metadata: { reason: 'LOGIN_CONTEXT_MISMATCH', submitted: req.body, actual: { departmentId: user.departmentId, facultyType: actualFacultyType } },
+        timestamp: new Date()
+      });
+      return res.status(403).json({ error: 'LOGIN_CONTEXT_MISMATCH' });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role, email: user.email, username: user.username, departmentId: user.departmentId },
+      JWT_SECRET,
+      { expiresIn: process.env.JWT_ACCESS_EXPIRY || '15m' }
+    );
+
+    publishEvent('audit.event', {
+      logId: require('crypto').randomUUID(),
+      actorUserId: user.userId,
+      actorRole: user.role,
+      action: 'LOGIN_SUCCESS',
+      resourceType: 'USER',
+      resourceId: user.userId,
+      result: 'SUCCESS',
+      correlationId: req.headers['x-request-id'] || 'unknown',
+      timestamp: new Date()
+    });
+
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        departmentId: user.departmentId,
+        facultyType: actualFacultyType,
+        status: user.status
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

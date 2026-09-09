@@ -338,15 +338,14 @@ function StudentAttendance({ user }) {
   
   const fetchActiveSession = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('edu_token');
       const ATTEND_URL = import.meta.env.VITE_ATTENDANCE_URL || '/api/attendance';
-      const res = await fetch(`${ATTEND_URL}/class-sessions`, { // Ideally an endpoint for 'active sessions for my enrolled courses'
+      const res = await fetch(`${ATTEND_URL}/class-sessions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const sessions = await res.json();
       if (sessions && sessions.length > 0) {
-        // Just mocking for UI demo. Real implementation would get the LIVE AttendanceSession 
-        setActiveSession({ id: 'dummy', courseId: 'CS301', status: 'CHECK_IN_OPEN' });
+        setActiveSession(sessions[0]);
       }
     } catch (err) {
       console.error(err);

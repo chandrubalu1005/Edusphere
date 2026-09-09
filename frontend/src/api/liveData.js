@@ -282,6 +282,21 @@ export function useLiveLibraryResources() {
   return { data: data?.books || [], isLoading, error };
 }
 
+export function useLiveCourseResources(courseOfferingId, departmentId, unitNumber) {
+  const { data, isLoading, error } = hooks.useCourseResources(courseOfferingId, departmentId, unitNumber);
+  return { data: data || [], isLoading, error };
+}
+
+export function useLiveLibraryAnalytics(departmentId) {
+  const { data, isLoading, error } = hooks.useLibraryAnalytics(departmentId);
+  return { data: data || null, isLoading, error };
+}
+
+export function useAdminLiveLibraryLoans() {
+  const { data, isLoading, error } = hooks.useAdminLiveLibraryLoans();
+  return { data: data || [], isLoading, error };
+}
+
 // ── Stubs for future features ──────────────────────────────────────────────
 // These are clearly documented as unimplemented features, not hiding broken code
 export function useLiveEmailTemplates() {

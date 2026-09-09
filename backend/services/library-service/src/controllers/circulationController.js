@@ -8,6 +8,8 @@ const LibraryMember = require('../models/LibraryMember');
 const BorrowingPolicy = require('../models/BorrowingPolicy');
 const { publishEvent } = require('../config/rabbitmq');
 const crypto = require('crypto');
+const AuditRecord = require('../models/AuditRecord');
+const { getIO } = require('../config/socket');
 
 // Utility to calculate due date
 const calculateDueDate = (policy) => {

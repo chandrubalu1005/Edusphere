@@ -114,25 +114,27 @@ $backendServices = @(
     @{ Name = "analytics-service";    Path = ".\backend\services\analytics-service";    Script = "run start"; Port = 3014 },
     @{ Name = "calendar-service";     Path = ".\backend\services\calendar-service";     Script = "run start"; Port = 3010 },
     @{ Name = "discussion-service";   Path = ".\backend\services\discussion-service";   Script = "run start"; Port = 3013 },
-    @{ Name = "library-service";      Path = ".\backend\services\library-service";      Script = "run start"; Port = 3011 },
+    # @{ Name = "library-service";      Path = ".\backend\services\library-service";      Script = "run start"; Port = 3011 },
     @{ Name = "placement-service";    Path = ".\backend\services\placement-service";    Script = "run start"; Port = 3012 },
     @{ Name = "timetable-service";    Path = ".\backend\services\timetable-service";    Script = "run start"; Port = 3009 },
     @{ Name = "finance-service";      Path = ".\backend\services\finance-service";      Script = "run start"; Port = 3016 }
 )
 
+Write-Step "📦" "Checking backend dependencies..."
+if (-not (Test-Path ".\backend\node_modules")) {
+    Push-Location ".\backend"
+    Write-Host "  Installing dependencies for backend workspace..." -ForegroundColor DarkGray
+    $npmProc = Start-Process -FilePath "npm.cmd" -ArgumentList "install" -Wait -PassThru -NoNewWindow
+    if ($npmProc.ExitCode -ne 0) {
+        Write-ErrorMsg "Backend npm install failed with exit code $($npmProc.ExitCode). Halting."
+        Pop-Location
+        exit 1
+    }
+    Pop-Location
+}
+
 foreach ($svc in $backendServices) {
     if (Test-Path "$($svc.Path)\package.json") {
-        if (-not (Test-Path "$($svc.Path)\node_modules")) {
-            Push-Location $svc.Path
-            Write-Host "  Installing dependencies for $($svc.Name)..." -ForegroundColor DarkGray
-            $npmProc = Start-Process -FilePath "npm.cmd" -ArgumentList "install" -Wait -PassThru -NoNewWindow
-            if ($npmProc.ExitCode -ne 0) {
-                Write-ErrorMsg "Backend npm install failed for $($svc.Name) with exit code $($npmProc.ExitCode). Halting."
-                Pop-Location
-                exit 1
-            }
-            Pop-Location
-        }
         Start-ServiceProcess -Name $svc.Name -Path $svc.Path -CommandArgs $svc.Script -Port $svc.Port -HealthPath "http://127.0.0.1:$($svc.Port)/health"
     } else {
         Write-Host "⚠️  Skipping $($svc.Name) — package.json not found" -ForegroundColor Yellow
@@ -268,10 +270,10 @@ Write-Host ""
 
 # Open browser ONLY after frontend is fully verified
 try {
-    Start-Process "http://127.0.0.1:5173"
+    Start-Process "http://${lanIP}:5173"
     Write-Step "🌍" "Opening browser... (Local: http://127.0.0.1:5173 | Network: http://${lanIP}:5173)"
 } catch {
-    Write-Host "  Please open http://127.0.0.1:5173 manually" -ForegroundColor Yellow
+    Write-Host "  Please open http://${lanIP}:5173 manually" -ForegroundColor Yellow
 }
 
 Write-Host "`n  Press Ctrl+C to stop all services`n" -ForegroundColor DarkGray

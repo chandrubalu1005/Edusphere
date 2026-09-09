@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 import fs from 'fs';
 
-const BASE_URL = 'http://localhost:5173';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:5173';
 const ROLES = [
   { domain: 'student', username: 'john_doe' },
   { domain: 'faculty', username: 'sarah_j' },

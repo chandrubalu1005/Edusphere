@@ -10,6 +10,7 @@ import DomainSelection from './pages/auth/DomainSelection.jsx';
 import DomainLogin from './pages/auth/DomainLogin.jsx';
 import StudentPortal from './portals/StudentPortal.jsx';
 import FacultyPortal from './portals/FacultyPortal.jsx';
+import HODPortal from './portals/HODPortal.jsx';
 import AdminPortal from './portals/AdminPortal.jsx';
 import ManagementPortal from './portals/ManagementPortal.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -45,11 +46,11 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={
-        user ? <Navigate to={`/${user.role}/dashboard`} replace /> : <Navigate to="/login" replace />
+        user ? <Navigate to={`/${user.portalRole}/dashboard`} replace /> : <Navigate to="/login" replace />
       } />
 
       <Route path="/login" element={
-        user ? <Navigate to={`/${user.role}/dashboard`} replace /> :
+        user ? <Navigate to={`/${user.portalRole}/dashboard`} replace /> :
         !authDomain ? <DomainSelection onSelectDomain={setAuthDomain} /> :
         <DomainLogin domainId={authDomain} onBack={() => setAuthDomain(null)} />
       } />
@@ -78,9 +79,20 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      {/* HOD Portal */}
+      <Route path="/hod/*" element={
+        <ProtectedRoute allowedRoles={['hod']}>
+          <Layout>
+            <ErrorBoundary>
+              <HODPortal />
+            </ErrorBoundary>
+          </Layout>
+        </ProtectedRoute>
+      } />
+
       {/* Admin Portal */}
       <Route path="/admin/*" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['admin', 'root_admin']}>
           <Layout>
             <ErrorBoundary>
               <AdminPortal />

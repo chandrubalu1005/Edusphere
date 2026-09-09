@@ -763,11 +763,7 @@ function CourseContent({ user }) {
       setTitle('');
       setLink('');
     } catch (err) {
-      console.warn('Real API upload failed, falling back to mock UI');
-      toast.success('Course content uploaded successfully.');
-      setFile(null);
-      setTitle('');
-      setLink('');
+      toast.error('Course content upload failed. Please try again.');
     }
   };
 
@@ -1237,6 +1233,7 @@ function FacultyPortal() {
       <Route path="completion" element={<F.CourseCompletionTracker user={user} />} />
       <Route path="ai-tools" element={<F.AITools user={user} />} />
       <Route path="feedback" element={<F.StudentFeedback user={user} />} />
+      <Route path="library" element={<F.FacultyLibrary user={user} />} />
       <Route path="otp-attendance" element={<F.FacultyOtpAttendance user={user} />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>

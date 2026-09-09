@@ -238,12 +238,11 @@ export function BudgetOverview({ user }) {
     }
 
     setTransferring(true);
-    setTimeout(() => {
-      setTransferring(false);
-      setModalOpen(false);
-      setAmount('');
-      toast.error('Service unavailable (Budget reallocation API not connected)');
-    }, 500);
+    setTransferring(true);
+    setTransferring(false);
+    setModalOpen(false);
+    setAmount('');
+    toast.error('Service unavailable (Budget reallocation API not connected)');
   }
 
   return (
@@ -471,10 +470,8 @@ export function ExecutiveReports({ user }) {
 
   function handleCompile() {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast.error("Service unavailable (Executive Reports API not connected)");
-    }, 500);
+    setLoading(false);
+    toast.error("Service unavailable (Executive Reports API not connected)");
   }
 
   return (
@@ -540,3 +537,23 @@ export function ExecutiveReports({ user }) {
 }
 
 
+
+// ── MANAGEMENT LIBRARY ANALYTICS ───────────────────────────────────────────
+export function LibraryAnalytics({ user }) {
+  return (
+    <div>
+      <PageHeader title="Institutional Library Analytics" subtitle="Monitor global library health, physical inventory metrics, and digital resource utilization"
+        breadcrumbs={[{ label: 'Dashboard', onClick: () => {} }, { label: 'Library Analytics' }]}
+      />
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="card-body">
+          <EmptyState 
+            icon={<BarChart2 size={48} />} 
+            title="Library Analytics Platform" 
+            message="Aggregate circulation statistics, resource demand, and departmental utilization across the institution." 
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

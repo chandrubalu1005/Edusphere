@@ -782,7 +782,7 @@ function AdminPortal() {
       <Route path="academic-core" element={<AcademicManagement />} />
       <Route path="curriculum" element={<CurriculumBuilder />} />
       <Route path="catalog" element={<CourseCatalog />} />
-      <Route path="departments" element={<PagePlaceholder title="Departments" />} />
+        <Route path="departments" element={<PagePlaceholder title="Departments" />} />
         <Route path="semesters" element={<PagePlaceholder title="Semesters" />} />
         <Route path="enrollments" element={<PagePlaceholder title="Enrollments" />} />
         <Route path="timetable-mgmt" element={<PagePlaceholder title="Timetable Management" />} />
@@ -790,7 +790,6 @@ function AdminPortal() {
         <Route path="cert-approval" element={<PagePlaceholder title="Certificate Approval" />} />
         <Route path="roles" element={<PagePlaceholder title="Roles & Permissions" />} />
         <Route path="announcements" element={<PagePlaceholder title="Announcements" />} />
-        <Route path="library-mgmt" element={<PagePlaceholder title="Library Management" />} />
         <Route path="placement-mgmt" element={<PagePlaceholder title="Placement Management" />} />
         <Route path="calendar-mgmt" element={<PagePlaceholder title="Academic Calendar" />} />
         <Route path="system-health" element={<PagePlaceholder title="System Health" />} />
@@ -799,7 +798,6 @@ function AdminPortal() {
         <Route path="email" element={<PagePlaceholder title="Email Broadcast" />} />
         <Route path="backup" element={<PagePlaceholder title="Backup & Restore" />} />
         <Route path="settings" element={<PagePlaceholder title="Configuration" />} />
-        <Route path="helpdesk" element={<PagePlaceholder title="Help Desk" />} />
         <Route path="reports" element={<PagePlaceholder title="Reports Center" />} />
         <Route path="profile" element={<PagePlaceholder title="Profile" />} />
         <Route path="notifications" element={<PagePlaceholder title="Notifications" />} />

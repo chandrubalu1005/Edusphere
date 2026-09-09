@@ -5,6 +5,7 @@ const reservationController = require('../controllers/reservationController');
 const fineController = require('../controllers/fineController');
 const catalogController = require('../controllers/catalogController');
 const digitalResourceController = require('../controllers/digitalResourceController');
+const courseResourceController = require('../controllers/courseResourceController');
 const inventoryController = require('../controllers/inventoryController');
 const acquisitionController = require('../controllers/acquisitionController');
 const clearanceController = require('../controllers/clearanceController');
@@ -42,6 +43,11 @@ router.post('/catalog', authMiddleware, catalogController.createTitle);
 // Digital Resources API
 router.get('/digital-resources', authMiddleware, digitalResourceController.getDigitalResources);
 router.post('/digital-resources/:id/access', authMiddleware, digitalResourceController.accessResource);
+
+// Course Resources API (Unit 1-5 scoped)
+router.get('/course-resources', authMiddleware, courseResourceController.getCourseResources);
+router.post('/course-resources', authMiddleware, courseResourceController.uploadCourseResource);
+
 
 // Inventory API
 router.post('/inventory/sessions', authMiddleware, inventoryController.startSession);

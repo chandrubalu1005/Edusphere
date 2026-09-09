@@ -632,6 +632,99 @@ export const useSearchCatalog = (query, filters = {}) => {
   });
 };
 
+// ── Course Resources API (Unit 1-5) ──────────────────────────────────────
+export const useCourseResources = (courseOfferingId, departmentId, unitNumber) => {
+  return useQuery({
+    queryKey: ['courseResources', courseOfferingId, departmentId, unitNumber],
+    queryFn: async () => {
+      const params = {};
+      if (courseOfferingId) params.courseOfferingId = courseOfferingId;
+      if (departmentId) params.departmentId = departmentId;
+      if (unitNumber) params.unitNumber = unitNumber;
+      const res = await api.get('/library/course-resources', { params });
+      return res.data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useLibraryAnalytics = (departmentId) => {
+  return useQuery({
+    queryKey: ['libraryAnalytics', departmentId],
+    queryFn: async () => {
+      const params = departmentId ? { departmentId } : {};
+      const res = await api.get('/library/analytics/kpi', { params });
+      return res.data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+// ── Admin Circulation API ──────────────────────────────────────────────────
+export const useAdminIssueBook = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/library/circulation/issue', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Book issued successfully');
+      queryClient.invalidateQueries(['adminLiveLibraryLoans']);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error?.message || 'Checkout failed');
+    }
+  });
+};
+
+export const useAdminReturnBook = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (loanId) => {
+      const res = await api.patch(`/library/circulation/loans/${loanId}/return`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Book returned successfully');
+      queryClient.invalidateQueries(['adminLiveLibraryLoans']);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error?.message || 'Check-in failed');
+    }
+  });
+};
+
+export const useAdminLiveLibraryLoans = () => {
+  return useQuery({
+    queryKey: ['adminLiveLibraryLoans'],
+    queryFn: async () => {
+      const res = await api.get('/library/circulation/loans'); // Assuming no memberId gets all loans
+      return res.data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useUploadCourseResource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (formData) => {
+      // Must be FormData for file upload
+      const res = await api.post('/library/course-resources', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['courseResources']);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error?.message || 'Failed to upload resource');
+    }
+  });
+};
+
 export const useDigitalResources = (titleId) => {
   return useQuery({
     queryKey: ['digitalResources', titleId],
@@ -1147,7 +1240,7 @@ export const useStudentGrades = (studentId) => {
 };
 
 // ── Course Resources (Download Center) ────────────────────────────────────
-export const useCourseResources = (courseId) => {
+export const useDownloadCenterResources = (courseId) => {
   return useQuery({
     queryKey: ['courseResources', courseId],
     queryFn: async () => {

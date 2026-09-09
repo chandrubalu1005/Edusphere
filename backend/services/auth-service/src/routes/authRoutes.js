@@ -14,6 +14,7 @@ const authLimiter = rateLimit({
 
 router.post('/register', authLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
+router.post('/login/faculty-portal', authLimiter, authController.facultyPortalLogin);
 router.get('/me', authMiddleware, authController.me);
 
 // 2FA Routes

@@ -4,7 +4,8 @@
   "private": true,
   "description": "EduSphere Enterprise Backend — 15 microservices workspace root",
   "workspaces": [
-    "services/*"
+    "services/*",
+    "packages/*"
   ],
   "scripts": {
     "start:auth":         "npm run start --workspace=services/auth-service",

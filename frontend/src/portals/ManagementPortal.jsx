@@ -54,7 +54,7 @@ function ExecutiveDashboard({ user, onNavigate }) {
     <div>
       {/* Clean Executive Dashboard Header */}
       <PageHeader
-        title={`${getGreeting()}, ${user.firstName} ${user.lastName}`}
+        title={`${getGreeting()}, ${user.displayName || user.username || 'Executive'}`}
         subtitle={`${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} · Academic Year 2025-26`}
       >
         <span className="badge badge-neutral" style={{ fontSize: 11 }}>Executive Portal</span>
@@ -643,6 +643,7 @@ function ManagementPortal() {
       <Route path="ai-insights" element={<F.AIInsights user={user} />} />
       <Route path="predictive" element={<F.PredictiveAnalytics user={user} />} />
       <Route path="executive-reports" element={<F.ExecutiveReports user={user} />} />
+      <Route path="library" element={<F.LibraryAnalytics user={user} />} />
       <Route path="academic-core" element={<AcademicManagement />} />
       <Route path="curriculum" element={<CurriculumBuilder />} />
       <Route path="catalog" element={<CourseCatalog />} />

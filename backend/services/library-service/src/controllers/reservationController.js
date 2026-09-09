@@ -4,6 +4,8 @@ const LibraryMember = require('../models/LibraryMember');
 const BorrowingPolicy = require('../models/BorrowingPolicy');
 const crypto = require('crypto');
 const { publishEvent } = require('../config/rabbitmq');
+const AuditRecord = require('../models/AuditRecord');
+const { getIO } = require('../config/socket');
 
 exports.createReservation = async (req, res) => {
   try {

@@ -764,7 +764,27 @@ export function StudentNotifications({ user }) {
 
 // ── DIGITAL LIBRARY (Student View) ──────────────────────────────────────────
 
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../../api/client.js';
+
 export function StudentLibrary({ user }) {
+  const queryClient = useQueryClient();
+  const reservationMutation = useMutation({
+    mutationFn: async (titleId) => {
+      const res = await api.post('/library/reservations', { titleId });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Book reserved successfully. You will be notified when a copy is available.');
+      queryClient.invalidateQueries(['searchCatalog']);
+      queryClient.invalidateQueries(['liveLibraryLoans']);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error?.message || 'Failed to reserve book');
+    }
+  });
+
   const [tab, setTab] = useState('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilters, setSearchFilters] = useState({});

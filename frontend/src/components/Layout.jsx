@@ -112,6 +112,7 @@ const NAV_CONFIG = {
       { id: 'grades',       label: 'Grade Submission',       icon: 'edit', path: '/faculty/grades' },
       { id: 'completion',   label: 'Course Completion',      icon: 'check', path: '/faculty/completion' },
       { id: 'feedback',     label: 'Student Feedback',       icon: 'mail', path: '/faculty/feedback' },
+      { id: 'library',      label: 'Course Library',         icon: 'library', path: '/faculty/library' },
     ]},
     { section: 'Communication', items: [
       { id: 'discussions',  label: 'Communication Hub',      icon: 'mail', path: '/faculty/discussions' },
@@ -161,6 +162,15 @@ const NAV_CONFIG = {
       { id: 'notifications',label: 'Notifications',           icon: 'bell', path: '/admin/notifications' },
     ]},
   ],
+  hod: [
+    { section: 'Department', items: [
+      { id: 'dashboard',    label: 'Dashboard',              icon: 'home', path: '/hod/dashboard' },
+      { id: 'library',      label: 'Department Library',     icon: 'library', path: '/hod/library' },
+    ]},
+    { section: 'Account', items: [
+      { id: 'profile',      label: 'Profile',                icon: 'shield', path: '/hod/profile' },
+    ]},
+  ],
   management: [
     { section: 'Executive View', items: [
       { id: 'dashboard',    label: 'Executive Dashboard',     icon: 'home', path: '/management/dashboard' },
@@ -168,6 +178,7 @@ const NAV_CONFIG = {
       { id: 'analytics',    label: 'Analytics & Reports',     icon: 'chart', path: '/management/analytics' },
       { id: 'kpis',         label: 'Institutional KPIs',      icon: 'chart', path: '/management/kpis' },
       { id: 'departments',  label: 'Dept Comparison',         icon: 'building', path: '/management/departments' },
+      { id: 'library',      label: 'Library Analytics',       icon: 'library', path: '/management/library' },
     ]},
     { section: 'Performance', items: [
       { id: 'faculty-perf', label: 'Faculty Performance',     icon: 'users', path: '/management/faculty-perf' },
@@ -199,7 +210,7 @@ const NAV_CONFIG = {
 // ── SIDEBAR ───────────────────────────────────────────────────────────────
 function Sidebar({ user, onLogout, onClose }) {
   const { theme, setTheme, dark, setDark } = useTheme();
-  const navSections = NAV_CONFIG[user?.role] || [];
+  const navSections = NAV_CONFIG[user?.portalRole] || [];
   const location = useLocation();
 
   return (
