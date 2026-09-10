@@ -122,7 +122,13 @@ exports.login = async (req, res) => {
     };
     const expectedRole = roleMapping[domain.toLowerCase()] || domain;
 
-    if (user.role !== expectedRole && expectedRole !== 'ROOT_ADMIN') {
+    const isRoleMatch = 
+      user.role === expectedRole || 
+      user.role === 'ROOT_ADMIN' || 
+      (user.role === 'HOD' && (domain.toLowerCase() === 'faculty' || domain.toLowerCase() === 'hod')) ||
+      (user.role === 'ADMIN' && domain.toLowerCase() === 'admin');
+
+    if (!isRoleMatch) {
        return res.status(401).json({ error: 'Invalid credentials or access not permitted for this domain' });
     }
 
